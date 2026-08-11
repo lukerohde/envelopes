@@ -1,0 +1,17 @@
+# Secrets — never commit
+.env
+
+# Node
+node_modules/
+dist/
+
+# Pulumi state (managed in Pulumi Cloud, not git)
+.pulumi/
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+*.swp

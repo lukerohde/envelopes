@@ -1,0 +1,1302 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>envelopes</title>
+<style>
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+
+  :root {
+    --ground: #f2ede2;
+    --surface: #fffdf8;
+    --surface-2: #faf6ec;
+    --ink: #211c14;
+    --ink-muted: #766a58;
+    --ink-faint: #a89c86;
+    --line: #ddd0b4;
+    --line-strong: #c8b892;
+    --accent: #2f6f4f;
+    --accent-ink: #ffffff;
+    --accent-soft: #e2ebe1;
+    --stamp: #a8452c;
+    --stamp-soft: #f4e3dc;
+    --shadow: 0 1px 2px rgba(40, 30, 10, 0.06), 0 8px 24px rgba(40, 30, 10, 0.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #15130e; --surface: #201c15; --surface-2: #262019;
+      --ink: #f1e9d8; --ink-muted: #b0a48c; --ink-faint: #756a56;
+      --line: #3a3324; --line-strong: #4c432e;
+      --accent: #5aab80; --accent-ink: #0e1a13; --accent-soft: #223028;
+      --stamp: #e0876a; --stamp-soft: #3a2620;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #15130e; --surface: #201c15; --surface-2: #262019;
+    --ink: #f1e9d8; --ink-muted: #b0a48c; --ink-faint: #756a56;
+    --line: #3a3324; --line-strong: #4c432e;
+    --accent: #5aab80; --accent-ink: #0e1a13; --accent-soft: #223028;
+    --stamp: #e0876a; --stamp-soft: #3a2620;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.5;
+  }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .serif { font-family: Georgia, "Iowan Old Style", "Palatino Linotype", ui-serif, serif; }
+  .mono, .fig { font-family: ui-monospace, "SF Mono", "Menlo", monospace; font-variant-numeric: tabular-nums; }
+
+  .wrap { max-width: 800px; margin: 0 auto; padding: 0 1.5rem 5rem; }
+
+  header.app-head { padding: 2.6rem 0 1.6rem; }
+  header.app-head h1 { margin: 0; font-size: 1.6rem; font-family: Georgia, "Iowan Old Style", ui-serif, serif; }
+  header.app-head p { margin: .35rem 0 0; color: var(--ink-muted); font-size: .95rem; }
+
+  section.block { padding: 2.2rem 0; border-top: 1px solid var(--line); }
+  section.block h2 {
+    font-family: Georgia, "Iowan Old Style", ui-serif, serif; font-size: 1.15rem; margin: 0 0 1rem;
+  }
+
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); padding: 1.3rem; }
+
+  .field-input {
+    border: 1px solid var(--line-strong); border-radius: 6px; padding: .4rem .6rem; font-size: .88rem;
+    background: var(--surface); color: var(--ink); font-family: inherit; width: 100%;
+  }
+  select.field-input {
+    appearance: none; -webkit-appearance: none; -moz-appearance: none; padding-right: 1.7rem;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'><path d='M0 0 L5 6 L10 0 Z' fill='%23a89c86'/></svg>");
+    background-repeat: no-repeat; background-position: right .55rem center; background-size: .6rem .4rem; cursor: pointer;
+  }
+  .add-ghost {
+    display: inline-flex; align-items: center; gap: .5rem; color: var(--ink-faint); font-size: .85rem;
+    border: 1px dashed var(--line-strong); border-radius: 6px; padding: .5rem .8rem; background: none; cursor: pointer;
+    margin-top: .9rem;
+  }
+  .add-ghost .plus { width: 1.1rem; height: 1.1rem; border-radius: 50%; border: 1px dashed var(--ink-faint); display: flex; align-items: center; justify-content: center; font-size: .75rem; }
+
+  /* ── People's ages ─────────────────────────────────────────────── */
+  .people-grid { display: flex; flex-direction: column; gap: .6rem; }
+  .person-row {
+    display: flex; align-items: center; gap: .9rem; padding: .6rem .8rem;
+    border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2);
+  }
+  .person-row input[type="text"] { flex: 1; min-width: 0; max-width: 11rem; }
+  .person-row input[type="date"] { flex: 0 0 9.5rem; }
+  .person-row .age { flex: 0 0 auto; margin-left: auto; text-align: right; }
+  .person-row .age .age-n { font-size: 1.2rem; }
+  .person-row .age .age-l { display: block; font-size: .68rem; color: var(--ink-muted); text-transform: uppercase; letter-spacing: .05em; }
+
+  /* ── Accounts ─────────────────────────────────────────────────── */
+  .accounts-scroll { overflow-x: auto; }
+  .accounts-grid { min-width: 680px; display: flex; flex-direction: column; gap: .5rem; }
+  .a-head, .account-row {
+    display: grid; grid-template-columns: 1.1fr 1fr 1.1fr 1fr .8fr 1.1fr; gap: .7rem; align-items: center;
+  }
+  .a-head {
+    font-size: .66rem; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-muted); font-weight: 700;
+    padding: 0 .1rem;
+  }
+  .account-row { padding: .6rem .8rem; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); }
+  .account-row .a-name { font-weight: 600; }
+  .account-row .a-field input { text-align: right; }
+  .account-row input:disabled { color: var(--ink-faint); background: var(--surface-2); cursor: not-allowed; }
+  .account-row .a-field.offset select:disabled { color: var(--ink-faint); cursor: not-allowed; }
+
+  /* ── Transfers ────────────────────────────────────────────────── */
+  .transfers-scroll { overflow-x: auto; }
+  .transfers-table { min-width: 640px; display: flex; flex-direction: column; gap: 0; }
+  .t-head, .transfer-row {
+    display: grid; grid-template-columns: 1.2fr auto 1.2fr .9fr .9fr .75fr 2.1rem; gap: .5rem; align-items: center;
+  }
+  .t-head {
+    font-size: .64rem; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-muted); font-weight: 700;
+    padding: 0 .1rem .4rem;
+  }
+  .t-head span:nth-child(2) { visibility: hidden; }
+  .t-head span:last-child { text-align: center; }
+  .transfer-row {
+    padding: .32rem .1rem; border: none; border-bottom: 1px solid var(--line); border-radius: 0; background: none;
+  }
+  .transfer-row:last-child { border-bottom: none; }
+  .transfer-row .arrow { color: var(--ink-faint); text-align: center; font-size: .82rem; }
+  .transfer-row .t-amount { text-align: right; }
+  .transfer-row .field-input, .transfer-row .combo-input { padding: .3rem .5rem; font-size: .83rem; }
+  .transfer-row .t-on { text-align: center; }
+  .transfer-row input:disabled, .transfer-row select:disabled { color: var(--ink-faint); background: var(--surface-2); cursor: not-allowed; }
+  .infl-chk {
+    justify-self: center; width: 1.3rem; height: 1.3rem; border-radius: 5px; border: 1.5px solid var(--line-strong);
+    background: var(--surface); color: var(--ink-faint); font-size: .74rem; font-weight: 700; cursor: pointer;
+    padding: 0; line-height: 1;
+  }
+  .infl-chk.checked { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .infl-chk.checked::after { content: "%"; }
+  .infl-chk:not(.checked)::after { content: "—"; }
+  .infl-chk:disabled { cursor: not-allowed; opacity: .55; }
+
+  /* an override row is a checkbox plus the exact same fields as a transfer --
+     nothing new to learn, and after saving only the checked ones remain,
+     still directly editable rather than collapsing into a read-only summary */
+  .override-row { display: flex; align-items: center; gap: .5rem; padding: .32rem .1rem; border-bottom: 1px solid var(--line); }
+  .override-row:last-child { border-bottom: none; }
+  .override-row .transfer-row { flex: 1; padding: 0; border: none; }
+  .override-row .chk {
+    flex: 0 0 auto; width: .9rem; height: .9rem; border-radius: 3px; border: 1.5px solid var(--ink-faint);
+    position: relative; background: var(--surface); padding: 0; cursor: pointer; appearance: none;
+  }
+  .override-row.checked .chk { background: var(--stamp); border-color: var(--stamp); }
+  .override-row.checked .chk::after {
+    content: "✓"; color: #fff; font-size: .58rem; position: absolute; inset: 0; display: flex;
+    align-items: center; justify-content: center;
+  }
+  /* a checked row at exactly $0 -- the from/to/every/on underneath are moot
+     once the amount is zero, so say "stopped" instead of leaving it to be
+     read off an empty "to" box */
+  .override-row.stopped { opacity: .8; }
+  .stopped-tag {
+    flex: 0 0 auto; font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--stamp); background: var(--stamp-soft); border-radius: 4px; padding: .1rem .4rem;
+  }
+  .acct-rate-row { flex: 1; display: flex; align-items: center; justify-content: space-between; gap: .6rem; font-size: .85rem; }
+  .acct-rate-row .arn { color: var(--ink); }
+  .acct-rate-row input { width: 5rem; text-align: right; }
+
+  .combo { position: relative; }
+  .combo-list {
+    position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 10;
+    background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px;
+    box-shadow: var(--shadow); max-height: 11rem; overflow-y: auto; padding: .3rem;
+  }
+  .combo-list[hidden] { display: none; }
+  .combo-item { padding: .4rem .6rem; border-radius: 5px; font-size: .85rem; cursor: pointer; }
+  .combo-item:hover { background: var(--accent-soft); }
+  .combo-create { color: var(--accent); font-weight: 600; }
+
+  /* ── Simulation over time ────────────────────────────────────── */
+  .sim-controls { display: flex; gap: 1.4rem; align-items: flex-end; flex-wrap: wrap; margin-bottom: 1.1rem; }
+  .sim-controls .ctl { display: flex; flex-direction: column; gap: .3rem; }
+  .sim-controls label { font-size: .68rem; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-muted); font-weight: 700; }
+  .sim-controls select.field-input { min-width: 9rem; }
+  .sim-controls input[type="text"] { width: 4.5rem; }
+  .auto-badge {
+    display: inline-flex; align-items: center; gap: .35rem; font-size: .74rem; color: var(--stamp); font-weight: 600;
+    background: var(--stamp-soft); border: 1px solid var(--stamp); border-radius: 999px; padding: .2rem .6rem;
+  }
+
+  #chartSvg { width: 100%; height: auto; display: block; }
+  .gridline { stroke: var(--line); stroke-width: 1; }
+  .axis-label { fill: var(--ink-faint); font-size: 10px; font-family: ui-monospace, monospace; }
+  .floor-line { stroke: var(--stamp); stroke-width: 1; stroke-dasharray: 4 3; opacity: .7; }
+  .never-zone { fill: var(--ink-faint); opacity: .08; }
+  .never-label { fill: var(--ink-faint); font-size: 10px; font-style: italic; }
+  .bal-line { fill: none; stroke: var(--accent); stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; }
+  .end-dot { fill: var(--accent); stroke: var(--surface); stroke-width: 2; }
+  .breach-dot { fill: var(--stamp); stroke: var(--surface); stroke-width: 2; }
+  .breach-label { fill: var(--stamp); font: 700 11px -apple-system, sans-serif; }
+  .crosshair { stroke: var(--ink-faint); stroke-width: 1; pointer-events: none; }
+  .hover-dot { fill: var(--surface); stroke: var(--accent); stroke-width: 2; pointer-events: none; }
+
+  /* timeline: a scrub playhead + a horizon (years-ahead) handle on one track */
+  .timeline { margin: 1.3rem 0 .3rem; }
+  .timeline-track {
+    position: relative; height: 8px; background: var(--surface-2); border: 1px solid var(--line-strong);
+    border-radius: 999px; margin: 1.8rem 0 .5rem;
+  }
+  .reached-fill { position: absolute; top: 0; left: 0; height: 100%; background: var(--accent-soft); border-radius: 999px 0 0 999px; }
+  .never-fill {
+    position: absolute; top: 0; height: 100%;
+    background: repeating-linear-gradient(45deg, var(--ink-faint) 0 3px, transparent 3px 7px); opacity: .3;
+  }
+  .scrub-handle, .horizon-handle {
+    position: absolute; top: 50%; border: none; background: none; padding: 0; margin: 0; cursor: grab; touch-action: none;
+  }
+  .scrub-handle { transform: translate(-50%, -50%); z-index: 3; }
+  .scrub-handle .glyph {
+    display: block; width: 20px; height: 18px; background: var(--accent);
+    clip-path: polygon(50% 0%, 100% 55%, 100% 100%, 0 100%, 0 55%);
+    box-shadow: 0 1px 3px rgba(0,0,0,.3);
+  }
+  .horizon-handle { transform: translate(-50%, -50%); z-index: 2; width: 11px; height: 24px; }
+  .horizon-handle .glyph { display: block; width: 100%; height: 100%; background: var(--stamp); border-radius: 3px; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+  .scrub-handle:active, .horizon-handle:active { cursor: grabbing; }
+  .scrub-handle:focus-visible .glyph, .horizon-handle:focus-visible .glyph { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .timeline-ticks { display: flex; justify-content: space-between; font-size: .68rem; color: var(--ink-faint); font-family: ui-monospace, monospace; padding: 0 1px; }
+
+  .sim-heading { margin: 0 0 .6rem; font-size: .95rem; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+  .balances-strip, .milestones-strip { margin-top: 1.4rem; padding-top: 1.2rem; border-top: 1px dashed var(--line); }
+  .milestones-strip h4 {
+    margin: 0; font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-muted); font-weight: 700;
+  }
+  .strip-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: .6rem; }
+  .strip-head h4 { margin: 0; font-size: .95rem; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .dollar-toggle { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 999px; padding: 2px; flex: 0 0 auto; }
+  .dt-btn {
+    border: none; background: none; font-size: .72rem; font-weight: 600; padding: .25rem .65rem; border-radius: 999px;
+    cursor: pointer; color: var(--ink-muted); font-family: inherit;
+  }
+  .dt-btn.active { background: var(--accent); color: var(--accent-ink); }
+  .bal-rows { display: flex; flex-direction: column; gap: 0; }
+  .bal-row { display: flex; align-items: center; justify-content: space-between; padding: .5rem 0; border-bottom: 1px solid var(--line); font-size: .9rem; }
+  .bal-row:last-child { border-bottom: none; }
+  .bal-row .bn { display: flex; align-items: center; gap: .5rem; }
+  .bal-row .swatch { width: .55rem; height: .55rem; border-radius: 50%; background: var(--line-strong); }
+  .bal-row.selected .swatch { background: var(--accent); }
+  .bal-row .bv { font-size: 1rem; }
+
+  /* ── Milestones (goals, ticked or crossed as the timeline passes them) ── */
+  .milestones { display: flex; flex-direction: column; gap: 0; }
+  .milestone-row { padding: .6rem 0; border-bottom: 1px solid var(--line); }
+  .milestone-row:last-child { border-bottom: none; }
+  .milestone-row.compact { display: flex; align-items: center; gap: .8rem; }
+  .m-mark {
+    flex: 0 0 auto; width: 1.5rem; height: 1.5rem; border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; font-size: .8rem; font-weight: 700; background: none; border: none; padding: 0; cursor: pointer;
+  }
+  .milestone-row.ticked .m-mark { background: var(--accent-soft); color: var(--accent); }
+  .milestone-row.crossed .m-mark { background: var(--surface-2); color: var(--ink-faint); border: 1px solid var(--line-strong); }
+  .m-info { flex: 1; min-width: 0; }
+  .m-info .m-name { font-weight: 600; font-size: .9rem; }
+  .m-info .m-trigger { font-size: .78rem; color: var(--ink-muted); }
+  .milestone-row.crossed .m-name, .milestone-row.crossed .m-trigger { color: var(--ink-faint); }
+  .m-when { text-align: right; font-size: .84rem; flex: 0 0 auto; }
+  .m-when .m-ages { display: block; font-size: .72rem; color: var(--ink-muted); }
+  .m-edit-btn {
+    flex: 0 0 auto; background: none; border: none; color: var(--ink-faint); cursor: pointer; font-size: .78rem;
+    font-family: inherit; padding: .2rem;
+  }
+
+  /* ── Goals (its own section -- the editor; Milestones just reads it) ── */
+  .goals { display: flex; flex-direction: column; gap: 0; }
+  .goal-row { padding: .7rem 0; border-bottom: 1px solid var(--line); }
+  .goal-row:last-child { border-bottom: none; }
+
+  /* editing form -- name, trigger type, type-specific fields, override rows */
+  .me-top { display: flex; align-items: center; gap: .7rem; margin-bottom: .7rem; }
+  .me-name { flex: 1; font-size: .92rem; font-weight: 600; }
+  .trigger-type { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 999px; padding: 2px; flex: 0 0 auto; }
+  .tt-btn {
+    border: none; background: none; font-size: .72rem; font-weight: 600; padding: .28rem .65rem; border-radius: 999px;
+    cursor: pointer; color: var(--ink-muted); font-family: inherit;
+  }
+  .tt-btn.active { background: var(--stamp); color: #fff; }
+  .trigger-fields { display: flex; align-items: center; gap: .5rem; font-size: .86rem; margin-bottom: .9rem; color: var(--ink-muted); }
+  .trigger-fields select, .trigger-fields input { width: auto; }
+  .trigger-fields input.short { width: 4rem; text-align: right; }
+  .trigger-fields select.short { width: 6rem; }
+  .me-when .cap { font-size: .68rem; text-transform: uppercase; letter-spacing: .05em; color: var(--stamp); font-weight: 700; margin-bottom: .4rem; }
+  .me-when .empty { color: var(--ink-faint); font-size: .8rem; font-style: italic; padding: .3rem 0; }
+  .save-link {
+    margin-top: .6rem; background: none; border: 1px solid var(--stamp); border-radius: 6px; color: var(--stamp);
+    font-weight: 600; padding: .45rem .8rem; font-size: .8rem; cursor: pointer; font-family: inherit;
+  }
+  .edit-more-link {
+    margin-top: .5rem; background: none; border: 1px dashed var(--line-strong); border-radius: 6px; color: var(--ink-muted);
+    font-weight: 600; padding: .4rem .7rem; font-size: .76rem; cursor: pointer; font-family: inherit;
+  }
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+
+  <header class="app-head">
+    <h1>envelopes</h1>
+    <p>Envelope-budgeting and retirement projection. Edit a number, watch the projection move.</p>
+  </header>
+
+  <!-- ============ People's ages ============ -->
+  <section class="block">
+    <h2>People's ages</h2>
+    <div class="card">
+      <div class="people-grid">
+        <div class="person-row">
+          <input class="field-input" type="text" value="Alex">
+          <input class="field-input" type="date" id="dobAlex" value="1980-05-20">
+          <span class="age"><span class="age-n fig" id="ageAlex"></span><span class="age-l">years old</span></span>
+        </div>
+        <div class="person-row">
+          <input class="field-input" type="text" value="Sam">
+          <input class="field-input" type="date" id="dobSam" value="1982-09-14">
+          <span class="age"><span class="age-n fig" id="ageSam"></span><span class="age-l">years old</span></span>
+        </div>
+      </div>
+      <button class="add-ghost" type="button"><span class="plus">+</span> Add a person</button>
+    </div>
+  </section>
+
+  <!-- ============ Accounts and opening balances ============ -->
+  <section class="block">
+    <h2>Accounts and opening balances</h2>
+    <div class="card">
+      <div class="accounts-scroll">
+        <div class="accounts-grid">
+          <div class="a-head"><span>Name</span><span>Kind</span><span>Opening balance</span><span>Interest rate</span><span>Floor</span><span>Offsets</span></div>
+
+          <div class="account-row">
+            <span class="a-name">alex pay</span>
+            <select class="field-input acct-kind"><option selected>Everyday</option><option>Saving</option><option>Loan</option></select>
+            <input class="field-input fig" value="3,200.00" disabled title="Opening balance is set once, when the account is created">
+            <input class="field-input fig" value="0%">
+            <input class="field-input fig" value="800.00">
+            <div class="a-field offset"><select class="field-input" disabled><option>— none —</option><option>mortgage</option></select></div>
+          </div>
+
+          <div class="account-row">
+            <span class="a-name">sam pay</span>
+            <select class="field-input acct-kind"><option selected>Everyday</option><option>Saving</option><option>Loan</option></select>
+            <input class="field-input fig" value="900.00" disabled title="Opening balance is set once, when the account is created">
+            <input class="field-input fig" value="0%">
+            <input class="field-input fig" value="300.00">
+            <div class="a-field offset"><select class="field-input" disabled><option>— none —</option><option>mortgage</option></select></div>
+          </div>
+
+          <div class="account-row">
+            <span class="a-name">groceries</span>
+            <select class="field-input acct-kind"><option selected>Everyday</option><option>Saving</option><option>Loan</option></select>
+            <input class="field-input fig" value="0.00" disabled title="Opening balance is set once, when the account is created">
+            <input class="field-input fig" value="0%">
+            <input class="field-input fig" value="0.00">
+            <div class="a-field offset"><select class="field-input" disabled><option>— none —</option><option>mortgage</option></select></div>
+          </div>
+
+          <div class="account-row">
+            <span class="a-name">everyday</span>
+            <select class="field-input acct-kind"><option selected>Everyday</option><option>Saving</option><option>Loan</option></select>
+            <input class="field-input fig" value="0.00" disabled title="Opening balance is set once, when the account is created">
+            <input class="field-input fig" value="0%">
+            <input class="field-input fig" value="0.00">
+            <div class="a-field offset"><select class="field-input" disabled><option>— none —</option><option>mortgage</option></select></div>
+          </div>
+
+          <div class="account-row">
+            <span class="a-name">car</span>
+            <select class="field-input acct-kind"><option selected>Everyday</option><option>Saving</option><option>Loan</option></select>
+            <input class="field-input fig" value="0.00" disabled title="Opening balance is set once, when the account is created">
+            <input class="field-input fig" value="0%">
+            <input class="field-input fig" value="0.00">
+            <div class="a-field offset"><select class="field-input" disabled><option>— none —</option><option>mortgage</option></select></div>
+          </div>
+
+          <div class="account-row">
+            <span class="a-name">joint savings</span>
+            <select class="field-input acct-kind"><option>Everyday</option><option selected>Saving</option><option>Loan</option></select>
+            <input class="field-input fig" value="22,000.00" disabled title="Opening balance is set once, when the account is created">
+            <input class="field-input fig" value="4%">
+            <input class="field-input fig" value="0.00">
+            <div class="a-field offset"><select class="field-input" disabled><option>— none —</option><option>mortgage</option></select></div>
+          </div>
+
+          <div class="account-row">
+            <span class="a-name">offset</span>
+            <select class="field-input acct-kind"><option>Everyday</option><option selected>Saving</option><option>Loan</option></select>
+            <input class="field-input fig" value="65,000.00" disabled title="Opening balance is set once, when the account is created">
+            <input class="field-input fig" value="0%">
+            <input class="field-input fig" value="0.00">
+            <div class="a-field offset"><select class="field-input"><option>— none —</option><option selected>mortgage</option></select></div>
+          </div>
+
+          <div class="account-row">
+            <span class="a-name">mortgage</span>
+            <select class="field-input acct-kind"><option>Everyday</option><option>Saving</option><option selected>Loan</option></select>
+            <input class="field-input fig" value="445,000.00" disabled title="Opening balance is set once, when the account is created">
+            <input class="field-input fig" value="6.1%">
+            <input class="field-input fig" value="0.00">
+            <div class="a-field offset"><select class="field-input" disabled><option>— none —</option><option>mortgage</option></select></div>
+          </div>
+
+          <div class="account-row">
+            <span class="a-name">early retirement</span>
+            <select class="field-input acct-kind"><option>Everyday</option><option selected>Saving</option><option>Loan</option></select>
+            <input class="field-input fig" value="0.00" disabled title="Opening balance is set once, when the account is created">
+            <input class="field-input fig" value="4%">
+            <input class="field-input fig" value="0.00">
+            <div class="a-field offset"><select class="field-input" disabled><option>— none —</option><option>mortgage</option></select></div>
+          </div>
+
+          <div class="account-row">
+            <span class="a-name">super alex</span>
+            <select class="field-input acct-kind"><option>Everyday</option><option selected>Saving</option><option>Loan</option></select>
+            <input class="field-input fig" value="195,000.00" disabled title="Opening balance is set once, when the account is created">
+            <input class="field-input fig" value="7%">
+            <input class="field-input fig" value="0.00">
+            <div class="a-field offset"><select class="field-input" disabled><option>— none —</option><option>mortgage</option></select></div>
+          </div>
+
+          <div class="account-row">
+            <span class="a-name">super sam</span>
+            <select class="field-input acct-kind"><option>Everyday</option><option selected>Saving</option><option>Loan</option></select>
+            <input class="field-input fig" value="42,000.00" disabled title="Opening balance is set once, when the account is created">
+            <input class="field-input fig" value="7%">
+            <input class="field-input fig" value="0.00">
+            <div class="a-field offset"><select class="field-input" disabled><option>— none —</option><option>mortgage</option></select></div>
+          </div>
+        </div>
+      </div>
+      <button class="add-ghost" type="button"><span class="plus">+</span> Add an account</button>
+    </div>
+  </section>
+
+  <!-- ============ Transfers ============ -->
+  <section class="block">
+    <h2>Transfers</h2>
+    <div class="card">
+      <div class="transfers-scroll">
+        <div class="transfers-table">
+          <div class="t-head"><span>From</span><span>→</span><span>To</span><span>Amount</span><span>Every</span><span>On</span><span>Inflation</span></div>
+          <div id="transferRows"></div>
+        </div>
+      </div>
+      <button class="add-ghost" type="button" id="addTransfer"><span class="plus">+</span> Add a transfer</button>
+    </div>
+  </section>
+
+  <!-- ============ Goals ============ -->
+  <section class="block">
+    <h2>Goals</h2>
+    <div class="card">
+      <div class="goals" id="goalRows"></div>
+      <button class="add-ghost" type="button" id="addGoal"><span class="plus">+</span> Add a goal</button>
+    </div>
+  </section>
+
+  <!-- ============ Simulation over time ============ -->
+  <section class="block">
+    <h2>Simulation over time</h2>
+    <div class="card">
+      <div class="sim-controls">
+        <div class="ctl">
+          <label>Account</label>
+          <select class="field-input" id="acctSelect">
+            <option value="alex pay" selected>alex pay</option>
+            <option value="sam pay">sam pay</option>
+            <option value="mortgage">mortgage</option>
+            <option value="joint savings">joint savings</option>
+            <option value="early retirement">early retirement</option>
+            <option value="super alex">super alex</option>
+            <option value="super sam">super sam</option>
+          </select>
+        </div>
+        <div class="ctl"><label>Inflation</label><input class="field-input" type="text" id="inflationInput" value="3%"></div>
+        <span class="auto-badge" id="autoBadge">⚠ auto-selected — hit its floor</span>
+      </div>
+
+      <h3 class="sim-heading" id="simHeading"></h3>
+      <svg id="chartSvg" viewBox="0 0 720 260" role="img" aria-label="Balance over time chart"></svg>
+
+      <div class="timeline">
+        <div class="timeline-track" id="track">
+          <div class="reached-fill" id="reachedFill"></div>
+          <div class="never-fill" id="neverFill"></div>
+          <button class="scrub-handle" id="scrubHandle" type="button" aria-label="Scrub to a point in time"><span class="glyph"></span></button>
+          <button class="horizon-handle" id="horizonHandle" type="button" aria-label="Years to simulate"><span class="glyph"></span></button>
+        </div>
+        <div class="timeline-ticks"><span>0</span><span>10y</span><span>20y</span><span>30y</span><span>40y</span></div>
+      </div>
+
+      <div class="balances-strip">
+        <div class="strip-head">
+          <h4 id="balHeading"></h4>
+          <div class="dollar-toggle" role="group" aria-label="Show values in">
+            <button type="button" class="dt-btn active" data-mode="future">Future $</button>
+            <button type="button" class="dt-btn" data-mode="today">Today's $</button>
+          </div>
+        </div>
+        <div class="bal-rows" id="balRows"></div>
+      </div>
+
+      <div class="milestones-strip">
+        <h4>Milestones</h4>
+        <div class="milestones" id="milestoneRows"></div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  function ageAt(dobStr, whenStr) {
+    var dob = new Date(dobStr), when = new Date(whenStr);
+    var years = when.getFullYear() - dob.getFullYear();
+    var before = (when.getMonth() < dob.getMonth()) ||
+      (when.getMonth() === dob.getMonth() && when.getDate() < dob.getDate());
+    if (before) years -= 1;
+    return years;
+  }
+  var TODAY = "2026-08-10";
+  document.getElementById("ageAlex").textContent = ageAt(document.getElementById("dobAlex").value, TODAY);
+  document.getElementById("ageSam").textContent = ageAt(document.getElementById("dobSam").value, TODAY);
+
+  // ---- real dataset: yearly-sampled output of the actual TS engine run
+  // against src/example.yaml (dumped via a throwaway script, not hand-waved)
+  // -- every account here genuinely holds up positive for the full 40 years ----
+  var ABS_MAX = 40; // matches the console tool's own 40-year default horizon
+  var SERIES = {
+    "alex pay": { floor: 800,
+      points: [[0,3200],[1,13611],[2,25357],[3,38475],[4,52643],[5,68622],[6,86102],[7,105126],[8,125742],[9,148473],[10,161124],[11,175532],[12,191393],[13,208751],[14,219328],[15,202681],[16,186971],[17,171814],[18,157226],[19,143225],[20,131598],[21,118382],[22,106287],[23,94852],[24,84099],[25,74046],[26,64143],[27,55539],[28,47699],[29,40648],[30,34408],[31,31455],[32,26302],[33,22701],[34,20015],[35,18270],[36,17496],[37,17722],[38,18161],[39,20451],[40,23832]] },
+    "sam pay": { floor: 300,
+      points: [[0,900],[1,33894],[2,67875],[3,102871],[4,138914],[5,176034],[6,214264],[7,253636],[8,294186],[9,327821],[10,327821],[15,327821],[20,327821],[25,327821],[30,327821],[35,327821],[40,327821]] },
+    "mortgage": { floor: 0,
+      points: [[0,445063],[1,433747],[2,421782],[3,409003],[4,395420],[5,380984],[6,365693],[7,349389],[8,332059],[9,313641],[10,294106],[11,273302],[12,251191],[13,227690],[14,202738],[15,176191],[16,147977],[17,117989],[18,86122],[19,52371],[20,18171],[21,0],[25,0],[30,0],[35,0],[40,0]] },
+    "joint savings": { floor: 0,
+      points: [[0,22002],[1,29898],[2,38330],[3,47319],[4,56897],[5,67095],[6,77954],[7,89491],[8,101750],[9,113069],[10,117693],[11,122493],[12,127488],[13,132687],[14,138113],[15,143745],[16,149607],[17,155708],[18,162076],[19,168685],[20,175564],[21,182724],[22,190196],[23,197952],[24,206025],[25,214426],[26,223195],[27,232297],[28,241770],[29,251630],[30,261920],[31,272601],[32,283717],[33,295287],[34,307363],[35,319897],[36,332943],[37,346520],[38,360691],[39,375399],[40,390666]] },
+    "early retirement": { floor: 0,
+      points: [[0,0],[1,28263],[2,58533],[3,90907],[4,125502],[5,162435],[6,201850],[7,243838],[8,288551],[9,314384],[10,260511],[11,202403],[12,139863],[13,72648],[14,17769],[15,18493],[16,19247],[17,20032],[18,20851],[19,21702],[20,22587],[21,37862],[22,74265],[23,112147],[24,151573],[25,192608],[26,235339],[27,279790],[28,326053],[29,374202],[30,424360],[31,476519],[32,530804],[33,587304],[34,646176],[35,707380],[36,771080],[37,837378],[38,906477],[39,978296],[40,1052929]] },
+    "super alex": { floor: 0,
+      points: [[0,195037],[1,216150],[2,239048],[3,263775],[4,290516],[5,319423],[6,350726],[7,384474],[8,420917],[9,458808],[10,492143],[11,527799],[12,566038],[13,607047],[14,642216],[15,648231],[16,653463],[17,657819],[18,661322],[19,663612],[20,662924],[21,662618],[22,660961],[23,657550],[24,652347],[25,645178],[26,635973],[27,624280],[28,610003],[29,592900],[30,572823],[31,546819],[32,519527],[33,488245],[34,452708],[35,412360],[36,366888],[37,315853],[38,258835],[39,195215],[40,124483]] },
+    "super sam": { floor: 0,
+      points: [[0,42008],[1,47198],[2,52839],[3,58944],[4,65560],[5,72726],[6,80499],[7,88894],[8,97974],[9,107346],[10,115146],[11,123488],[12,132434],[13,142029],[14,152348],[15,163386],[16,175223],[17,187918],[18,201571],[19,216175],[20,231837],[21,248633],[22,266698],[23,286020],[24,306742],[25,328965],[26,352866],[27,378431],[28,405849],[29,435252],[30,466875],[31,500700],[32,536976],[33,575880],[34,617720],[35,662474],[36,710470],[37,761943],[38,817302],[39,876515],[40,939838]] }
+  };
+  // escalates: true unless the real config sets escalation: 0 -- a mortgage
+  // repayment (and its freed-up redirect once paid off) are fixed nominal
+  // amounts, everything else grows with inflation by default
+  var TRANSFERS = [
+    { name: "alex salary", from: "external income", to: "alex pay", amount: "3,650.00", every: "fortnight", on: "2026-08-07", escalates: true },
+    { name: "sam salary", from: "external income", to: "sam pay", amount: "1,250.00", every: "fortnight", on: "2026-08-07", escalates: true },
+    { name: "groceries", from: "alex pay", to: "groceries", amount: "145.00", every: "week", on: "Sat", escalates: true },
+    { name: "everyday spending", from: "alex pay", to: "everyday", amount: "110.00", every: "week", on: "Sat", escalates: true },
+    { name: "car costs", from: "alex pay", to: "car", amount: "70.00", every: "week", on: "Sat", escalates: true },
+    { name: "joint savings", from: "alex pay", to: "joint savings", amount: "260.00", every: "fortnight", on: "2026-08-07", escalates: true },
+    { name: "mortgage repayment", from: "alex pay", to: "mortgage", amount: "2,850.00", every: "month", on: "5", escalates: false },
+    { name: "super contribution alex", from: "external income", to: "super alex", amount: "650.00", every: "month", on: "15", escalates: true },
+    { name: "super contribution tax alex", from: "super alex", to: "", amount: "97.00", every: "month", on: "15", escalates: true },
+    { name: "super contribution sam", from: "external income", to: "super sam", amount: "200.00", every: "month", on: "15", escalates: true },
+    { name: "super contribution tax sam", from: "super sam", to: "", amount: "30.00", every: "month", on: "15", escalates: true },
+    { name: "bridge saving", from: "alex pay", to: "early retirement", amount: "1,050.00", every: "fortnight", on: "2026-08-07", escalates: true },
+    { name: "bridge drawdown", from: "early retirement", to: "alex pay", amount: "0.00", every: "fortnight", on: "2026-08-07", escalates: true },
+    { name: "super drawdown alex", from: "super alex", to: "alex pay", amount: "0.00", every: "fortnight", on: "2026-08-07", escalates: true },
+    { name: "mortgage freed-up saving", from: "alex pay", to: "early retirement", amount: "0.00", every: "month", on: "5", escalates: false }
+  ];
+  // ACCOUNT_NAMES for the "also change account rates" override list --
+  // separate from ACCOUNTS (below) only because that one grows as you type
+  // new accounts into a combobox; this one mirrors the Accounts section.
+  var ACCOUNT_NAMES = ["alex pay", "sam pay", "groceries", "everyday", "car", "joint savings", "offset", "mortgage", "early retirement", "super alex", "super sam"];
+  function accountRate(name) {
+    var rates = { "joint savings": "4%", offset: "0%", mortgage: "6.1%", "early retirement": "4%", "super alex": "7%", "super sam": "7%" };
+    return rates[name] || "0%";
+  }
+  // GOALS is the single source of truth -- the Goals section (below) is
+  // where it's edited; Milestones, inside Simulation over time, only reads
+  // it back as a live, scrub-linked tick/cross summary. Each override is a
+  // full snapshot of that transfer's fields at the moment it was checked --
+  // simple to store, and it's exactly what gets saved: the whole row, not
+  // a diff of individual columns within it. accountOverrides works the same
+  // way, just for an account's rate instead of a transfer's fields.
+  var GOALS = [
+    {
+      name: "Pay off the house", trigger: "balance", account: "mortgage", target: 0, year: 21, editing: false,
+      overrides: {
+        "mortgage repayment": { from: "alex pay", to: "mortgage", amount: "0.00", every: "month", on: "5", escalates: false },
+        "mortgage freed-up saving": { from: "alex pay", to: "early retirement", amount: "2,850.00", every: "month", on: "5", escalates: false }
+      },
+      accountOverrides: {}
+    },
+    {
+      name: "Retire at 55", trigger: "age", person: "Alex", age: 55, year: null, editing: false,
+      overrides: {
+        "alex salary": { from: "external income", to: "alex pay", amount: "0.00", every: "fortnight", on: "2026-08-07", escalates: true },
+        "sam salary": { from: "external income", to: "sam pay", amount: "0.00", every: "fortnight", on: "2026-08-07", escalates: true },
+        "bridge saving": { from: "alex pay", to: "early retirement", amount: "0.00", every: "fortnight", on: "2026-08-07", escalates: true },
+        "super contribution alex": { from: "external income", to: "super alex", amount: "0.00", every: "month", on: "15", escalates: true },
+        "super contribution tax alex": { from: "super alex", to: "", amount: "0.00", every: "month", on: "15", escalates: true },
+        "super contribution sam": { from: "external income", to: "super sam", amount: "0.00", every: "month", on: "15", escalates: true },
+        "super contribution tax sam": { from: "super sam", to: "", amount: "0.00", every: "month", on: "15", escalates: true },
+        "everyday spending": { from: "alex pay", to: "everyday", amount: "80.00", every: "week", on: "Sat", escalates: true },
+        "car costs": { from: "alex pay", to: "car", amount: "40.00", every: "week", on: "Sat", escalates: true },
+        "joint savings": { from: "alex pay", to: "joint savings", amount: "0.00", every: "fortnight", on: "2026-08-07", escalates: true },
+        "bridge drawdown": { from: "early retirement", to: "alex pay", amount: "1,900.00", every: "fortnight", on: "2026-08-07", escalates: true }
+      },
+      accountOverrides: {}
+    },
+    {
+      name: "Super access at 60", trigger: "age", person: "Alex", age: 60, year: null, editing: false,
+      overrides: {
+        "bridge drawdown": { from: "early retirement", to: "alex pay", amount: "0.00", every: "fortnight", on: "2026-08-07", escalates: true },
+        "super drawdown alex": { from: "super alex", to: "alex pay", amount: "980.00", every: "fortnight", on: "2026-08-07", escalates: true }
+      },
+      // once you're drawing on it rather than growing it, a more
+      // conservative return assumption -- same idea as the real engine's
+      // goal.accounts override, ported straight into the mockup
+      accountOverrides: { "super alex": { rate: "5%" } }
+    }
+  ];
+
+  function interp(points, x) {
+    if (x <= points[0][0]) return points[0][1];
+    var last = points[points.length - 1];
+    if (x >= last[0]) return last[1];
+    for (var i = 0; i < points.length - 1; i++) {
+      var a = points[i], b = points[i + 1];
+      if (x >= a[0] && x <= b[0]) {
+        var t = (x - a[0]) / (b[0] - a[0] || 1);
+        return a[1] + (b[1] - a[1]) * t;
+      }
+    }
+    return last[1];
+  }
+  function money(n) {
+    return n.toLocaleString(undefined, { style: "currency", currency: "AUD", maximumFractionDigits: 0 });
+  }
+  var TODAY_DATE = new Date(2026, 7, 10);
+  function yearToLabel(y) {
+    var d = new Date(2026, 7, 10);
+    d.setDate(d.getDate() + Math.round(y * 365.25));
+    return d.toLocaleDateString(undefined, { month: "short", year: "numeric" });
+  }
+  function yearToISO(y) {
+    var d = new Date(2026, 7, 10);
+    d.setDate(d.getDate() + Math.round(y * 365.25));
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+  function formatDateLong(iso) {
+    var d = new Date(iso);
+    return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+  }
+  // the ISO date a person turns a given age, and how many years from today that is
+  function isoOnBirthday(dobStr, age) {
+    var dob = new Date(dobStr);
+    var y = dob.getFullYear() + age;
+    return y + "-" + String(dob.getMonth() + 1).padStart(2, "0") + "-" + String(dob.getDate()).padStart(2, "0");
+  }
+  function yearOffsetFromISO(iso) {
+    var d = new Date(iso);
+    return (d - TODAY_DATE) / (1000 * 60 * 60 * 24 * 365.25);
+  }
+  function niceStep(rough) {
+    var mag = Math.pow(10, Math.floor(Math.log10(rough || 1)));
+    var r = rough / mag, step;
+    if (r > 5) step = 10; else if (r > 2) step = 5; else if (r > 1) step = 2; else step = 1;
+    return step * mag;
+  }
+
+  var acctSelect = document.getElementById("acctSelect");
+  var svg = document.getElementById("chartSvg");
+  var autoBadge = document.getElementById("autoBadge");
+  var balRows = document.getElementById("balRows");
+  var track = document.getElementById("track");
+  var reachedFill = document.getElementById("reachedFill");
+  var neverFill = document.getElementById("neverFill");
+  var scrubHandle = document.getElementById("scrubHandle");
+  var horizonHandle = document.getElementById("horizonHandle");
+  var simHeading = document.getElementById("simHeading");
+  var balHeading = document.getElementById("balHeading");
+  var milestoneRows = document.getElementById("milestoneRows");
+  var goalRows = document.getElementById("goalRows");
+  var transferRows = document.getElementById("transferRows");
+  var inflationInput = document.getElementById("inflationInput");
+  var dollarButtons = document.querySelectorAll(".dt-btn");
+
+  var W = 720, H = 260, M = { top: 14, right: 16, bottom: 22, left: 66 };
+  var plotW = W - M.left - M.right, plotH = H - M.top - M.bottom;
+
+  var state = { requestedMax: 40, effectiveMax: 40, scrubYear: 0, dollars: "future" };
+
+  function inflationRate() {
+    var n = parseFloat(inflationInput.value);
+    return isNaN(n) ? 0 : n / 100;
+  }
+  // real value at year `yr`, deflated back to today's purchasing power when
+  // state.dollars === "today"; the underlying simulation is always nominal --
+  // this only changes what's displayed, never when a floor actually breaches.
+  function deflate(v, yr) {
+    if (state.dollars !== "today") return v;
+    return v / Math.pow(1 + inflationRate(), yr);
+  }
+
+  // a floor breach stops the whole run, not just the account that breached --
+  // computed once from whatever SERIES data is actually loaded, not a
+  // hardcoded year, so this stays real if the numbers ever change. This
+  // dataset happens to hold up positive for the full 40 years -- the
+  // mechanism is still live, just naturally unused by a healthy plan.
+  var BREACH = (function () {
+    var earliestYear = Infinity, breachingAccount = null;
+    Object.keys(SERIES).forEach(function (name) {
+      var series = SERIES[name];
+      for (var i = 0; i < series.points.length; i++) {
+        if (series.points[i][1] <= series.floor) {
+          if (series.points[i][0] < earliestYear) { earliestYear = series.points[i][0]; breachingAccount = name; }
+          break;
+        }
+      }
+    });
+    return { year: earliestYear, account: breachingAccount };
+  })();
+
+  function computeEffectiveMax() {
+    return Math.min(state.requestedMax, BREACH.year);
+  }
+
+  function render() {
+    var acct = acctSelect.value;
+    var series = SERIES[acct];
+    state.effectiveMax = computeEffectiveMax();
+    var effectiveMax = state.effectiveMax;
+    var stopped = effectiveMax === BREACH.year && BREACH.year !== Infinity;
+
+    autoBadge.style.display = (acct === BREACH.account && stopped) ? "" : "none";
+
+    // the chart always shows nominal (future) dollars -- that's what
+    // literally happens in the account, and it's what the floor actually
+    // breaches against. Only the "at this moment" summary below translates
+    // to today's dollars; the simulation itself never needs a second,
+    // uninflated number to do that -- it's just nominal / (1+inflation)^year,
+    // computed at display time from numbers already on hand.
+    var knots = series.points.filter(function (p) { return p[0] <= effectiveMax; });
+    if (knots[knots.length - 1][0] < effectiveMax) knots.push([effectiveMax, interp(series.points, effectiveMax)]);
+
+    var values = knots.map(function (p) { return p[1]; }).concat([series.floor]);
+    var dataMin = Math.min.apply(null, values);
+    var dataMax = Math.max.apply(null, values);
+    var pad = (dataMax - dataMin) * 0.12 || 1;
+    var yMin = dataMin - pad, yMax = dataMax + pad;
+
+    var x = function (yr) { return M.left + (yr / state.requestedMax) * plotW; };
+    var y = function (v) { return M.top + plotH - ((v - yMin) / (yMax - yMin || 1)) * plotH; };
+
+    var parts = [];
+    var step = niceStep((yMax - yMin) / 4);
+    for (var g = Math.ceil(yMin / step) * step; g <= yMax; g += step) {
+      var gy = y(g);
+      parts.push('<line class="gridline" x1="' + M.left + '" x2="' + (W - M.right) + '" y1="' + gy + '" y2="' + gy + '"/>');
+      parts.push('<text class="axis-label" x="' + (M.left - 8) + '" y="' + (gy + 3) + '" text-anchor="end">' + Math.round(g).toLocaleString() + '</text>');
+    }
+    [0, state.requestedMax / 2, state.requestedMax].forEach(function (yr, i) {
+      parts.push('<text class="axis-label" x="' + x(yr) + '" y="' + (H - M.bottom + 15) + '" text-anchor="' + (i === 0 ? "start" : i === 2 ? "end" : "middle") + '">' + yearToLabel(yr) + '</text>');
+    });
+    var fy = y(series.floor);
+    parts.push('<line class="floor-line" x1="' + M.left + '" x2="' + (W - M.right) + '" y1="' + fy + '" y2="' + fy + '"/>');
+    if (state.requestedMax > effectiveMax) {
+      var zx0 = x(effectiveMax), zx1 = x(state.requestedMax);
+      parts.push('<rect class="never-zone" x="' + zx0 + '" y="' + M.top + '" width="' + (zx1 - zx0) + '" height="' + plotH + '"/>');
+      parts.push('<text class="never-label" x="' + ((zx0 + zx1) / 2) + '" y="' + (M.top + plotH / 2) + '" text-anchor="middle">never reached</text>');
+    }
+    var linePts = knots.map(function (p) { return x(p[0]) + "," + y(p[1]); }).join(" ");
+    parts.push('<polyline class="bal-line" points="' + linePts + '"/>');
+    var lastKnot = knots[knots.length - 1];
+    if (stopped) {
+      parts.push('<circle class="breach-dot" cx="' + x(lastKnot[0]) + '" cy="' + y(lastKnot[1]) + '" r="5"/>');
+      var label = acct === BREACH.account ? "⚠ " + acct + " hit its floor here" : "⚠ run stopped — " + BREACH.account + " hit its floor";
+      var lx = Math.min(x(lastKnot[0]) + 8, W - M.right - 150);
+      parts.push('<text class="breach-label" x="' + lx + '" y="' + (y(lastKnot[1]) - 10) + '">' + label + '</text>');
+    } else {
+      parts.push('<circle class="end-dot" cx="' + x(lastKnot[0]) + '" cy="' + y(lastKnot[1]) + '" r="4"/>');
+    }
+
+    var sYear = Math.min(state.scrubYear, effectiveMax);
+    var sValNominal = interp(series.points, sYear);
+    parts.push('<line class="crosshair" x1="' + x(sYear) + '" x2="' + x(sYear) + '" y1="' + M.top + '" y2="' + (H - M.bottom) + '"/>');
+    parts.push('<circle class="hover-dot" cx="' + x(sYear) + '" cy="' + y(sValNominal) + '" r="5"/>');
+
+    svg.innerHTML = parts.join("");
+
+    simHeading.textContent = "Simulating " + Math.round(state.requestedMax) + " years · to " + yearToLabel(state.requestedMax);
+    balHeading.textContent = "Accounts at " + yearToLabel(sYear);
+
+    layoutTimeline();
+    renderBalances();
+    renderMilestones();
+  }
+
+  function layoutTimeline() {
+    var reachedPct = (state.effectiveMax / ABS_MAX) * 100;
+    var horizonPct = (state.requestedMax / ABS_MAX) * 100;
+    var scrubPct = (Math.min(state.scrubYear, state.effectiveMax) / ABS_MAX) * 100;
+    reachedFill.style.width = reachedPct + "%";
+    if (state.requestedMax > state.effectiveMax) {
+      neverFill.style.display = "";
+      neverFill.style.left = reachedPct + "%";
+      neverFill.style.width = Math.max(0, horizonPct - reachedPct) + "%";
+    } else {
+      neverFill.style.display = "none";
+    }
+    scrubHandle.style.left = scrubPct + "%";
+    horizonHandle.style.left = horizonPct + "%";
+  }
+
+  function renderBalances() {
+    balRows.innerHTML = "";
+    var yr = Math.min(state.scrubYear, state.effectiveMax);
+    Object.keys(SERIES).forEach(function (name) {
+      var v = deflate(interp(SERIES[name].points, Math.min(yr, BREACH.year)), yr);
+      var row = document.createElement("div");
+      row.className = "bal-row" + (name === acctSelect.value ? " selected" : "");
+      row.innerHTML = '<span class="bn"><span class="swatch"></span>' + name + '</span><span class="bv fig">' + money(v) + '</span>';
+      balRows.appendChild(row);
+    });
+  }
+
+  function triggerText(m) {
+    if (m.trigger === "balance") return m.account + " reaches " + money(Number(m.target) || 0);
+    if (m.trigger === "date") return m.date ? "on " + formatDateLong(m.date) : "pick a date";
+    if (m.trigger === "age") return m.person + " turns " + m.age;
+    return "";
+  }
+
+  // by-age milestones derive their year live from the person's own DOB
+  // (People's ages, above); by-date ones derive it from their own date;
+  // a balance target has no year until the simulator actually projects one.
+  function milestoneYear(m, dobAlex, dobSam) {
+    if (m.trigger === "age") return yearOffsetFromISO(isoOnBirthday(m.person === "Alex" ? dobAlex : dobSam, m.age));
+    if (m.trigger === "date" && m.date) return yearOffsetFromISO(m.date);
+    return m.year != null ? m.year : Infinity;
+  }
+
+  // ---- transfer fields, shared verbatim by the Transfers section and every
+  // goal's "on completion" list -- same columns either place, so nothing
+  // new to learn moving from one to the other. ----
+  var WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+  function everySelectHTML(every, disabled) {
+    var options = ["week", "fortnight", "month", "year"];
+    var html = '<select class="field-input" data-field="every"' + (disabled ? " disabled" : "") + ">";
+    for (var i = 0; i < options.length; i++) {
+      html += "<option" + (options[i] === every ? " selected" : "") + ">" + options[i] + "</option>";
+    }
+    return html + "</select>";
+  }
+
+  // "on" depends on "every": a weekday for week/fortnight, a day-of-month
+  // picker for month, an actual date picker for year -- same as the real
+  // config's `day` field, which is one of those three shapes too.
+  var DAYS_OF_MONTH = [];
+  for (var dom = 1; dom <= 31; dom++) DAYS_OF_MONTH.push(String(dom));
+
+  // week just names a weekday -- every week has exactly one. Fortnight is
+  // the same weekday, but a weekday alone doesn't say which of the two
+  // alternating weeks -- it needs one real anchor date to count from, same
+  // as the engine's own `day` field for fortnightly transfers.
+  function onFieldHTML(every, on, disabled) {
+    var dis = disabled ? " disabled" : "";
+    if (every === "week") {
+      var html = '<select class="field-input" data-field="on"' + dis + ">";
+      for (var i = 0; i < WEEKDAYS.length; i++) {
+        html += "<option" + (WEEKDAYS[i] === on ? " selected" : "") + ">" + WEEKDAYS[i] + "</option>";
+      }
+      return html + "</select>";
+    }
+    if (every === "month") {
+      var monthHtml = '<select class="field-input t-on" data-field="on"' + dis + ">";
+      for (var d = 0; d < DAYS_OF_MONTH.length; d++) {
+        monthHtml += "<option" + (DAYS_OF_MONTH[d] === on ? " selected" : "") + ">" + DAYS_OF_MONTH[d] + "</option>";
+      }
+      return monthHtml + "</select>";
+    }
+    // fortnight (an anchor date -- which week) and year (month-day) both
+    // just need a real date; the engine ignores the year part for `year`
+    return '<input type="date" class="field-input t-on" data-field="on" value="' + (on || "") + '"' + dis + ">";
+  }
+
+  // a plain yes/no in place of a raw escalation percentage: checked grows
+  // with inflation (the default for almost everything), unchecked is a
+  // fixed nominal amount -- a mortgage repayment, say, which doesn't get
+  // a "pay rise" the way a salary does
+  function inflationCheckboxHTML(escalates, disabled) {
+    return (
+      '<button type="button" class="chk infl-chk' + (escalates ? " checked" : "") + '" data-field="escalates"' +
+      (disabled ? " disabled" : "") + ' title="Grows with inflation" aria-label="Grows with inflation"></button>'
+    );
+  }
+
+  function transferFieldsHTML(t, disabled) {
+    return (
+      '<div class="combo" data-combo><input type="text" class="field-input combo-input" data-field="from" value="' + t.from + '"' + (disabled ? " disabled" : "") + "></div>" +
+      '<span class="arrow">→</span>' +
+      '<div class="combo" data-combo><input type="text" class="field-input combo-input" data-field="to" value="' + t.to + '"' + (disabled ? " disabled" : "") + "></div>" +
+      '<input class="field-input fig t-amount" data-field="amount" value="' + t.amount + '"' + (disabled ? " disabled" : "") + ">" +
+      everySelectHTML(t.every, disabled) +
+      onFieldHTML(t.every, t.on, disabled) +
+      inflationCheckboxHTML(t.escalates, disabled)
+    );
+  }
+
+  function wireTransferFieldRow(row, getEntry, onEveryChange) {
+    row.querySelectorAll("[data-field]").forEach(function (field) {
+      if (field.dataset.field === "escalates") {
+        field.addEventListener("click", function () {
+          var entry = getEntry();
+          entry.escalates = !entry.escalates;
+          field.classList.toggle("checked", entry.escalates);
+        });
+        return;
+      }
+      field.addEventListener(field.dataset.field === "every" ? "change" : "input", function () {
+        getEntry()[field.dataset.field] = field.value;
+        if (field.dataset.field === "every") onEveryChange();
+      });
+    });
+  }
+
+  function renderTransfers() {
+    transferRows.innerHTML = "";
+    for (var i = 0; i < TRANSFERS.length; i++) {
+      var row = document.createElement("div");
+      row.className = "transfer-row";
+      row.dataset.transferIdx = String(i);
+      row.innerHTML = transferFieldsHTML(TRANSFERS[i], false);
+      transferRows.appendChild(row);
+    }
+    transferRows.querySelectorAll(".transfer-row").forEach(function (row) {
+      wireTransferFieldRow(row, function () { return TRANSFERS[Number(row.dataset.transferIdx)]; }, renderTransfers);
+    });
+    initCombos(transferRows);
+  }
+
+  function goalCollapsedHTML(m, idx) {
+    var names = Object.keys(m.overrides);
+    var acctNames = Object.keys(m.accountOverrides || {});
+    var rows = "";
+    if (names.length === 0) {
+      rows = '<div class="me-when"><div class="empty">no changes on completion</div></div>';
+    } else {
+      var list = "";
+      for (var i = 0; i < names.length; i++) {
+        list += overrideRowHTML(names[i], idx, true, m.overrides[names[i]]);
+      }
+      rows = '<div class="me-when"><div class="cap">On completion</div>' + list + "</div>";
+    }
+    var acctRows = "";
+    if (acctNames.length > 0) {
+      var acctList = "";
+      for (var j = 0; j < acctNames.length; j++) {
+        acctList += accountOverrideRowHTML(acctNames[j], idx, true, m.accountOverrides[acctNames[j]]);
+      }
+      acctRows = '<div class="me-when"><div class="cap">Also changes</div>' + acctList + "</div>";
+    }
+    return (
+      '<div class="m-info"><div class="m-name">' + m.name + '</div><div class="m-trigger">' + triggerText(m) + "</div></div>" +
+      rows + acctRows +
+      '<button type="button" class="m-edit-btn" data-edit="' + idx + '">✎ Edit</button>'
+    );
+  }
+
+  // one row per transfer that exists, checked if it's part of this goal's
+  // overrides -- exactly the columns from the Transfers section above,
+  // pre-filled from the base transfer until you change something. A checked
+  // row at exactly $0 is flagged "stopped" -- once the amount is zero, the
+  // from/to/every/on fields underneath are moot, so say so plainly instead
+  // of leaving it to be inferred from an empty "to" box.
+  function overrideRowHTML(transferName, idx, checked, overrideFields) {
+    var base = null;
+    for (var i = 0; i < TRANSFERS.length; i++) {
+      if (TRANSFERS[i].name === transferName) base = TRANSFERS[i];
+    }
+    var fields = checked ? overrideFields : base;
+    var isStopped = checked && parseFloat(String(fields.amount).replace(/,/g, "")) === 0;
+    return (
+      '<div class="override-row' + (checked ? " checked" : "") + (isStopped ? " stopped" : "") + '">' +
+      '<button type="button" class="chk" data-when-toggle data-idx="' + idx + '" data-tname="' + transferName + '"></button>' +
+      (isStopped ? '<span class="stopped-tag">stopped</span>' : "") +
+      '<div class="transfer-row" data-goal-idx="' + idx + '" data-tname="' + transferName + '">' +
+      transferFieldsHTML(fields, !checked) +
+      "</div></div>"
+    );
+  }
+
+  // same idea, for a goal that also changes an account's interest rate on
+  // completion -- e.g. a more conservative return once you're drawing on
+  // an account rather than growing it
+  function accountOverrideRowHTML(accountName, idx, checked, overrideFields) {
+    var rate = checked ? overrideFields.rate : accountRate(accountName);
+    return (
+      '<div class="override-row' + (checked ? " checked" : "") + '">' +
+      '<button type="button" class="chk" data-acct-toggle data-idx="' + idx + '" data-aname="' + accountName + '"></button>' +
+      '<div class="acct-rate-row">' +
+      '<span class="arn">' + accountName + '</span>' +
+      '<input type="text" class="field-input" data-acct-rate data-idx="' + idx + '" data-aname="' + accountName + '" value="' + rate + '"' + (checked ? "" : " disabled") + ">" +
+      "</div></div>"
+    );
+  }
+
+  function goalEditorHTML(m, idx) {
+    var typeBtns = "";
+    var types = [["date", "By date"], ["balance", "By balance"], ["age", "By age"]];
+    for (var i = 0; i < types.length; i++) {
+      var t = types[i][0];
+      typeBtns += '<button type="button" class="tt-btn' + (m.trigger === t ? " active" : "") + '" data-trigtype="' + t + '" data-idx="' + idx + '">' + types[i][1] + "</button>";
+    }
+
+    var fields;
+    if (m.trigger === "date") {
+      fields = '<input class="field-input short" type="date" value="' + (m.date || "") + '">';
+    } else if (m.trigger === "balance") {
+      var accountOptions = "";
+      var accountNames = ["mortgage", "alex pay", "sam pay", "joint savings", "early retirement", "super alex", "super sam"];
+      for (var a = 0; a < accountNames.length; a++) {
+        accountOptions += "<option" + (m.account === accountNames[a] ? " selected" : "") + ">" + accountNames[a] + "</option>";
+      }
+      fields = '<select class="field-input short">' + accountOptions + '</select> reaches <input class="field-input short" value="' + (m.target != null ? m.target : "0") + '">';
+    } else {
+      var personOptions = "";
+      var people = ["Alex", "Sam"];
+      for (var p = 0; p < people.length; p++) {
+        personOptions += "<option" + (m.person === people[p] ? " selected" : "") + ">" + people[p] + "</option>";
+      }
+      fields = '<select class="field-input short">' + personOptions + '</select> turns <input class="field-input short" value="' + (m.age != null ? m.age : "") + '">';
+    }
+
+    var overrideRows = "";
+    for (var n = 0; n < TRANSFERS.length; n++) {
+      var name = TRANSFERS[n].name;
+      var checked = Object.prototype.hasOwnProperty.call(m.overrides, name);
+      overrideRows += overrideRowHTML(name, idx, checked, m.overrides[name]);
+    }
+
+    var acctOverrideRows = "";
+    for (var an = 0; an < ACCOUNT_NAMES.length; an++) {
+      var aname = ACCOUNT_NAMES[an];
+      var acctChecked = Object.prototype.hasOwnProperty.call(m.accountOverrides, aname);
+      acctOverrideRows += accountOverrideRowHTML(aname, idx, acctChecked, m.accountOverrides[aname]);
+    }
+
+    return (
+      '<div class="me-top"><input class="field-input me-name" value="' + m.name + '"><div class="trigger-type">' + typeBtns + "</div></div>" +
+      '<div class="trigger-fields">' + fields + "</div>" +
+      '<div class="me-when"><div class="cap">On completion</div>' + overrideRows + "</div>" +
+      '<div class="me-when"><div class="cap">Also change an account\'s rate</div>' + acctOverrideRows + "</div>" +
+      '<button type="button" class="save-link" data-save="' + idx + '">Save — keep only what changed</button>'
+    );
+  }
+
+  // Milestones (inside Simulation over time) is read-only -- a tick the
+  // moment the scrub playhead passes a goal's own year, a cross otherwise.
+  // Editing lives entirely in the Goals section below.
+  function renderMilestones() {
+    milestoneRows.innerHTML = "";
+    var dobAlex = document.getElementById("dobAlex").value;
+    var dobSam = document.getElementById("dobSam").value;
+
+    GOALS.forEach(function (m) {
+      var yr = milestoneYear(m, dobAlex, dobSam);
+      var reached = state.scrubYear >= yr;
+      var row = document.createElement("div");
+      row.className = "milestone-row compact " + (reached ? "ticked" : "crossed");
+      var when = "";
+      if (reached) {
+        var iso = m.trigger === "age" ? isoOnBirthday(m.person === "Alex" ? dobAlex : dobSam, m.age) : (m.date || yearToISO(m.year));
+        var ages = "Alex " + ageAt(dobAlex, iso) + " · Sam " + ageAt(dobSam, iso);
+        when = '<div class="m-when">' + formatDateLong(iso) + '<span class="m-ages">' + ages + "</span></div>";
+      }
+      row.innerHTML =
+        '<span class="m-mark">' + (reached ? "✓" : "✗") + "</span>" +
+        '<div class="m-info"><div class="m-name">' + m.name + '</div><div class="m-trigger">' + triggerText(m) + "</div></div>" +
+        when;
+      milestoneRows.appendChild(row);
+    });
+  }
+
+  // Goals is the actual editor -- collapsed shows the name, trigger and
+  // whatever it changes; ✎ Edit opens the full checklist (see the "compromise"
+  // note above), Save collapses it back to just what changed.
+  function findTransfer(name) {
+    for (var i = 0; i < TRANSFERS.length; i++) {
+      if (TRANSFERS[i].name === name) return TRANSFERS[i];
+    }
+    return null;
+  }
+
+  function renderGoals() {
+    goalRows.innerHTML = "";
+
+    GOALS.forEach(function (m, idx) {
+      var row = document.createElement("div");
+      row.className = "goal-row";
+      row.innerHTML = m.editing ? goalEditorHTML(m, idx) : goalCollapsedHTML(m, idx);
+      goalRows.appendChild(row);
+    });
+
+    goalRows.querySelectorAll("[data-edit]").forEach(function (btn) {
+      btn.addEventListener("click", function () { GOALS[Number(btn.dataset.edit)].editing = true; renderGoals(); });
+    });
+    goalRows.querySelectorAll("[data-save]").forEach(function (btn) {
+      btn.addEventListener("click", function () { GOALS[Number(btn.dataset.save)].editing = false; renderGoals(); renderMilestones(); });
+    });
+    goalRows.querySelectorAll("[data-trigtype]").forEach(function (btn) {
+      btn.addEventListener("click", function () { GOALS[Number(btn.dataset.idx)].trigger = btn.dataset.trigtype; renderGoals(); });
+    });
+    // checking a row snapshots the base transfer's current fields as the
+    // starting point for the override; unchecking drops it entirely
+    goalRows.querySelectorAll("[data-when-toggle]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var m = GOALS[Number(btn.dataset.idx)], tname = btn.dataset.tname;
+        if (Object.prototype.hasOwnProperty.call(m.overrides, tname)) {
+          delete m.overrides[tname];
+        } else {
+          var base = findTransfer(tname);
+          m.overrides[tname] = { from: base.from, to: base.to, amount: base.amount, every: base.every, on: base.on, escalates: base.escalates };
+        }
+        renderGoals();
+      });
+    });
+    // editing an override row's own fields (from/to/amount/every/on/inflation)
+    goalRows.querySelectorAll(".transfer-row[data-goal-idx]").forEach(function (row) {
+      wireTransferFieldRow(
+        row,
+        function () { return GOALS[Number(row.dataset.goalIdx)].overrides[row.dataset.tname]; },
+        renderGoals
+      );
+    });
+
+    // account-rate overrides -- same checkbox-plus-fields shape as the
+    // transfer list above, just for an account's rate instead
+    goalRows.querySelectorAll("[data-acct-toggle]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var m = GOALS[Number(btn.dataset.idx)], aname = btn.dataset.aname;
+        if (Object.prototype.hasOwnProperty.call(m.accountOverrides, aname)) {
+          delete m.accountOverrides[aname];
+        } else {
+          m.accountOverrides[aname] = { rate: accountRate(aname) };
+        }
+        renderGoals();
+      });
+    });
+    goalRows.querySelectorAll("[data-acct-rate]").forEach(function (input) {
+      input.addEventListener("input", function () {
+        var m = GOALS[Number(input.dataset.idx)];
+        m.accountOverrides[input.dataset.aname].rate = input.value;
+      });
+    });
+
+    initCombos(goalRows);
+  }
+
+  function moveTo(yr) {
+    state.scrubYear = Math.max(0, Math.min(computeEffectiveMax(), yr));
+    render();
+  }
+  function setHorizon(yr) {
+    state.requestedMax = Math.max(1, Math.min(ABS_MAX, yr));
+    render();
+  }
+
+  function trackYearFromClientX(clientX) {
+    var rect = track.getBoundingClientRect();
+    var frac = (clientX - rect.left) / rect.width;
+    return Math.max(0, Math.min(ABS_MAX, frac * ABS_MAX));
+  }
+
+  var dragging = null;
+  scrubHandle.addEventListener("pointerdown", function (evt) { dragging = "scrub"; evt.preventDefault(); });
+  horizonHandle.addEventListener("pointerdown", function (evt) { dragging = "horizon"; evt.preventDefault(); });
+  track.addEventListener("pointerdown", function (evt) {
+    if (evt.target === scrubHandle || evt.target === horizonHandle) return;
+    moveTo(trackYearFromClientX(evt.clientX));
+  });
+  window.addEventListener("pointermove", function (evt) {
+    if (!dragging) return;
+    var yr = trackYearFromClientX(evt.clientX);
+    if (dragging === "scrub") moveTo(yr); else setHorizon(yr);
+  });
+  window.addEventListener("pointerup", function () { dragging = null; });
+
+  scrubHandle.addEventListener("keydown", function (evt) {
+    if (evt.key === "ArrowLeft") { moveTo(state.scrubYear - 0.5); evt.preventDefault(); }
+    if (evt.key === "ArrowRight") { moveTo(state.scrubYear + 0.5); evt.preventDefault(); }
+  });
+  horizonHandle.addEventListener("keydown", function (evt) {
+    if (evt.key === "ArrowLeft") { setHorizon(state.requestedMax - 1); evt.preventDefault(); }
+    if (evt.key === "ArrowRight") { setHorizon(state.requestedMax + 1); evt.preventDefault(); }
+  });
+
+  svg.addEventListener("pointermove", function (evt) {
+    var rect = svg.getBoundingClientRect();
+    var scale = rect.width / W;
+    var svgX = (evt.clientX - rect.left) / scale;
+    var yr = ((svgX - M.left) / plotW) * state.requestedMax;
+    moveTo(yr);
+  });
+
+  acctSelect.addEventListener("change", function () { state.scrubYear = 0; render(); });
+  inflationInput.addEventListener("input", render);
+
+  dollarButtons.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      state.dollars = btn.dataset.mode;
+      dollarButtons.forEach(function (b) { b.classList.toggle("active", b === btn); });
+      render();
+    });
+  });
+
+  document.getElementById("addGoal").addEventListener("click", function () {
+    GOALS.push({ name: "New goal", trigger: "age", person: "Alex", age: 65, year: null, editing: true, overrides: {}, accountOverrides: {} });
+    renderGoals();
+    renderMilestones();
+  });
+
+  document.getElementById("addTransfer").addEventListener("click", function () {
+    TRANSFERS.push({ name: "new transfer", from: "alex pay", to: "", amount: "0.00", every: "fortnight", on: "2026-08-07", escalates: true });
+    renderTransfers();
+  });
+
+  // -- account Kind -> only a Saving account can offset a loan; the column
+  // stays put either way so nothing reflows, it just enables/disables --
+  document.querySelectorAll(".acct-kind").forEach(function (sel) {
+    var row = sel.closest(".account-row");
+    var offsetSelect = row.querySelector(".a-field.offset select");
+    function sync() {
+      var isSaving = sel.value === "Saving";
+      offsetSelect.disabled = !isSaving;
+      if (!isSaving) offsetSelect.value = "— none —";
+    }
+    sel.addEventListener("change", sync);
+    sync();
+  });
+
+  // -- typed account combobox for From/To, in Transfers and in a goal's
+  // overrides alike -- a stand-in for a real lookup: filters this page's
+  // known accounts as you type, or lets you type a brand-new name to
+  // create one. Rows get rebuilt on every render, so this runs again each
+  // time rather than once at load. --
+  var ACCOUNTS = ["alex pay", "sam pay", "groceries", "everyday", "car", "joint savings", "offset", "mortgage", "early retirement", "super alex", "super sam"];
+  function initCombos(container) {
+    container.querySelectorAll("[data-combo]").forEach(function (el) {
+      var input = el.querySelector(".combo-input");
+      var list = document.createElement("div");
+      list.className = "combo-list";
+      list.hidden = true;
+      el.appendChild(list);
+
+      function renderList() {
+        var q = input.value.trim();
+        var matches = ACCOUNTS.filter(function (a) { return a.toLowerCase().indexOf(q.toLowerCase()) !== -1; });
+        list.innerHTML = "";
+        matches.forEach(function (name) {
+          var item = document.createElement("div");
+          item.className = "combo-item";
+          item.textContent = name;
+          item.addEventListener("mousedown", function (evt) { evt.preventDefault(); input.value = name; list.hidden = true; });
+          list.appendChild(item);
+        });
+        if (q && !ACCOUNTS.some(function (a) { return a.toLowerCase() === q.toLowerCase(); })) {
+          var create = document.createElement("div");
+          create.className = "combo-item combo-create";
+          create.textContent = "+ Create “" + q + "”";
+          create.addEventListener("mousedown", function (evt) { evt.preventDefault(); input.value = q; list.hidden = true; });
+          list.appendChild(create);
+        }
+        list.hidden = false;
+      }
+      input.addEventListener("focus", renderList);
+      input.addEventListener("input", renderList);
+      input.addEventListener("blur", function () { setTimeout(function () { list.hidden = true; }, 150); });
+    });
+  }
+
+  renderTransfers();
+  renderGoals();
+  render();
+})();
+</script>
+
+</body>
+</html>

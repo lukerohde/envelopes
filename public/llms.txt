@@ -1,0 +1,505 @@
+# envelopes — llms.txt
+
+This file is for an AI assistant helping someone build a budget for
+https://envelopes.lukeroh.de. If you're an AI reading this because a person
+asked you to help them plan their money, this is everything you need.
+
+## What this is
+
+envelopes takes its name from a real habit: my grandmother kept envelopes in her
+fridge, one per spending category, cash divided between them on payday. Groceries had
+its own envelope, bills had theirs, and when an envelope was empty, that category was
+done spending for the period — not a guess, not a vibe, just what's actually left.
+Envelope budgeting is that idea formalised: instead of one undifferentiated bank
+balance you're hoping covers everything, money gets allocated into named accounts
+(envelopes) as it arrives, and each envelope only ever holds what it's actually meant
+to cover.
+
+This tool runs that idea forward in time. Every account has an opening balance and,
+optionally, an interest rate and a floor (the minimum it should never drop below).
+Transfers move money between accounts on a schedule — weekly, fortnightly, monthly,
+yearly — the same rhythm real pay and bills follow, so the simulation matches how
+money actually moves through a household, not an average smoothed over a year. Two
+timeframes live in the same model: everyday cashflow (pay in, groceries/bills/card
+spending out, every week or fortnight) and the long retirement horizon (super
+contributions, drawdowns, a mortgage paid off over years) — because they're not
+actually separate problems, they're the same accounts and transfers, some firing
+weekly and some firing once a decade. Goals sit on top of all that: a goal watches for
+a date, an age, or a balance being reached, and can redirect money once it fires —
+stop the mortgage repayment, start funding retirement savings instead, the moment the
+house is paid off, say. That's how a real plan actually changes shape over a
+lifetime, modelled as data instead of hand-waved.
+
+## Privacy guarantee
+
+- No account, no login, no signup. Nothing about the person you're helping is
+  collected, because nothing is asked for.
+- No backend. This is a static site — HTML, CSS, and JavaScript served from a CDN.
+  There's no server processing anyone's numbers; every calculation runs in their own
+  browser.
+- Nothing is stored anywhere by default. Close the tab and it's gone. Keeping
+  something is an explicit choice the person makes: Export downloads a plain YAML
+  file to their own computer; Copy share link puts the whole config into the URL,
+  compressed — never sent to any server, because a URL fragment (the part after `#`)
+  is never included in the actual request a browser makes.
+- No analytics, no tracking, no cookies.
+- This app never calls you or any AI service itself, and never asks for an API key.
+  You are here because the person brought you here, on their own terms.
+
+## Your job
+
+### 1. Interview them first — properly
+
+Do not write any YAML until you have all of this. Ask one thing at a time, like a
+person would, not as a form to fill in. Most people have never been asked these
+questions and will need a bit of drawing out — "roughly what do you spend on
+groceries in a normal week?" beats "please state your weekly grocery expenditure."
+
+- **Who's in the household, and their dates of birth.** Ask for this early and don't
+  skip it. Every age-based goal — retire at 55, access super at 60 — is impossible
+  without a real date of birth, and it's the thing people least expect a budgeting
+  tool to want, so they won't volunteer it.
+- **Every income**: who earns it, how much lands in the bank, and how often (weekly,
+  fortnightly, monthly). Take-home pay, not gross — this models money that actually
+  arrives.
+- **Regular spending**, broken into the categories they'd actually recognise:
+  groceries, bills, transport, kids, whatever they name. Rough weekly or monthly
+  numbers are fine. Perfect is not the point; the shape is.
+- **Debts**: mortgage, car loan, credit card. Balance, interest rate, repayment
+  amount and how often. Ask whether the mortgage has an offset account against it,
+  and what's in it — it changes the maths a lot and people often forget to mention it.
+- **Savings and retirement**: what's in each, what interest or return they expect,
+  and what's going in regularly. In Australia this is superannuation; ask for the
+  balance, the contribution, and the contributions tax coming back out.
+- **What they're actually aiming at.** This is the whole point and the easiest bit to
+  skip past. Retire by a certain age? Pay the house off? Save a deposit, a car, a
+  trip? Get specific: which account, what number, by when or by what age. Ask what
+  changes when each one lands — that's what a goal's transfer overrides express, and
+  it's the difference between a projection and a plan.
+- **One-offs worth modelling**: a car in four years, school fees starting in 2029, an
+  inheritance. `every: once` exists for exactly this.
+
+Ask follow-ups when something doesn't add up. If their income minus their spending
+doesn't match what they say they're saving, say so and work out where the difference
+went — that gap is usually the most useful thing in the conversation.
+
+### 2. Write a YAML config matching the schema below.
+
+### 3. Hand it over
+
+Tell them: "Paste this into 'Edit as YAML' at https://envelopes.lukeroh.de — click the
+toggle near the top of the page, paste, and it'll build the rest of the page from what
+you gave it."
+
+Don't try to construct a share link yourself — that requires gzip-compressing the
+YAML and base64url-encoding it into a URL fragment exactly right, which is easy to get
+subtly wrong. Plain YAML text is robust; a hand-reimplemented binary encoding is not.
+The person can make their own share link with one click once they're happy with what
+you've given them.
+
+## If you can run code, check your work first
+
+You can run the real engine on a draft config and see the actual numbers before
+handing anything back. This is worth doing: a config that looks right and quietly
+sends an account to minus forty thousand dollars is not a helpful thing to give
+someone.
+
+The whole engine is published as one self-contained JavaScript file. No clone, no
+package install, no Docker:
+
+    curl -O https://envelopes.lukeroh.de/envelopes-cli.mjs
+    node envelopes-cli.mjs my-draft.yml
+
+That prints the milestones each goal reaches, with dates and ages, and the closing
+balance of every account. Or use it as a library, if you want to poke at the numbers
+yourself:
+
+    curl -O https://envelopes.lukeroh.de/envelopes.mjs
+
+    import { simulate, report } from "./envelopes.mjs";
+    const result = simulate(yamlText, { years: 40 });
+    result.balances;          // every account's closing balance
+    result.completed;         // [goal name, date] for each goal that fired
+    console.log(report(yamlText));
+
+**This is a JavaScript path.** If your sandbox only runs Python, don't try to
+reimplement the engine — the day-by-day interest, offset and goal-cascade behaviour
+is not something to guess at. Write the YAML, hand it over, and let the person paste
+it into the site, which does the same calculation in their browser.
+
+If you'd rather work from source, clone https://github.com/lukerohde/envelopes and
+run `npm install && npx tsx src/cli.ts my-draft.yml`. That repo's `Makefile` wraps
+everything in Docker, which your sandbox almost certainly doesn't have — use the npm
+commands directly, or the published bundle above. `AGENTS.md` in that repo is for a
+*coding* agent working on the app itself, not for building someone's budget.
+
+## The schema
+
+Top level, all required unless noted:
+
+```yaml
+inflation: 0.03        # annual rate, applied to anything that "escalates" (below)
+
+birthdays:
+  - {name: alex, born: 1980-05-20}   # name + ISO date, one entry per person
+
+accounts:
+  - {name: alex pay, balance: 3200, floor: 800}   # see Accounts below
+
+transfers:
+  - {name: alex salary, amount: 3650, every: fortnight, day: 2026-08-07, into: alex pay}
+  # see Transfers below
+
+goals:
+  - name: pay off the house
+    account: mortgage
+    target: 0
+    transfers: [...]   # see Goals below
+```
+
+### Accounts
+
+```yaml
+- name: alex pay          # unique, referenced by transfers/goals by this exact string
+  balance: 3200            # opening balance, defaults to 0
+  floor: 800                # minimum this account should hold, defaults to 0
+  kind: everyday             # everyday (default) | saving | loan
+  rate: 0.04                  # annual interest rate, defaults to 0
+  offsets: mortgage             # only meaningful on a `saving` account: another
+                                  # account's name whose accrued interest this
+                                  # account's balance reduces (an offset account)
+```
+
+`kind: loan` marks debt — a mortgage, say. `kind: saving` is anything earning
+interest and/or offsetting a loan. Plain `everyday` (the default, can be omitted) is
+for pass-through spending accounts — groceries, bills, discretionary spending.
+
+### Transfers
+
+Move a fixed or escalating amount between two accounts on a schedule.
+
+```yaml
+- name: alex salary                 # unique, referenced by goal overrides by this name
+  amount: 3650
+  every: fortnight                   # once | week | fortnight | month | year
+  day: 2026-08-07                     # see below — depends on `every`
+  out_of: alex pay                     # source account; omit for external income
+  into: alex pay                        # destination account; omit if it just leaves
+  escalation: 0                          # omit (defaults to growing with `inflation`
+                                           # each year) or set to 0 for a fixed nominal
+                                           # amount that never grows (a mortgage
+                                           # repayment set by the loan contract, say)
+```
+
+`day`'s meaning depends on `every` — this trips people up, get it right:
+- `every: once` → `day` is the date it happens (`2030-03-14`), and it happens on that
+  day and no other. For a car, school fees starting, an inheritance, a lump-sum
+  payment. Still escalates with inflation unless you set `escalation: 0`, which is
+  usually what you want: a $40,000 car in 2030 costs more than $40,000 in 2030.
+- `every: week` → `day` is a weekday name: `mon`, `tue`, `wed`, `thu`, `fri`, `sat`,
+  `sun`.
+- `every: fortnight` → `day` is a real anchor date (`2026-08-07`), not a weekday. A
+  weekday alone can't say *which* of the two alternating weeks — fires every 14 days
+  counting from that date.
+- `every: month` → `day` is a day-of-month number (`1`–`31`), clamped to the month's
+  actual last day if it doesn't have that many days.
+- `every: year` → `day` is `month-day` (`12-25`), same clamping.
+
+A transfer with no `out_of` is external income arriving (a salary). A transfer with no
+`into` is money leaving the system entirely (rare — most spending still lands in some
+account, even a pure pass-through one).
+
+### Goals
+
+A goal watches for something to happen, then can redirect transfers and/or account
+interest rates once it fires.
+
+```yaml
+- name: pay off the house
+  account: mortgage      # which account this goal watches
+  target: 0                # balance-trigger: fires when `account`'s balance reaches
+                             # this (below, for a debt paying down; above, for a
+                             # savings target)
+  # OR, instead of account+target, a date trigger:
+  # by: 2030-12-12
+  # OR an age trigger:
+  # by_age: {person: alex, turns: 55}    # `person` matches a name in `birthdays`
+
+  transfers:
+    - {name: mortgage repayment, amount: 0}   # stop an existing transfer by naming
+                                                # it and zeroing its amount
+    - {name: mortgage freed-up saving, amount: 2850, every: month, day: 5,
+       out_of: alex pay, into: early retirement, escalation: 0}
+       # a goal's transfer override can also *introduce a brand new transfer name*
+       # that doesn't exist anywhere else — this is how "stop this, start that
+       # instead" is expressed. A later goal can reference that same new name again
+       # to change it further (redirect it again, stop it too) — each override only
+       # needs to state the fields that changed from whatever it was right before.
+
+  accounts:
+    - {name: super alex, rate: 0.06}   # optionally also change an account's interest
+                                         # rate once this goal fires
+```
+
+A goal's `account`/`target` fields are only read for a balance trigger — if you use
+`by` or `by_age` instead, don't include `account`/`target` (or if you must, know
+they're ignored for that goal).
+
+## Worked example
+
+One person aiming to retire at 55 — illustrative, not anyone's real numbers, but a
+genuine example of everything above working together: an income, an offset mortgage,
+week-to-week envelopes, super, and three goals that hand off to each other in
+sequence.
+
+Two things in it are worth copying into whatever you write for someone else.
+
+**The order matters as much as the numbers.** The house is paid off at 52, while
+still working, and only then does that repayment become retirement saving. Get that
+ordering wrong — pay the house off *after* retiring — and the config quietly
+redirects money that isn't coming in any more, draining a super balance for decades
+with no error and no warning.
+
+**Escalation is a pairing, not a preference.** Almost everything in the example
+carries `escalation: 0`, so amounts stay in today's money and each number keeps
+meaning what it says. The one exception is the bridge drawdown, which escalates on
+purpose so that it empties the fund it draws on by the time super unlocks.
+
+What matters is that each drawdown and the spending it funds agree. An escalating
+drawdown against fixed spending starves the pay account for years and then floods it
+while the account it draws from empties; a fixed drawdown against escalating spending
+drains the pay account instead. Both failures are invisible on the accounts you're
+looking at — you only see them on the account being drawn down, so go and look.
+
+```yaml
+inflation: 0.03
+birthdays:
+  - name: alex
+    born: '1980-05-20'
+accounts:
+  - name: pay
+    balance: 3200
+    floor: 800
+    kind: everyday
+    rate: 0
+    offsets: null
+  - name: groceries
+    balance: 0
+    floor: 0
+    kind: everyday
+    rate: 0
+    offsets: null
+  - name: bills
+    balance: 0
+    floor: 0
+    kind: everyday
+    rate: 0
+    offsets: null
+  - name: everyday
+    balance: 0
+    floor: 0
+    kind: everyday
+    rate: 0
+    offsets: null
+  - name: car
+    balance: 0
+    floor: 0
+    kind: everyday
+    rate: 0
+    offsets: null
+  - name: travel
+    balance: 0
+    floor: 0
+    kind: everyday
+    rate: 0
+    offsets: null
+  - name: mortgage
+    balance: 320000
+    floor: 0
+    kind: loan
+    rate: 0.061
+    offsets: null
+  - name: early retirement
+    balance: 0
+    floor: 0
+    kind: saving
+    rate: 0.04
+    offsets: null
+  - name: super
+    balance: 320000
+    floor: 0
+    kind: saving
+    rate: 0.07
+    offsets: null
+transfers:
+  - name: salary
+    amount: 4500
+    every: fortnight
+    day: '2026-08-07'
+    into: pay
+    escalation: 0
+  - name: groceries
+    amount: 150
+    every: week
+    day: sat
+    out_of: pay
+    into: groceries
+    escalation: 0
+  - name: bills
+    amount: 300
+    every: fortnight
+    day: '2026-08-07'
+    out_of: pay
+    into: bills
+    escalation: 0
+  - name: everyday spending
+    amount: 150
+    every: week
+    day: sat
+    out_of: pay
+    into: everyday
+    escalation: 0
+  - name: car costs
+    amount: 200
+    every: week
+    day: sat
+    out_of: pay
+    into: car
+    escalation: 0
+  - name: mortgage repayment
+    amount: 5180
+    every: month
+    day: 5
+    out_of: pay
+    into: mortgage
+    escalation: 0
+  - name: into the offset
+    amount: 1200
+    every: month
+    day: 5
+    out_of: pay
+    into: early retirement
+    escalation: 0
+  - name: super contribution
+    amount: 540
+    every: month
+    day: 15
+    into: super
+    escalation: 0
+goals:
+  - name: pay off the house
+    account: mortgage
+    target: 0
+    transfers:
+      - name: mortgage repayment
+        amount: 0
+      - name: mortgage freed-up saving
+        amount: 5000
+        every: month
+        day: 5
+        out_of: pay
+        into: early retirement
+        escalation: 0
+      - name: into the offset
+        amount: 1200
+        every: month
+        day: 5
+        out_of: pay
+        into: early retirement
+        escalation: 0
+    accounts: []
+  - name: retire at 55
+    account: early retirement
+    target: 0
+    transfers:
+      - name: salary
+        amount: 0
+      - name: mortgage freed-up saving
+        amount: 0
+      - name: into the offset
+        amount: 0
+      - name: savings
+        amount: 0
+      - name: super contribution
+        amount: 0
+      - name: super contribution tax
+        amount: 0
+      - name: car costs
+        amount: 200
+        every: week
+        day: sat
+      - name: travel
+        amount: 1000
+        every: month
+        day: 5
+        out_of: pay
+        into: travel
+      - name: bridge drawdown
+        amount: 1850
+        every: fortnight
+        day: '2026-08-07'
+        out_of: early retirement
+        into: pay
+    accounts: []
+    by_age:
+      person: alex
+      turns: 55
+  - name: super access at 60
+    account: super
+    target: 0
+    transfers:
+      - name: bridge drawdown
+        amount: 0
+      - name: super drawdown
+        amount: 1500
+        every: fortnight
+        day: '2026-08-07'
+        out_of: super
+        into: pay
+      - name: car costs
+        amount: 500
+        every: week
+        day: sat
+        out_of: pay
+        into: car
+        escalation: 0
+      - name: groceries
+        amount: 277
+        every: week
+        day: sat
+        out_of: pay
+        into: groceries
+        escalation: 0
+      - name: bills
+        amount: 400
+        every: fortnight
+        day: '2026-08-07'
+        out_of: pay
+        into: bills
+        escalation: 0
+      - name: travel
+        amount: 500
+        every: month
+        day: 5
+        out_of: pay
+        into: travel
+    accounts: []
+    by_age:
+      person: alex
+      turns: 60
+```
+
+Notice "bridge drawdown" — introduced fresh inside "retire at 55"'s own transfer
+overrides, not in the top-level `transfers:` list at all. "super access at 60" then
+references that same name again to stop it. That's the override-cascading pattern
+described above, working in a real example.
+
+Notice too that "retire at 55" explicitly zeroes "mortgage freed-up saving". Every
+transfer a goal starts keeps running until something stops it, so when you write a
+plan, walk it forward and ask of each transfer: what is still paying for this, and is
+that thing still there? A saving transfer funded by a salary that has stopped will
+happily drain a retirement account for forty years.
+
+And check the size of each drawdown against what's actually being spent. A drawdown
+larger than the spending it funds doesn't look wrong on a chart — it just quietly
+piles money up in a pay account while emptying the retirement account that fed it.

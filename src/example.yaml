@@ -1,0 +1,209 @@
+inflation: 0.03
+birthdays:
+  - name: alex
+    born: '1980-05-20'
+accounts:
+  - name: pay
+    balance: 3200
+    floor: 800
+    kind: everyday
+    rate: 0
+    offsets: null
+  - name: groceries
+    balance: 0
+    floor: 0
+    kind: everyday
+    rate: 0
+    offsets: null
+  - name: bills
+    balance: 0
+    floor: 0
+    kind: everyday
+    rate: 0
+    offsets: null
+  - name: everyday
+    balance: 0
+    floor: 0
+    kind: everyday
+    rate: 0
+    offsets: null
+  - name: car
+    balance: 0
+    floor: 0
+    kind: everyday
+    rate: 0
+    offsets: null
+  - name: travel
+    balance: 0
+    floor: 0
+    kind: everyday
+    rate: 0
+    offsets: null
+  - name: mortgage
+    balance: 320000
+    floor: 0
+    kind: loan
+    rate: 0.061
+    offsets: null
+  - name: early retirement
+    balance: 0
+    floor: 0
+    kind: saving
+    rate: 0.04
+    offsets: null
+  - name: super
+    balance: 320000
+    floor: 0
+    kind: saving
+    rate: 0.07
+    offsets: null
+transfers:
+  - name: salary
+    amount: 4500
+    every: fortnight
+    day: '2026-08-07'
+    into: pay
+    escalation: 0
+  - name: groceries
+    amount: 150
+    every: week
+    day: sat
+    out_of: pay
+    into: groceries
+  - name: bills
+    amount: 300
+    every: fortnight
+    day: '2026-08-07'
+    out_of: pay
+    into: bills
+  - name: everyday spending
+    amount: 150
+    every: week
+    day: sat
+    out_of: pay
+    into: everyday
+  - name: car costs
+    amount: 200
+    every: week
+    day: sat
+    out_of: pay
+    into: car
+  - name: mortgage repayment
+    amount: 5180
+    every: month
+    day: 5
+    out_of: pay
+    into: mortgage
+    escalation: 0
+  - name: into the offset
+    amount: 1200
+    every: month
+    day: 5
+    out_of: pay
+    into: early retirement
+    escalation: 0
+  - name: super contribution
+    amount: 540
+    every: month
+    day: 15
+    into: super
+    escalation: 0
+goals:
+  - name: pay off the house
+    account: mortgage
+    target: 0
+    transfers:
+      - name: mortgage repayment
+        amount: 0
+        escalation: 0
+      - name: mortgage freed-up saving
+        amount: 5000
+        every: month
+        day: 5
+        out_of: pay
+        into: early retirement
+        escalation: 0
+      - name: into the offset
+        amount: 1200
+        every: month
+        day: 5
+        out_of: pay
+        into: early retirement
+    accounts: []
+  - name: retire at 55
+    account: early retirement
+    target: 0
+    transfers:
+      - name: salary
+        amount: 0
+        escalation: 0
+      - name: mortgage freed-up saving
+        amount: 0
+        escalation: 0
+      - name: into the offset
+        amount: 0
+      - name: savings
+        amount: 0
+        escalation: 0
+      - name: super contribution
+        amount: 0
+      - name: super contribution tax
+        amount: 0
+        escalation: 0
+      - name: bridge drawdown
+        amount: 1800
+        every: fortnight
+        day: '2026-08-07'
+        out_of: early retirement
+        into: pay
+      - name: car costs
+        amount: 400
+        every: week
+        day: sat
+        out_of: pay
+        into: car
+    accounts: []
+    by_age:
+      person: alex
+      turns: 55
+  - name: super access at 60
+    account: super
+    target: 0
+    transfers:
+      - name: bridge drawdown
+        amount: 0
+        escalation: 0
+      - name: super drawdown
+        amount: 2250
+        every: fortnight
+        day: '2026-08-07'
+        out_of: super
+        into: pay
+      - name: car costs
+        amount: 400
+        every: week
+        day: sat
+        out_of: pay
+        into: car
+      - name: groceries
+        amount: 277
+        every: week
+        day: sat
+        out_of: pay
+        into: groceries
+      - name: bills
+        amount: 400
+        every: fortnight
+        day: '2026-08-07'
+        out_of: pay
+        into: bills
+      - name: travel
+        amount: 500
+        every: month
+        day: 5
+        out_of: pay
+        into: travel
+    accounts: []
+    by_age:
+      person: alex
+      turns: 60
