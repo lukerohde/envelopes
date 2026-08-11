@@ -54,12 +54,8 @@ plans/archive/, and update the two lists below.
 
 CURRENT PLANS
 =============
-- ux-feedback-round-2-plan.md -- seven things a friend hit using the live site:
-  the date picker, naming an account, the ✕ that reads as "close", missing
-  column headings on goals, an AI prompt that doesn't interview anyone, and
-  collapsing the preamble and every section except the simulation. Also picks up
-  a one-time transfer type, and a runnable library file for agents -- the last
-  loose end from 6a, whose CLI instructions turned out to be Docker-only.
+
+None.
 
 
 ARCHIVED PLANS
@@ -82,3 +78,5 @@ ARCHIVED PLANS
   only work with Docker, which agent sandboxes don't have.
 - archive/ux-feedback-round-3-mobile-plan.md -- compact mobile editors, people
   summaries, a smaller bookmark notice, and clearer simulation endpoint context.
+- archive/ux-feedback-round-2-plan.md -- the date-picker, naming, transfer,
+  AI-prompt, one-off transfer, and first-use polish round.
