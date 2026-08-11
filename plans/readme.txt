@@ -54,9 +54,6 @@ plans/archive/, and update the two lists below.
 
 CURRENT PLANS
 =============
-- ux-feedback-round-3-mobile-plan.md -- make the editor phone-friendly by turning
-  wide transfer, goal-override, and account rows into compact summaries with
-  expandable full-field editors.
 - ux-feedback-round-2-plan.md -- seven things a friend hit using the live site:
   the date picker, naming an account, the ✕ that reads as "close", missing
   column headings on goals, an AI prompt that doesn't interview anyone, and
@@ -83,3 +80,5 @@ ARCHIVED PLANS
   AGENTS.md's fresh-clone offer for a developer's coding agent. Shipped, merged.
   One loose end carried into ux-feedback-round-2: its "run the CLI" instructions
   only work with Docker, which agent sandboxes don't have.
+- archive/ux-feedback-round-3-mobile-plan.md -- compact mobile editors, people
+  summaries, a smaller bookmark notice, and clearer simulation endpoint context.

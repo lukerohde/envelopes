@@ -92,9 +92,6 @@ function main(state: UIState): void {
       shareBtn: document.querySelector<HTMLButtonElement>("#shareBtn")!,
       ioStatus: document.querySelector<HTMLElement>("#ioStatus")!,
       keepBar: document.querySelector<HTMLElement>("#keepBar")!,
-      keepCopy: document.querySelector<HTMLButtonElement>("#keepCopy")!,
-      keepDismiss: document.querySelector<HTMLButtonElement>("#keepDismiss")!,
-      keepShortcut: document.querySelector<HTMLElement>("#keepShortcut")!,
     },
     state,
     applyLoadedState,
@@ -116,7 +113,7 @@ function main(state: UIState): void {
   document.querySelector("#addPerson")!.addEventListener("click", () => {
     const name = nextName("New person", state.birthdays);
     state.birthdays.push({ name, born: "1990-01-01" });
-    renderPeople(peopleRows, state, scheduleUpdate, name);
+    renderPeople(peopleRows, state, scheduleUpdate, name, state.birthdays.length - 1);
     edited();
   });
 

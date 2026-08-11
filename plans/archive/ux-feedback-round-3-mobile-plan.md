@@ -32,8 +32,23 @@ Tasks
 - [x] Make a goal's Edit action use the same pill treatment as other row editors,
       and use the shared bin glyph for deletion while the goal is open.
 - [x] Ask for confirmation before any bin deletes a row.
-- [ ] Verify at a phone viewport in light and dark themes, including transfers,
-      goals, accounts, and simulation recomputation after editing an expanded row.
+- [x] Show each person's name beside their age, with an Edit control that opens the
+      person in the structured editor.
+- [x] Reduce the bookmark-changed warning to a slim, top-pinned notice.
+- [x] Add the example's final `Old & broke` goal: super reaching $1,000, producing
+      a milestone at retirement age.
+- [x] Include the pending homepage wording fix in the finished change.
+- [x] Default the time slider to the earlier of the final completed milestone and
+      first floor hit whenever the simulation redraws.
+- [x] Describe the simulation horizon as the youngest person's ending age instead
+      of a raw number of years.
+- [x] Show the simulation end date and every person's age at that date in the
+      heading, and capitalise the example person's name.
+- [x] Use the existing compact `Name age` format for ages in the simulation heading.
+- [x] Put simulation-heading ages on a second line and remove the duplicate end date.
+- [x] Waived at the author's request: verify at a phone viewport in light and dark
+      themes, including transfers, goals, accounts, and simulation recomputation
+      after editing an expanded row.
 
 Decisions
 ---------
@@ -45,6 +60,15 @@ Decisions
   presentation and interaction layer, not a second YAML or simulation path.
 - Expansion is per row, so opening one transfer or override does not make the whole
   section tall or push unrelated rows out of view.
+- The People’s Ages panel stays compact until its Edit control reveals that person's
+  existing name and birthday fields inline; it does not add a separate data path.
+- A simulation redraw starts at the earlier of the final milestone and first floor
+  hit, so the first projected endpoint is visible without dragging the time slider.
+- The simulation heading uses the actual endpoint and lists every person's age,
+  because the horizon can be adjusted after the initial age-100 default.
+- Simulation-heading ages use the same muted, second-line treatment as milestone ages.
+- The in-app browser was unavailable in this session, so the author explicitly
+  waived the final manual viewport check before archiving.
 
 Out of scope
 ------------

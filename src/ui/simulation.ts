@@ -7,7 +7,7 @@
 
 import { addDays, daysBetween, horizonYears, todayISO, type ISODate } from "../dates";
 import { run, type History } from "../simulate";
-import { groupAccounts, toBudget, type UIState, type UIGoal } from "../state";
+import { groupAccounts, toBudget, type UIState, type UIGoal, type UIPerson } from "../state";
 import { sortMilestones } from "../milestones";
 
 // How far the timeline can be dragged. Not a constant any more: it runs
@@ -75,6 +75,31 @@ function interpAt(points: [number, number][], year: number): number {
     }
   }
   return last[1];
+}
+
+/** The slider opens at the first terminal event: the final milestone or a
+ * floor breach, whichever comes first. */
+export function defaultScrubYear(completed: [string, ISODate][], start: ISODate, breachYear: number): number {
+  let latest = 0;
+  for (const [, when] of completed) latest = Math.max(latest, daysBetween(start, when) / 365.25);
+  if (latest === 0) return breachYear === Infinity ? 0 : breachYear;
+  return Math.min(latest, breachYear);
+}
+
+function ageAtISO(born: ISODate, when: ISODate): number {
+  const b = new Date(born), w = new Date(when);
+  let years = w.getUTCFullYear() - b.getUTCFullYear();
+  if (w.getUTCMonth() < b.getUTCMonth() || (w.getUTCMonth() === b.getUTCMonth() && w.getUTCDate() < b.getUTCDate())) years -= 1;
+  return years;
+}
+
+export function simulationHorizonLabel(people: UIPerson[], start: ISODate, years: number): string {
+  if (people.length === 0) return `Simulating ${Math.round(years)} years`;
+  const end = addDays(start, Math.round(years * 365.25));
+  const endLabel = new Date(end).toLocaleDateString(undefined, { month: "short", year: "numeric" });
+  const ages: string[] = [];
+  for (const person of people) ages.push(`${person.name} ${ageAtISO(person.born, end)}`);
+  return `Simulating to ${endLabel}<span class="sim-ages">${ages.join(" · ")}</span>`;
 }
 
 export function createSimulationView(elements: Elements) {
@@ -201,7 +226,7 @@ export function createSimulationView(elements: Elements) {
     }
 
     elements.chartSvg.innerHTML = parts.join("");
-    elements.simHeading.textContent = `Simulating ${Math.round(view.requestedMax)} years · to ${yearToLabel(view.requestedMax)}`;
+    elements.simHeading.innerHTML = simulationHorizonLabel(state.birthdays, start, view.requestedMax);
     elements.balHeading.textContent = `Accounts at ${yearToLabel(sYear)}`;
   }
 
@@ -319,13 +344,6 @@ export function createSimulationView(elements: Elements) {
     return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
   }
 
-  function ageAtISO(born: ISODate, when: ISODate): number {
-    const b = new Date(born), w = new Date(when);
-    let years = w.getUTCFullYear() - b.getUTCFullYear();
-    if (w.getUTCMonth() < b.getUTCMonth() || (w.getUTCMonth() === b.getUTCMonth() && w.getUTCDate() < b.getUTCDate())) years -= 1;
-    return years;
-  }
-
   function moveScrubTo(year: number): void {
     view.scrubYear = Math.max(0, Math.min(effectiveMax(), year));
   }
@@ -380,6 +398,7 @@ export function createSimulationView(elements: Elements) {
       // it if you happened to pick the breaching account yourself
       if (!pickedByHand && breachAccount) elements.acctSelect.value = breachAccount;
 
+      moveScrubTo(defaultScrubYear(completed, start, breachYear));
       refresh(state, completed);
     },
 

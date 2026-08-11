@@ -35,6 +35,7 @@ describe("simulate", () => {
   it("runs the example's goals in the order the engine does", () => {
     const names = simulate(EXAMPLE, { start: "2026-01-01" }).completed.map(([name]) => name);
     expect(names).toContain("retire at 55");
+    expect(names).toContain("Old & broke");
   });
 });
 
