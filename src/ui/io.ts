@@ -19,9 +19,6 @@ interface IOElements {
   shareBtn: HTMLButtonElement;
   ioStatus: HTMLElement;
   keepBar: HTMLElement;
-  keepCopy: HTMLButtonElement;
-  keepDismiss: HTMLButtonElement;
-  keepShortcut: HTMLElement;
 }
 
 /** How long the keep-this bar stays up before fading. Long enough to read a
@@ -102,7 +99,6 @@ export function initIO(elements: IOElements, state: UIState, applyLoadedState: (
       .catch((err) => flashStatus(`Couldn't copy the link: ${(err as Error).message}`));
   }
   elements.shareBtn.addEventListener("click", copyLink);
-  elements.keepCopy.addEventListener("click", copyLink);
 
   /** The bar is a reminder, not a task -- it says its piece and gets out of
    * the way rather than sitting there needing to be clicked. Fading out is
@@ -133,16 +129,12 @@ export function initIO(elements: IOElements, state: UIState, applyLoadedState: (
     fadeTimer = window.setTimeout(done, 600);
   }
 
-  /** The budget is somewhere the user can get back to -- copied, saved, or
-   * explicitly dismissed. Put the bar away and stop warning on the way out. */
+  /** The budget is somewhere the user can get back to -- copied or saved.
+   * Put the notice away and stop warning on the way out. */
   function kept(): void {
     unkept = false;
     hideBar();
   }
-  elements.keepDismiss.addEventListener("click", kept);
-
-  elements.keepShortcut.textContent = navigator.userAgent.includes("Mac") ? "⌘D" : "Ctrl+D";
-
   // Writing the address bar is debounced for the same reason the recompute
   // is: gzipping the whole config on every keystroke is pointless work. It's
   // replaceState, not pushState -- the back button walking you through a

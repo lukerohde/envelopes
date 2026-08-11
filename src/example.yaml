@@ -1,6 +1,6 @@
 inflation: 0.03
 birthdays:
-  - name: alex
+  - name: Alex
     born: '1980-05-20'
 accounts:
   - name: pay
@@ -164,7 +164,7 @@ goals:
         into: car
     accounts: []
     by_age:
-      person: alex
+      person: Alex
       turns: 55
   - name: super access at 60
     account: super
@@ -205,5 +205,10 @@ goals:
         into: travel
     accounts: []
     by_age:
-      person: alex
+      person: Alex
       turns: 60
+  - name: 'Old & broke'
+    account: super
+    target: 1000
+    transfers: []
+    accounts: []

@@ -68,32 +68,21 @@
     .io-status { font-size: .78rem; color: var(--accent); min-height: 1.2em; }
 
     .keep-bar {
-      position: fixed; left: 50%; bottom: 1.2rem; transform: translateX(-50%); z-index: 20;
-      display: flex; align-items: center; gap: .8rem; max-width: min(46rem, calc(100vw - 2rem));
-      padding: .7rem .9rem; background: var(--surface); border: 1px solid var(--line-strong);
-      border-radius: 10px; box-shadow: var(--shadow);
+      position: fixed; top: .8rem; right: .8rem; z-index: 20;
+      padding: .4rem .7rem; background: var(--surface); border: 1px solid var(--line-strong);
+      border-radius: 999px; box-shadow: var(--shadow);
     }
     .keep-bar[hidden] { display: none; }
     /* It fades in on the first edit and fades back out on its own. Starts in
        the "leaving" state so the very first appearance animates rather than
        snapping in. */
     .keep-bar { transition: opacity .35s ease, transform .35s ease; }
-    .keep-bar.leaving { opacity: 0; transform: translateX(-50%) translateY(.6rem); pointer-events: none; }
+    .keep-bar.leaving { opacity: 0; transform: translateY(-.4rem); pointer-events: none; }
     @media (prefers-reduced-motion: reduce) {
       .keep-bar { transition: opacity .01s linear; }
-      .keep-bar.leaving { transform: translateX(-50%); }
+      .keep-bar.leaving { transform: none; }
     }
-    .keep-text { font-size: .82rem; color: var(--ink-muted); line-height: 1.45; }
-    .keep-bar kbd {
-      font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: .76rem; color: var(--ink);
-      border: 1px solid var(--line-strong); border-radius: 4px; padding: .05rem .3rem; background: var(--surface-2);
-    }
-    .keep-bar .io-btn { flex: 0 0 auto; }
-    .keep-dismiss {
-      flex: 0 0 auto; border: none; background: none; color: var(--ink-faint); font-size: .8rem;
-      cursor: pointer; font-family: inherit; padding: .2rem .3rem;
-    }
-    .keep-dismiss:hover { color: var(--ink); }
+    .keep-text { font-size: .75rem; color: var(--ink-muted); line-height: 1.25; }
 
     .ai-prompt { margin-top: .8rem; }
     .ai-prompt summary {
@@ -168,8 +157,13 @@
       display: flex; align-items: center; gap: .9rem; padding: .6rem .8rem;
       border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2);
     }
-    .person-row input[type="text"] { flex: 1; min-width: 0; max-width: 11rem; }
-    .person-row input[type="date"] { flex: 0 0 9.5rem; }
+    .person-summary { display: flex; align-items: center; gap: .8rem; flex: 1; min-width: 0; }
+    .person-name { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .person-fields { display: none; flex: 1; align-items: center; gap: .7rem; min-width: 0; }
+    .person-row.editing .person-summary { display: none; }
+    .person-row.editing .person-fields { display: flex; }
+    .person-fields input[type="text"] { flex: 1; min-width: 0; max-width: 11rem; }
+    .person-fields input[type="date"] { flex: 0 0 9.5rem; }
     .person-row .age { flex: 0 0 auto; margin-left: auto; text-align: right; }
     .person-row .age .age-n { font-size: 1.2rem; }
     .person-row .age .age-l { display: block; font-size: .68rem; color: var(--ink-muted); text-transform: uppercase; letter-spacing: .05em; }
@@ -314,6 +308,14 @@
       }
       .account-row > [data-remove] { position: absolute; top: .7rem; right: .6rem; z-index: 1; }
 
+      .person-row { position: relative; display: block; padding: .75rem; }
+      .person-summary { padding-right: 2rem; }
+      .person-fields { display: none; }
+      .person-row.editing .person-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .7rem; padding-right: 1.5rem; }
+      .person-fields input[type="text"], .person-fields .save-link { grid-column: 1 / -1; }
+      .person-fields input[type="text"], .person-fields input[type="date"] { max-width: none; width: 100%; }
+      .person-row > [data-remove] { position: absolute; top: .7rem; right: .6rem; }
+
       .transfer-row-wrap { position: relative; display: block; }
       .transfer-row-wrap > [data-remove] { position: absolute; top: .7rem; right: .6rem; z-index: 1; }
       .transfer-row {
@@ -435,6 +437,7 @@
     .timeline-ticks { display: flex; justify-content: space-between; font-size: .68rem; color: var(--ink-faint); font-family: ui-monospace, monospace; padding: 0 1px; }
 
     .sim-heading { margin: 0 0 .6rem; font-size: .95rem; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+    .sim-heading .sim-ages { display: block; font-size: .72rem; font-weight: 400; color: var(--ink-muted); }
 
     .scrub-readout {
       display: flex; align-items: baseline; gap: .7rem; flex-wrap: wrap; font-size: .84rem;
@@ -510,7 +513,7 @@
           Building on this idea, it can chain major goals and financial events together to 
           project exactly when I will achieve my financial goals and help me understand the 
           impact of major financial decisions over a long horizon.</p>
-          <p>There are accounts and their opening balances.  Some accounts are just spending accounts.
+          <p>To explain; There are accounts and their opening balances.  Some accounts are just spending accounts.
             They can be configured with inflation. 
             There are transfers to and from the outside world and transfers between 
             accounts.
@@ -643,16 +646,9 @@
 
   </div>
 
-  <!-- Raised on the first edit. The budget is in the address bar and nowhere
-       else -- no storage, no server -- so the one thing worth saying is where
-       it lives and how to hang on to it. -->
+  <!-- Raised on the first edit, then fades out on its own. -->
   <div class="keep-bar leaving" id="keepBar" role="status" hidden>
-    <span class="keep-text">
-      Your budget lives in this page's address — nothing is stored anywhere.
-      Bookmark it (<kbd id="keepShortcut">⌘D</kbd>) or copy the link to keep it.
-    </span>
-    <button type="button" class="io-btn" id="keepCopy">Copy link</button>
-    <button type="button" class="keep-dismiss" id="keepDismiss" aria-label="Dismiss">✕</button>
+    <span class="keep-text">Bookmark URL has changed</span>
   </div>
 
   <script type="module" src="/src/main.ts"></script>
