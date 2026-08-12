@@ -1,0 +1,135 @@
+# A plan that doesn't work, for testing whether the harness can talk someone
+# through fixing it. Every fault here is one an agent actually made while
+# rebalancing the worked example, or one a person writes by hand:
+#
+#   - the salary is pinned at escalation: 0 while the spending grows at 3%,
+#     so income goes flat against rising costs and the pay account bleeds
+#     out over a working life for no reason visible on any one account
+#   - the pay account holds a $200 buffer against a $3,100 mortgage payment,
+#     so it's insolvent inside the first month
+#   - `holidays` is a sinking fund that only ever fills
+#   - `rainy day` earns 1% against 3% inflation
+#   - the super drawdown was picked, not sized against the spending it funds
+#   - "retire at 60" watches a fund that starts at 0 with target 0, which
+#     reads as "at or above 0" and is true on day one
+#
+# Do not fix this file. It is the test.
+inflation: 0.03
+birthdays:
+  - name: Sam
+    born: '1985-03-10'
+accounts:
+  - name: pay
+    balance: 200
+    floor: 0
+    kind: clearing
+    rate: 0
+    offsets: null
+  - name: groceries
+    balance: 0
+    floor: 0
+    kind: expense
+    rate: 0
+    offsets: null
+  - name: bills
+    balance: 0
+    floor: 0
+    kind: expense
+    rate: 0
+    offsets: null
+  - name: holidays
+    balance: 0
+    floor: 0
+    kind: sinking
+    rate: 0
+    offsets: null
+  - name: rainy day
+    balance: 8000
+    floor: 0
+    kind: saving
+    rate: 0.01
+    offsets: null
+  - name: mortgage
+    balance: 410000
+    floor: 0
+    kind: loan
+    rate: 0.061
+    offsets: null
+  - name: super
+    balance: 180000
+    floor: 0
+    kind: investment
+    rate: 0.07
+    offsets: null
+transfers:
+  - name: salary
+    amount: 3900
+    every: fortnight
+    day: '2026-08-07'
+    into: pay
+    escalation: 0
+  - name: groceries
+    amount: 260
+    every: week
+    day: sat
+    out_of: pay
+    into: groceries
+  - name: bills
+    amount: 620
+    every: fortnight
+    day: '2026-08-07'
+    out_of: pay
+    into: bills
+  - name: mortgage repayment
+    amount: 3100
+    every: month
+    day: 5
+    out_of: pay
+    into: mortgage
+    escalation: 0
+  - name: saving for holidays
+    amount: 400
+    every: month
+    day: 5
+    out_of: pay
+    into: holidays
+  - name: rainy day saving
+    amount: 200
+    every: month
+    day: 5
+    out_of: pay
+    into: rainy day
+  - name: super contribution
+    amount: 1400
+    every: month
+    day: 15
+    into: super
+goals:
+  - name: pay off the house
+    account: mortgage
+    target: 0
+    transfers:
+      - name: mortgage repayment
+        amount: 0
+        escalation: 0
+    accounts: []
+  - name: retire at 60
+    account: rainy day
+    target: 0
+    transfers:
+      - name: salary
+        amount: 0
+        escalation: 0
+      - name: super contribution
+        amount: 0
+        escalation: 0
+      - name: super drawdown
+        amount: 1500
+        every: fortnight
+        day: '2026-08-07'
+        out_of: super
+        into: pay
+    accounts: []
+    by_age:
+      person: Sam
+      turns: 60

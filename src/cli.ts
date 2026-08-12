@@ -25,6 +25,7 @@ import { run } from "./simulate";
 import { formatReport, parseArgs, reportJson, yearsBetween } from "./report";
 import { formatFlows, summarise } from "./flows";
 import { formatFindings, lint } from "./lint";
+import { checkPlan, formatCheck } from "./check";
 
 function main(): void {
   let args;
@@ -45,6 +46,13 @@ function main(): void {
   const end = addDays(start, Math.round(365.25 * horizonYears(budget.birthdays, start)));
   const result = run(budget, start, end);
   const { balances, completed, phases } = result;
+
+  if (args.check) {
+    const checked = checkPlan(budget, result, start, end);
+    console.log(args.json ? JSON.stringify(checked, null, 2) : formatCheck(checked, budget));
+    if (checked.next !== null) process.exitCode = 1;
+    return;
+  }
 
   if (args.lint) {
     const findings = lint(budget, result, start, end);

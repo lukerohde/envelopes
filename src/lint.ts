@@ -31,7 +31,29 @@ export interface Finding {
   account: string;
   /** One line a person can act on. Numbers, not adjectives. */
   detail: string;
+  /** What to change, and what that change will cost somewhere else.
+   *
+   * A finding that only names the symptom leaves the reader to guess the
+   * lever, and the levers here are coupled in ways nobody works out by
+   * reasoning -- raising a super contribution to soak a surplus makes the
+   * plan last longer, which gives the retirement drawdown more years to
+   * pool, so the surplus gets *bigger*. That was discovered by thrashing.
+   * It belongs here so nobody has to discover it twice. */
+  fix: string;
 }
+
+/** The order to deal with findings in, and it isn't cosmetic: a floor
+ * breach freezes every downstream number, so anything measured after one
+ * is describing a plan that already stopped working. Fix the cashflow and
+ * the rest of the list changes under you -- which is why it's first. */
+const RULE_ORDER: Rule[] = [
+  "account-below-floor",
+  "super-before-preservation-age",
+  "goal-never-fires",
+  "clearing-account-accumulating",
+  "sinking-fund-trending",
+  "saving-below-inflation",
+];
 
 /** The age Australian super unlocks for anyone retiring now. Drawing on it
  * before this isn't a modelling error, it's money that legally isn't
@@ -102,6 +124,11 @@ export function lint(budget: Budget, result: RunResult, start: ISODate, end: ISO
             `builds to ${money(peak.high)} by ${peak.on}, ${money(grew)}/yr — ` +
             `${((grew / throughput) * 100).toFixed(1)}% of what passes through it, claimed by no envelope. ` +
             `It earns no interest sitting there`,
+          fix:
+            `Give it a job: raise an envelope to what they really spend, or move more into savings. ` +
+            `Careful -- pushing it into a fund they can't reach until 60 makes the plan last longer, ` +
+            `which gives any over-sized drawdown more years to pool, and the surplus grows instead. ` +
+            `The real-world answer is an annual rebudget, which the schema can't express yet.`,
         });
       }
     }
@@ -113,6 +140,10 @@ export function lint(budget: Budget, result: RunResult, start: ISODate, end: ISO
         detail:
           `earns ${(account.rate * 100).toFixed(1)}% against ${(budget.inflation * 100).toFixed(1)}% inflation` +
           ` — it grows in dollars and shrinks in what it buys`,
+        fix:
+          `Either the rate is wrong and should be corrected, or the money is in the wrong place. ` +
+          `Ask them where it actually sits — an offset account against a mortgage beats a savings ` +
+          `account for exactly this reason.`,
       });
     }
 
@@ -127,7 +158,11 @@ export function lint(budget: Budget, result: RunResult, start: ISODate, end: ISO
           account: account.name,
           detail:
             `takes ${money(annualise(totals.in, years))}/yr in and pays nothing out, ever` +
-            ` — closes at ${money(balance)}. Model what it's saved for.`,
+            ` — closes at ${money(balance)}`,
+          fix:
+            `Add the spending it's saving for — an \`every: year\` transfer out of it. If there ` +
+            `isn't any, it isn't a sinking fund: make it \`kind: saving\` if it's building toward ` +
+            `something, or \`kind: expense\` if the balance is just cumulative spend.`,
         });
       }
     }
@@ -142,6 +177,10 @@ export function lint(budget: Budget, result: RunResult, start: ISODate, end: ISO
           detail:
             `first drawn ${drawnAt}, when ${owner.name} is ${ageAt(owner.born, drawnAt)}` +
             ` — super is preserved until ${PRESERVATION_AGE}`,
+          fix:
+            `The bridge fund has to cover the gap. Either it's too small, or the goal that starts ` +
+            `the super drawdown fires on a balance alone — add wait_for_both: true alongside a ` +
+            `by_age of ${PRESERVATION_AGE}, so it waits for the money to run out AND the birthday.`,
         });
       }
     }
@@ -164,6 +203,11 @@ export function lint(budget: Budget, result: RunResult, start: ISODate, end: ISO
         (recovered
           ? `, down to ${money(breach.low)}, before recovering — the money isn't there on the day it's needed`
           : ` and doesn't recover — that's where the plan runs out`),
+      fix: recovered
+        ? `A timing problem, not a shortfall: the money arrives after it's needed. Move a big monthly ` +
+          `transfer to a different day, or raise the account's opening balance to carry the gap.`
+        : `Everything measured after this date is the arithmetic carrying on without the money, so fix ` +
+          `this before anything else on the list. Either less leaves the account, or more arrives.`,
     });
   }
 
@@ -174,9 +218,15 @@ export function lint(budget: Budget, result: RunResult, start: ISODate, end: ISO
       rule: "goal-never-fires",
       account: goal.name,
       detail: `never reached by ${end} — everything it was going to change never happens`,
+      fix:
+        `Check the trigger. A balance target reads its direction from the account's *opening* ` +
+        `balance, so a fund that starts at 0 can't say "back to 0" — that reads as "at or above 0", ` +
+        `true on day one. If the plan collapsed earlier, fix that first; goals after the collapse ` +
+        `never get the chance to fire.`,
     });
   }
 
+  findings.sort((a, b) => RULE_ORDER.indexOf(a.rule) - RULE_ORDER.indexOf(b.rule));
   return findings;
 }
 

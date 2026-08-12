@@ -31,13 +31,13 @@ function summary(): Parameters<typeof reportJson> {
 
 describe("parseArgs", () => {
   it("takes a bare path, same as it always did", () => {
-    expect(parseArgs(["plan.yml"])).toEqual({ path: "plan.yml", json: false, real: false, flows: false, lint: false });
+    expect(parseArgs(["plan.yml"])).toEqual({ path: "plan.yml", json: false, real: false, flows: false, lint: false, check: false });
   });
 
   it("reads the flags in any order", () => {
     expect(parseArgs(["--json", "plan.yml"]).json).toBe(true);
     expect(parseArgs(["plan.yml", "--real"]).real).toBe(true);
-    expect(parseArgs(["--real", "--json", "plan.yml"])).toEqual({ path: "plan.yml", json: true, real: true, flows: false, lint: false });
+    expect(parseArgs(["--real", "--json", "plan.yml"])).toEqual({ path: "plan.yml", json: true, real: true, flows: false, lint: false, check: false });
     expect(parseArgs(["--flows", "plan.yml"]).flows).toBe(true);
     expect(parseArgs(["lint", "--json", "plan.yml"])).toMatchObject({ lint: true, json: true, path: "plan.yml" });
   });

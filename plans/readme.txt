@@ -57,6 +57,10 @@ CURRENT PLANS
 
 - agent-feedback-round-1-plan.md -- make the tool legible to an AI agent handed
   a share link, then close the engine and schema gaps that review exposed.
+- agent-harness-round-2-plan.md -- turn the findings into a harness a fresh
+  agent can actually pass, and add the annual rebudget/rebaseline the schema
+  is missing. Phases 1-4 largely landed inside round 1's branch; phase 5 is
+  the open work.
 
 
 ARCHIVED PLANS

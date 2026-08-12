@@ -69,7 +69,8 @@ JavaScript file — no clone, no package install, no Docker:
     node envelopes-cli.mjs --json my-draft.yml    # machine-readable
     node envelopes-cli.mjs --real my-draft.yml    # in today's dollars
     node envelopes-cli.mjs --flows my-draft.yml   # annual in/out/net per phase
-    node envelopes-cli.mjs lint my-draft.yml      # named findings
+    node envelopes-cli.mjs check my-draft.yml     # what to fix, in order
+    node envelopes-cli.mjs lint my-draft.yml      # just the findings
 
     curl -O https://envelopes.lukeroh.de/envelopes.mjs       # library, ~72KB
 
@@ -91,6 +92,7 @@ Zero dependencies, Node ≥18. `envelopes.mjs` exports:
 | `reportJson(yamlText, opts)` | the same run as an object, nominal and real |
 | `deflate(amount, inflation, years)` | a future amount in today's dollars |
 | `lintPlan(yamlText, opts)` | named findings — what's wrong with this plan |
+| `checkPlan(budget, result, start, end)` | criteria, ordered findings, and the one next step |
 | `summarise(phases, budget, start, real)` | annual in/out/net per account, per phase |
 | `load(yamlText)` | parse and validate, without running |
 | `run(budget, start, end, track)` | the raw engine, if you already have a `Budget` |
@@ -145,7 +147,43 @@ the schema, the worked example — tells you how to read it.
 You now have real milestones and real closing balances. Say those, not
 impressions of the config.
 
-### 3. Let the linter do the first pass
+### 3. Let the tool tell you what to fix first
+
+    node envelopes-cli.mjs check plan.yml
+    node envelopes-cli.mjs check --json plan.yml
+
+`check` is the one to reach for. It states what a good plan looks like, marks
+each part pass or fail, and ends with a single next instruction. Do that one
+thing, run it again, repeat. Don't try to fix everything at once — the levers
+are coupled and you'll chase your tail.
+
+**What a plan has to do**, which is the part no linter can infer:
+
+1. **The cashflow holds.** No everyday account ever drops under its floor.
+   This comes first and isn't negotiable: the run stops measuring at the
+   first breach, so every other number is describing a plan that already
+   stopped. `check` will say "not assessed" for the rest while this fails —
+   believe it, and don't read those as passes.
+2. **The money lasts well into their eighties.** Not to the end of the chart.
+   The chart runs to 100 because that's the edge of a human life, not a
+   target; inflation eats every retirement balance eventually and reaching
+   the far edge takes either a fortune or spending nobody would accept.
+   Where it runs out is the person's decision — tell them the age.
+3. **The account that finally gives out is the retirement fund**, not the pay
+   account. Super running dry at 84 is the plan reaching its end. A pay
+   account running dry at 46 means the cashflow never worked.
+4. **Nothing pools unspent.** A clearing account that climbs is income no
+   envelope claimed, earning nothing.
+5. **Sinking funds cycle, savings beat inflation, every goal fires.**
+
+**Spending is an input, not a knob.** If you balance a plan by cutting
+someone's groceries you have not balanced anything, you've just moved the
+problem somewhere they'll notice later. Ask them before you change what they
+told you they spend. Income, savings rates, retirement dates and drawdown
+sizes are yours to tune; their life is not.
+
+`lint` gives the same findings without the goal-setting, if that's all you
+want:
 
     node envelopes-cli.mjs lint plan.yml
     node envelopes-cli.mjs lint --json plan.yml

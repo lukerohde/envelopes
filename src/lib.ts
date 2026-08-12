@@ -38,6 +38,8 @@ export { encodeShareUrl, decodeShareUrl, encodeShareHash, decodeShareHash } from
  * a list of things wrong with the plan. */
 export { summarise, formatFlows, annualise, coverYears } from "./flows";
 export { formatFindings } from "./lint";
+export { checkPlan, formatCheck } from "./check";
+export type { PlanCheck, Criterion } from "./check";
 export type { Finding, Rule } from "./lint";
 export type { Phase, AccountFlow } from "./simulate";
 export type { PhaseSummary, FlowRow } from "./flows";

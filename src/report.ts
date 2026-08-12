@@ -18,16 +18,22 @@ export interface CliArgs {
   flows: boolean;
   /** `envelopes lint plan.yml` -- report findings instead of a projection. */
   lint: boolean;
+  /** `envelopes check plan.yml` -- lint, plus what a good plan looks like
+   * and which single thing to do next. */
+  check: boolean;
 }
 
-const USAGE = "usage: envelopes [lint] [--json] [--real] [--flows] <config.yml>";
+const USAGE = "usage: envelopes [check|lint] [--json] [--real] [--flows] <config.yml>";
 
 /** Deliberately tiny: one verb, three boolean flags and a path. Anything
  * that wants real argument parsing wants the library instead. */
 export function parseArgs(argv: string[]): CliArgs {
-  const args: CliArgs = { path: "", json: false, real: false, flows: false, lint: false };
+  const args: CliArgs = { path: "", json: false, real: false, flows: false, lint: false, check: false };
   if (argv[0] === "lint") {
     args.lint = true;
+    argv = argv.slice(1);
+  } else if (argv[0] === "check") {
+    args.check = true;
     argv = argv.slice(1);
   }
   for (const arg of argv) {

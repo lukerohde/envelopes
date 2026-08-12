@@ -31,6 +31,13 @@ cli: ## Run the console tool against a YAML config: make cli FILE=path/to/config
 		-v "$$(cd "$$(dirname "$(FILE)")" && pwd):/host-config:ro" \
 		node sh -c "npm install && npm run cli -- /host-config/$$(basename "$(FILE)")"
 
+.PHONY: plan-check
+plan-check: ## Check a budget and get told what to fix first: make plan-check FILE=path/to/plan.yml
+	@test -n "$(FILE)" || { echo "❌  FILE not set -- e.g. make plan-check FILE=tests/fixtures/needs-balancing.yml"; exit 1; }
+	docker compose run --rm \
+		-v "$$(cd "$$(dirname "$(FILE)")" && pwd):/host-config:ro" \
+		node sh -c "npm install && npm run cli -- check /host-config/$$(basename "$(FILE)")"
+
 .PHONY: set-secret
 set-secret: ## One-time: push PULUMI_ACCESS_TOKEN from .env to the GitHub repo secret
 	@test -n "$(PULUMI_ACCESS_TOKEN)" || { echo "❌  PULUMI_ACCESS_TOKEN not set -- fill in .env first"; exit 1; }
