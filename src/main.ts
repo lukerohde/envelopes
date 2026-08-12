@@ -86,6 +86,7 @@ function main(state: UIState): void {
       structuredView: document.querySelector<HTMLElement>("#structuredView")!,
       rawSection: document.querySelector<HTMLElement>("#rawSection")!,
       rawYaml: document.querySelector<HTMLTextAreaElement>("#rawYaml")!,
+      rawStatus: document.querySelector<HTMLElement>("#rawStatus")!,
       loadBtn: document.querySelector<HTMLButtonElement>("#loadBtn")!,
       loadFile: document.querySelector<HTMLInputElement>("#loadFile")!,
       saveBtn: document.querySelector<HTMLButtonElement>("#saveBtn")!,

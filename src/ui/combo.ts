@@ -11,14 +11,16 @@
  */
 
 export function initCombos(container: HTMLElement, accountNames: string[]): void {
+  document.querySelectorAll<HTMLElement>("[data-combo-list]").forEach((list) => list.remove());
   container.querySelectorAll<HTMLElement>("[data-combo]").forEach((el) => {
     const input = el.querySelector<HTMLInputElement>(".combo-input");
     if (!input) return;
 
     const list = document.createElement("div");
     list.className = "combo-list";
+    list.dataset.comboList = "";
     list.hidden = true;
-    el.appendChild(list);
+    document.body.appendChild(list);
 
     /** Anchored under the input, or above it when there isn't room below --
      * the bottom row of a long list is exactly where this matters. */
@@ -66,6 +68,7 @@ export function initCombos(container: HTMLElement, accountNames: string[]): void
     // capture, so scrolling the pane the row sits in counts too, not just
     // the page -- a fixed list doesn't move with its input on its own
     function show(): void {
+      if (!list.isConnected) document.body.appendChild(list);
       renderList();
       list.hidden = false;
       place();

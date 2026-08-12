@@ -13,6 +13,7 @@ interface IOElements {
   structuredView: HTMLElement;
   rawSection: HTMLElement;
   rawYaml: HTMLTextAreaElement;
+  rawStatus: HTMLElement;
   loadBtn: HTMLButtonElement;
   loadFile: HTMLInputElement;
   saveBtn: HTMLButtonElement;
@@ -44,20 +45,27 @@ export function initIO(elements: IOElements, state: UIState, applyLoadedState: (
     }, 3000);
   }
 
+  function showRawError(text: string): void {
+    elements.rawStatus.textContent = text;
+  }
+
   elements.toggleRawBtn.addEventListener("click", () => {
     rawMode = !rawMode;
     elements.structuredView.hidden = rawMode;
     elements.rawSection.hidden = !rawMode;
     elements.toggleRawBtn.textContent = rawMode ? "Edit as form" : "Edit as YAML";
-    if (rawMode) elements.rawYaml.value = stateToYamlText(state);
+    if (rawMode) {
+      elements.rawYaml.value = stateToYamlText(state);
+      showRawError("");
+    }
   });
 
   const scheduleRawApply = debounce(() => {
     try {
       applyLoadedState(parseYamlIntoState(elements.rawYaml.value));
-      flashStatus("");
+      showRawError("");
     } catch (err) {
-      flashStatus(`Not valid YAML yet: ${(err as Error).message}`);
+      showRawError(`Not valid YAML yet: ${(err as Error).message}`);
     }
   }, 400);
   elements.rawYaml.addEventListener("input", scheduleRawApply);
@@ -157,10 +165,8 @@ export function initIO(elements: IOElements, state: UIState, applyLoadedState: (
   return {
     markEdited(): void {
       writeUrl();
-      if (!unkept) {
-        unkept = true;
-        showBar();
-      }
+      showBar();
+      unkept = true;
     },
   };
 }
