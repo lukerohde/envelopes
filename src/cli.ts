@@ -27,10 +27,19 @@ import { formatFlows, summarise } from "./flows";
 import { formatFindings, lint } from "./lint";
 import { checkPlan, formatCheck } from "./check";
 
-function main(): void {
+/** The whole console tool, exported so the bundled build is the *same* tool
+ * rather than a second one.
+ *
+ * It used to be two. `cli-bundle.ts` had its own tiny main that printed a
+ * report and understood no arguments at all -- so every command llms.txt
+ * documents (`check`, `lint`, `--json`, `--real`, `--flows`) worked when run
+ * from source and failed for anybody who downloaded the published bundle,
+ * which is everybody it was written for. Nothing caught it, because the
+ * tests all ran the source. */
+export function runCli(argv: string[]): void {
   let args;
   try {
-    args = parseArgs(process.argv.slice(2));
+    args = parseArgs(argv);
   } catch (err) {
     console.error((err as Error).message);
     process.exit(1);
@@ -75,7 +84,7 @@ function main(): void {
 }
 
 // Only run when invoked directly (`npx tsx src/cli.ts ...`), not when
-// formatReport is imported for testing.
+// something in here is imported for testing.
 if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) {
-  main();
+  runCli(process.argv.slice(2));
 }

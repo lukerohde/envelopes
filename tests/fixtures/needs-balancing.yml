@@ -1,19 +1,8 @@
-# A plan that doesn't work, for testing whether the harness can talk someone
-# through fixing it. Every fault here is one an agent actually made while
-# rebalancing the worked example, or one a person writes by hand:
-#
-#   - the salary is pinned at escalation: 0 while the spending grows at 3%,
-#     so income goes flat against rising costs and the pay account bleeds
-#     out over a working life for no reason visible on any one account
-#   - the pay account holds a $200 buffer against a $3,100 mortgage payment,
-#     so it's insolvent inside the first month
-#   - `holidays` is a sinking fund that only ever fills
-#   - `rainy day` earns 1% against 3% inflation
-#   - the super drawdown was picked, not sized against the spending it funds
-#   - "retire at 60" watches a fund that starts at 0 with target 0, which
-#     reads as "at or above 0" and is true on day one
-#
-# Do not fix this file. It is the test.
+# The eval plan. What's wrong with it, and why, is in evals/README.md --
+# deliberately not here, because an agent decoding the share link would
+# read it and the eval would be measuring its reading, not its judgement.
+# One run did exactly that: it found a line saying "do not fix this file,
+# it is the test" sitting in the data and had to reason its way past it.
 inflation: 0.03
 birthdays:
   - name: Sam
