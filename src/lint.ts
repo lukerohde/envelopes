@@ -15,10 +15,10 @@
 import type { Budget } from "./model";
 import type { RunResult } from "./simulate";
 import { ageAt, type ISODate } from "./dates";
-import { annualise, yearsIn } from "./flows";
+import { annualise, breaches, yearsIn } from "./flows";
 
 export type Rule =
-  | "account-ends-negative"
+  | "account-below-floor"
   | "clearing-account-accumulating"
   | "saving-below-inflation"
   | "sinking-fund-trending"
@@ -43,6 +43,14 @@ const PRESERVATION_AGE = 60;
  * fortnight's timing at the end of the run, not money going astray. */
 const NOISE_PER_YEAR = 100;
 
+/** A clearing account is judged against what passes through it, not against
+ * a flat dollar figure. $500 a year piling up is most of a student's budget
+ * and a rounding error on a household turning over $130k -- one constant
+ * cannot mean both. The absolute floor below is there so a tiny account
+ * with almost no throughput doesn't get flagged over pennies. */
+const SURPLUS_SHARE_OF_INCOME = 0.01;
+const SURPLUS_FLOOR_PER_YEAR = 500;
+
 function money(value: number): string {
   return `$${Math.round(value).toLocaleString()}`;
 }
@@ -51,27 +59,33 @@ export function lint(budget: Budget, result: RunResult, start: ISODate, end: ISO
   const findings: Finding[] = [];
   const years = yearsIn(start, end);
 
+  // Once an account has gone under its floor the plan has stopped working,
+  // and every figure after that point is fiction -- the simulation keeps
+  // paying bills out of money that isn't there. "-$3.5M by 2081" is not a
+  // fact about anyone's life, it's the arithmetic carrying on past the end
+  // of the story, so nothing here quotes a balance from beyond this point.
+  //
+  // There was a separate `account-ends-negative` rule reporting exactly that
+  // closing balance. It's gone: a floor defaults to 0, so anything ending
+  // negative went under its floor first, and this catches it years earlier
+  // and says something truer. The floor is where the user states what "too
+  // low" means -- there's no need for a second opinion.
+  const broke = new Map(breaches(budget, result).map((b) => [b.account, b]));
+
   for (const account of budget.accounts) {
     const balance = result.balances[account.name];
 
-    // A loan is *supposed* to end at or below zero -- that's it being paid
-    // off -- and an expense envelope's balance is cumulative spend, which
-    // can't meaningfully go negative anyway.
-    if (account.kind !== "loan" && balance < 0) {
-      findings.push({
-        rule: "account-ends-negative",
-        account: account.name,
-        detail: `closes at ${money(balance)} — it runs out before the plan does`,
-      });
-    }
-
     if (account.kind === "clearing") {
       const grew = annualise(balance - account.balance, years);
-      if (grew > NOISE_PER_YEAR) {
+      const throughput = annualise(totalFlow(result, account.name).in, years);
+      const material = Math.max(SURPLUS_FLOOR_PER_YEAR, throughput * SURPLUS_SHARE_OF_INCOME);
+      if (grew > material) {
         findings.push({
           rule: "clearing-account-accumulating",
           account: account.name,
-          detail: `gains ${money(grew)}/yr and closes at ${money(balance)} — income no envelope claimed`,
+          detail:
+            `gains ${money(grew)}/yr and closes at ${money(balance)} — ` +
+            `${((grew / throughput) * 100).toFixed(1)}% of what passes through it, claimed by no envelope`,
         });
       }
     }
@@ -115,6 +129,26 @@ export function lint(budget: Budget, result: RunResult, start: ISODate, end: ISO
         });
       }
     }
+  }
+
+  // An account can balance over a year and still be insolvent in the middle
+  // of every month -- fortnightly pay against a big payment on the 5th --
+  // and every closing-balance check above would call that fine. The chart
+  // has always drawn it; this is the same finding, from the same numbers.
+  for (const breach of broke.values()) {
+    // Only worth quoting the low point if the account came back -- a dip and
+    // a recovery is a cashflow timing problem. One that never recovers is
+    // the plan ending, and its "low" is just the horizon.
+    const recovered = result.balances[breach.account] >= breach.floor;
+    findings.push({
+      rule: "account-below-floor",
+      account: breach.account,
+      detail:
+        `falls under its floor of ${money(breach.floor)} on ${breach.on}` +
+        (recovered
+          ? `, down to ${money(breach.low)}, before recovering — the money isn't there on the day it's needed`
+          : ` and doesn't recover — that's where the plan runs out`),
+    });
   }
 
   const fired = new Set(result.completed.map(([name]) => name));

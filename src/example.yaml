@@ -4,7 +4,7 @@ birthdays:
     born: '1980-05-20'
 accounts:
   - name: pay
-    balance: 3200
+    balance: 12000
     floor: 800
     kind: clearing
     rate: 0
@@ -59,7 +59,7 @@ accounts:
     offsets: null
 transfers:
   - name: salary
-    amount: 4500
+    amount: 4924
     every: fortnight
     day: '2026-08-07'
     into: pay
@@ -95,7 +95,7 @@ transfers:
     into: mortgage
     escalation: 0
   - name: into the offset
-    amount: 1900
+    amount: 1300
     every: month
     day: 5
     out_of: pay
@@ -114,7 +114,7 @@ transfers:
     out_of: travel
     escalation: 0
   - name: super contribution
-    amount: 540
+    amount: 1466
     every: month
     day: 15
     into: super
@@ -127,7 +127,7 @@ goals:
         amount: 0
         escalation: 0
       - name: mortgage freed-up saving
-        amount: 6800
+        amount: 8000
         every: month
         day: 5
         out_of: pay
@@ -152,14 +152,8 @@ goals:
         escalation: 0
       - name: into the offset
         amount: 0
-      - name: savings
-        amount: 0
-        escalation: 0
       - name: super contribution
         amount: 0
-      - name: super contribution tax
-        amount: 0
-        escalation: 0
       - name: bridge drawdown
         amount: 1900
         every: fortnight
@@ -185,25 +179,25 @@ goals:
         amount: 0
         escalation: 0
       - name: super drawdown
-        amount: 1650
+        amount: 2280
         every: fortnight
         day: '2026-08-07'
         out_of: super
         into: pay
       - name: car costs
-        amount: 200
+        amount: 400
         every: week
         day: sat
         out_of: pay
         into: car
       - name: groceries
-        amount: 250
+        amount: 277
         every: week
         day: sat
         out_of: pay
         into: groceries
       - name: bills
-        amount: 350
+        amount: 400
         every: fortnight
         day: '2026-08-07'
         out_of: pay
@@ -218,3 +212,10 @@ goals:
     by_age:
       person: Alex
       turns: 60
+  - name: super exhausted
+    account: super
+    target: 0
+    transfers:
+      - name: super drawdown
+        amount: 0
+    accounts: []

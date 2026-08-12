@@ -13,6 +13,8 @@ import { readFileSync } from "node:fs";
 import { load } from "../src/model";
 import { run } from "../src/simulate";
 import { lint } from "../src/lint";
+import { breaches } from "../src/flows";
+import { addDays, ageAt, horizonYears } from "../src/dates";
 
 function findings(yamlText: string, years = 20): string[] {
   const budget = load(yamlText);
@@ -44,22 +46,13 @@ describe("a plan with nothing wrong with it", () => {
   });
 });
 
-describe("account-ends-negative", () => {
-  it("catches the reference plan's actual bug -- super finishing below zero", () => {
-    const plan = `
-inflation: 0.03
-birthdays: [{name: alex, born: 1980-01-01}]
-accounts:
-  - {name: pay, balance: 0, kind: clearing}
-  - {name: super, balance: 100000, kind: investment, rate: 0.0}
-transfers:
-  - {name: drawdown, amount: 2000, every: fortnight, day: 2026-01-02, out_of: super, into: pay, escalation: 0}
-goals: []
-`;
-    expect(findings(plan)).toContain("account-ends-negative");
-  });
-
-  it("says which account and how far under", () => {
+// There was an `account-ends-negative` rule here too, reporting the closing
+// balance. It's gone, and deliberately: a floor defaults to 0, so anything
+// ending negative went under its floor first. This rule catches the same
+// plans years earlier and says something truer -- and reporting a balance
+// from beyond the point a plan collapsed is quoting fiction.
+describe("a fund drawn down until it's gone", () => {
+  it("is caught, and dated to when it ran out rather than the horizon", () => {
     const budget = load(`
 inflation: 0
 birthdays: []
@@ -70,10 +63,29 @@ transfers:
   - {name: drawdown, amount: 500, every: month, day: 5, out_of: super, into: pay, escalation: 0}
 goals: []
 `);
-    const result = run(budget, "2026-01-01", "2028-01-01");
-    const finding = lint(budget, result, "2026-01-01", "2028-01-01").find((f) => f.rule === "account-ends-negative")!;
-    expect(finding.account).toBe("super");
-    expect(finding.detail).toMatch(/-?[\d,]+/);
+    const result = run(budget, "2026-01-01", "2036-01-01");
+    const findings = lint(budget, result, "2026-01-01", "2036-01-01");
+    const finding = findings.find((f) => f.rule === "account-below-floor" && f.account === "super")!;
+    // $1,000 at $500/month is gone in the third month, not in 2036
+    expect(finding.detail).toContain("2026-03");
+    expect(finding.detail).toContain("doesn't recover");
+  });
+
+  it("says nothing about a balance from after the plan collapsed", () => {
+    const budget = load(`
+inflation: 0
+birthdays: []
+accounts:
+  - {name: pay, balance: 0, kind: clearing}
+  - {name: super, balance: 1000, kind: investment}
+transfers:
+  - {name: drawdown, amount: 500, every: month, day: 5, out_of: super, into: pay, escalation: 0}
+goals: []
+`);
+    const result = run(budget, "2026-01-01", "2036-01-01");
+    for (const f of lint(budget, result, "2026-01-01", "2036-01-01")) {
+      expect(f.detail).not.toContain("-59,500"); // where the arithmetic ends up
+    }
   });
 });
 
@@ -157,6 +169,68 @@ transfers:
 goals: []
 `;
     expect(findings(plan)).not.toContain("sinking-fund-trending");
+  });
+});
+
+// The rule that would have caught two separate bugs during this work: a
+// travel fund spending from empty down to -$36,000, and a pay account that
+// balanced annually while hitting its floor eight weeks in. Both were
+// invisible to every check that looks only at closing balances -- which was
+// every check there was. The page has always drawn this; nothing else knew.
+describe("account-below-floor", () => {
+  it("catches an account that dips under its floor mid-run and recovers", () => {
+    const plan = `
+inflation: 0
+birthdays: []
+accounts:
+  - {name: pay, balance: 1000, floor: 800, kind: clearing}
+  - {name: bills, balance: 0, kind: expense}
+transfers:
+  - {name: salary, amount: 2400, every: month, day: 20, into: pay, escalation: 0}
+  - {name: rates, amount: 2400, every: month, day: 5, out_of: pay, into: bills, escalation: 0}
+goals: []
+`;
+    // ends every month back at 1,000, but the 5th comes before the 20th
+    expect(findings(plan)).toContain("account-below-floor");
+  });
+
+  it("says how far under and when", () => {
+    const budget = load(`
+inflation: 0
+birthdays: []
+accounts:
+  - {name: pay, balance: 1000, floor: 800, kind: clearing}
+  - {name: bills, balance: 0, kind: expense}
+transfers:
+  - {name: salary, amount: 2400, every: month, day: 20, into: pay, escalation: 0}
+  - {name: rates, amount: 2400, every: month, day: 5, out_of: pay, into: bills, escalation: 0}
+goals: []
+`);
+    const result = run(budget, "2026-01-01", "2028-01-01");
+    const f = lint(budget, result, "2026-01-01", "2028-01-01").find((x) => x.rule === "account-below-floor")!;
+    expect(f.account).toBe("pay");
+    expect(f.detail).toMatch(/2026-0[12]-\d\d/);
+  });
+
+  it("leaves an account that stays above its floor alone", () => {
+    expect(findings(clean())).not.toContain("account-below-floor");
+  });
+
+  // A loan starts high and is paid down to zero; that isn't a breach.
+  it("doesn't flag a loan paying itself off", () => {
+    const plan = `
+inflation: 0
+birthdays: []
+accounts:
+  - {name: pay, balance: 100000, kind: clearing}
+  - {name: mortgage, balance: 10000, floor: 0, kind: loan}
+transfers:
+  - {name: salary, amount: 500, every: month, day: 1, into: pay, escalation: 0}
+  - {name: repayment, amount: 500, every: month, day: 5, out_of: pay, into: mortgage, escalation: 0}
+goals:
+  - {name: paid off, account: mortgage, target: 0, transfers: []}
+`;
+    expect(findings(plan)).not.toContain("account-below-floor");
   });
 });
 
@@ -253,19 +327,48 @@ goals: []
   });
 });
 
-// The worked example is what an agent copies when it builds someone a plan.
-// It used to end with super at -$2.76M and a pay account quietly banking
-// years of unclaimed surplus, and nothing said so. It's been balanced, and
-// this is what stops it drifting back: the start date matches the Phase 0
-// snapshot, because a plan tuned to balance is tuned from a given date.
+// The worked example is what an agent copies when it builds someone a plan,
+// so what it demonstrates matters. It should hold together through the
+// working years and the bridge, and then run out somewhere in the eighties
+// -- because inflation eats every super balance eventually, and pretending
+// otherwise would need either a fortune or unrealistic spending. Where it
+// runs out is the interesting question, and it's left to the reader.
 describe("the shipped example", () => {
   const EXAMPLE = readFileSync(new URL("../src/example.yaml", import.meta.url), "utf-8");
-  const SNAPSHOT = JSON.parse(readFileSync(new URL("./fixtures/example.expected.json", import.meta.url), "utf-8"));
 
-  it("trips no rule at all", () => {
+  function atPageHorizon() {
     const budget = load(EXAMPLE);
-    const end = `${2026 + SNAPSHOT.years}-08-12`;
-    const result = run(budget, SNAPSHOT.start, end);
-    expect(lint(budget, result, SNAPSHOT.start, end)).toEqual([]);
+    // the same window the page uses: youngest person turning 100
+    const start = "2026-08-13";
+    const end = addDays(start, Math.round(horizonYears(budget.birthdays, start) * 365.25));
+    return { budget, start, end, result: run(budget, start, end) };
+  }
+
+  it("demonstrates early retirement carried by a bridge fund", () => {
+    const { result } = atPageHorizon();
+    const names = result.completed.map(([n]) => n);
+    expect(names).toContain("retire at 55");
+    expect(names).toContain("super takes over");
+    // the bridge fund carries the years between retiring and super unlocking
+    const retire = result.completed.find(([n]) => n === "retire at 55")![1];
+    const superOn = result.completed.find(([n]) => n === "super takes over")![1];
+    expect(superOn > retire).toBe(true);
+  });
+
+  it("holds together until well into the eighties", () => {
+    const { budget, result } = atPageHorizon();
+    const born = budget.birthdays[0].born;
+    const out = breaches(budget, result);
+    expect(out).toHaveLength(1);
+    expect(ageAt(born, out[0].on)).toBeGreaterThanOrEqual(80);
+  });
+
+  // Everything else -- surplus pooling, sinking funds that only fill, savings
+  // losing to inflation, a goal that never fires -- is a modelling mistake
+  // rather than a fact of life, and the example shouldn't have any.
+  it("has no modelling mistakes, only the ending", () => {
+    const { budget, result, start, end } = atPageHorizon();
+    const other = lint(budget, result, start, end).filter((f) => f.rule !== "account-below-floor");
+    expect(other).toEqual([]);
   });
 });

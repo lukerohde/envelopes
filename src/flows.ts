@@ -12,7 +12,7 @@
  * and a monthly one comparable without doing the conversion in your head.
  */
 
-import type { AccountFlow, Phase } from "./simulate";
+import type { AccountFlow, Phase, RunResult } from "./simulate";
 import type { Budget } from "./model";
 import { deflate } from "./report";
 import type { ISODate } from "./dates";
@@ -54,6 +54,55 @@ export function surplusOf(phase: Phase, budget: Budget): number {
     total += flow.in - flow.out + flow.interest;
   }
   return total;
+}
+
+/** The lowest an account reached across the whole run, and when.
+ *
+ * The run records this per phase as it walks; this just takes the worst of
+ * them. One place answers the question, because three things need the same
+ * answer and they must not disagree: the linter names it, the chart marks
+ * it, and the timeline stops there. */
+export function lowestOf(result: RunResult, account: string): { low: number; on: ISODate } | null {
+  let worst: { low: number; on: ISODate } | null = null;
+  for (const phase of result.phases) {
+    const flow = phase.accounts[account];
+    if (!flow) continue;
+    if (!worst || flow.low < worst.low) worst = { low: flow.low, on: flow.lowOn };
+  }
+  return worst;
+}
+
+export interface Breach {
+  account: string;
+  /** When it first went under -- where the plan stopped working. */
+  on: ISODate;
+  /** How bad it got, and when. Often much later than `on`. */
+  low: number;
+  lowOn: ISODate;
+  floor: number;
+}
+
+/** Every account that dips under its own floor, earliest first.
+ *
+ * Strictly below, not at-or-below: sitting exactly on a $0 floor is a normal
+ * resting state for a pure ledger account, and a mortgage paid off to
+ * exactly zero is success. A loan is skipped outright -- starting high and
+ * being paid down is the whole point of one. */
+export function breaches(budget: Budget, result: RunResult): Breach[] {
+  const found: Breach[] = [];
+  for (const account of budget.accounts) {
+    if (account.kind === "loan") continue;
+    let first: ISODate | null = null;
+    for (const phase of result.phases) {
+      const on = phase.accounts[account.name]?.breachedOn;
+      if (on && (first === null || on < first)) first = on;
+    }
+    if (first === null) continue;
+    const worst = lowestOf(result, account.name)!;
+    found.push({ account: account.name, on: first, low: worst.low, lowOn: worst.on, floor: account.floor });
+  }
+  found.sort((a, b) => (a.on < b.on ? -1 : a.on > b.on ? 1 : 0));
+  return found;
 }
 
 export interface FlowRow {

@@ -156,12 +156,26 @@ against the row it came from rather than taking it on faith. The rules:
 
 | rule | what it means |
 |---|---|
-| `account-ends-negative` | an account runs out before the plan does |
+| `account-below-floor` | the balance drops under the floor the account declares — the money isn't there on the day it's needed |
 | `clearing-account-accumulating` | income no envelope ever claimed, piling up |
 | `saving-below-inflation` | grows in dollars, shrinks in what it buys |
 | `sinking-fund-trending` | money in, none out, forever — the spending it saved for isn't modelled |
 | `goal-never-fires` | never reached, so everything downstream of it never happens |
 | `super-before-preservation-age` | super drawn before 60 |
+
+**`account-below-floor` is not always an error.** Read the date it gives you.
+Falling under the floor at 46, while someone is still working, is insolvency
+— income and outgoings don't line up and the plan is broken today. Falling
+under it at 85 is the plan running its course: their money lasts that long
+and no longer. Inflation eats every super balance eventually, and the only
+escape is a balance big enough to live on its real return, which most people
+don't have. **Don't "fix" that by cutting their spending to something they'd
+never accept.** Tell them the age, and let them decide whether to work
+longer, save more, or spend less.
+
+Nothing reported after that date is real, either — the simulation keeps
+paying bills out of money that isn't there, so the linter won't quote a
+balance from beyond the point a plan collapsed, and neither should you.
 
 A clean run means no rule tripped. It does **not** mean the plan is good —
 the linter has no idea what they want. Read the checklist below too.
@@ -454,10 +468,20 @@ Two things to know:
 
 One person aiming to retire at 55 — illustrative, not anyone's real numbers, but a
 genuine example of everything above working together: an income, an offset mortgage,
-week-to-week envelopes, super, and three goals that hand off to each other in
+week-to-week envelopes, super, and four goals that hand off to each other in
 sequence.
 
-Two things in it are worth copying into whatever you write for someone else.
+The income is a $180k package: about $4,924 a fortnight after tax and Medicare, and
+$1,466 a month landing in super after the 15% contributions tax. That's the shape to
+copy — model take-home pay and net contributions, not gross figures, because gross
+money never arrives anywhere.
+
+It works because the pieces are sequenced. The house is paid off at 52 while still
+earning; the repayment then becomes retirement saving; that builds a bridge fund
+which carries the years between retiring at 55 and super unlocking; super then runs
+to 83. Take any one of those away and the plan doesn't reach.
+
+Three things in it are worth copying into whatever you write for someone else.
 
 **The order matters as much as the numbers.** The house is paid off at 52, while
 still working, and only then does that repayment become retirement saving. Get that
@@ -473,11 +497,18 @@ stay matched as the years pass. The exception is the mortgage repayment, fixed a
 Get that pairing wrong and the plan fails slowly. A salary held flat against spending
 that grows at 3% drains the pay account over a working life, for no reason you can
 see on any single account. What matters is that each drawdown and the spending it
-funds agree. An escalating
-drawdown against fixed spending starves the pay account for years and then floods it
-while the account it draws from empties; a fixed drawdown against escalating spending
-drains the pay account instead. Both failures are invisible on the accounts you're
-looking at — you only see them on the account being drawn down, so go and look.
+funds agree. An escalating drawdown against fixed spending starves the pay account
+for years and then floods it while the account it draws from empties; a fixed
+drawdown against escalating spending drains the pay account instead. Both failures
+are invisible on the accounts you're looking at — you only see them on the account
+being drawn down, so go and look.
+
+**A drawdown is sized by the spending, not chosen.** Add up what actually leaves the
+pay account in a phase — weekly groceries, fortnightly bills, monthly everything else
+— and set the drawdown to that. Guess it low and the pay account bleeds out years
+before the fund it's protecting is empty; guess it high and money piles up in pay
+while the fund drains early. `--flows` gives you those subtotals annualised, so you
+can read the number off instead of doing the arithmetic.
 
 ```yaml
 inflation: 0.03
@@ -486,7 +517,7 @@ birthdays:
     born: '1980-05-20'
 accounts:
   - name: pay
-    balance: 3200
+    balance: 12000
     floor: 800
     kind: clearing
     rate: 0
@@ -541,7 +572,7 @@ accounts:
     offsets: null
 transfers:
   - name: salary
-    amount: 4500
+    amount: 4924
     every: fortnight
     day: '2026-08-07'
     into: pay
@@ -577,7 +608,7 @@ transfers:
     into: mortgage
     escalation: 0
   - name: into the offset
-    amount: 1900
+    amount: 1300
     every: month
     day: 5
     out_of: pay
@@ -596,7 +627,7 @@ transfers:
     out_of: travel
     escalation: 0
   - name: super contribution
-    amount: 540
+    amount: 1466
     every: month
     day: 15
     into: super
@@ -609,7 +640,7 @@ goals:
         amount: 0
         escalation: 0
       - name: mortgage freed-up saving
-        amount: 6800
+        amount: 8000
         every: month
         day: 5
         out_of: pay
@@ -634,14 +665,8 @@ goals:
         escalation: 0
       - name: into the offset
         amount: 0
-      - name: savings
-        amount: 0
-        escalation: 0
       - name: super contribution
         amount: 0
-      - name: super contribution tax
-        amount: 0
-        escalation: 0
       - name: bridge drawdown
         amount: 1900
         every: fortnight
@@ -667,25 +692,25 @@ goals:
         amount: 0
         escalation: 0
       - name: super drawdown
-        amount: 1650
+        amount: 2280
         every: fortnight
         day: '2026-08-07'
         out_of: super
         into: pay
       - name: car costs
-        amount: 200
+        amount: 400
         every: week
         day: sat
         out_of: pay
         into: car
       - name: groceries
-        amount: 250
+        amount: 277
         every: week
         day: sat
         out_of: pay
         into: groceries
       - name: bills
-        amount: 350
+        amount: 400
         every: fortnight
         day: '2026-08-07'
         out_of: pay
@@ -700,6 +725,13 @@ goals:
     by_age:
       person: Alex
       turns: 60
+  - name: super exhausted
+    account: super
+    target: 0
+    transfers:
+      - name: super drawdown
+        amount: 0
+    accounts: []
 ```
 
 Notice "super takes over" uses `wait_for_both`. It watches the bridge fund, not
@@ -728,8 +760,21 @@ And check the size of each drawdown against what's actually being spent. A drawd
 larger than the spending it funds doesn't look wrong on a chart — it just quietly
 piles money up in a pay account while emptying the retirement account that fed it.
 
-**This example lints clean**, and that took work: balancing it meant cutting the
-post-60 spending to what super can actually sustain, and letting the salary escalate
-alongside the spending it pays for. Run `lint` on whatever you write and expect to
-iterate the same way. A plan that balances on the first try usually means something
-isn't modelled yet.
+**This example runs out at 85, and that is not a bug.** `lint` reports one finding
+against it — `account-below-floor` on the pay account in 2065 — and that finding is
+the answer, not an error: the money lasts to 85 and no longer.
+
+Inflation eats every super balance eventually. The only escape is a balance so large
+you can live on its real return, which most people don't have and can't get to by
+tidying a config. So don't chase a plan that survives to the end of the chart. Get
+someone comfortably into their eighties and then tell them the age, plainly. Whether
+they'd rather work two more years, save more now, or accept spending less later is
+their decision and nobody else's — and it is a much more useful conversation than a
+projection that pretends the problem isn't there.
+
+What the example *doesn't* have is any of the other findings, and that's the bit
+worth copying. Balancing it took real work: the salary had to escalate alongside the
+spending it funds, the super drawdown had to be sized to what's actually being spent
+rather than picked, and the whole thing had to hold up over the full run rather than
+on average. Expect to iterate the same way. A plan that balances first try usually
+means something isn't modelled yet.

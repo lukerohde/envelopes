@@ -42,6 +42,20 @@ export interface AccountFlow {
   drawn: number;
   interest: number;
   closing: number;
+  /** The lowest this account got during the phase, and when. Kept as two
+   * numbers rather than a history because the question "did this ever dip
+   * below its floor" needs every day, and keeping every day for every
+   * account is 14,600 rows apiece. An account can balance over a year and
+   * still be insolvent in the middle of every month -- that gap is how a
+   * plan passes every closing-balance check and still fails on the page. */
+  low: number;
+  lowOn: ISODate;
+  /** The *first* day the balance went under the account's floor, which is a
+   * different question to where it got worst -- a plan can slide under in
+   * 2069 and bottom out in 2081. The first date is where the plan stopped
+   * working, so it's what the chart stops at and what a finding leads with;
+   * the low is how bad it got. Null if it never breached. */
+  breachedOn: ISODate | null;
   /** Whether the run treated arriving money as paying this down rather than
    * building it up. `in` is always gross cashflow -- a $500 mortgage payment
    * is $500 arriving, however the balance then moves -- so without this flag
@@ -93,7 +107,9 @@ export function run(budget: Budget, start: ISODate, end: ISODate, track: string[
   const history: History = {};
   for (const name of track) history[name] = [];
 
-  const ledger = new Ledger(start, balances, debts);
+  const floors: Record<string, number> = {};
+  for (const account of budget.accounts) floors[account.name] = account.floor;
+  const ledger = new Ledger(start, balances, debts, floors);
 
   let when = start;
   while (when < end) {
@@ -109,6 +125,7 @@ export function run(budget: Budget, start: ISODate, end: ISODate, track: string[
         ledger.closePhase(when, completed.slice(before).map(([name]) => name), balances);
       }
     }
+    ledger.recordLows(balances, when);
     for (const name of track) history[name].push([when, balances[name]]);
     when = addDays(when, 1);
   }
@@ -123,12 +140,30 @@ class Ledger {
   private done: Phase[] = [];
   private current: Phase;
 
-  constructor(start: ISODate, balances: Balances, private debts: Set<string>) {
+  constructor(start: ISODate, balances: Balances, private debts: Set<string>, private floors: Record<string, number>) {
     this.current = openPhase("from the start", start, balances, debts);
   }
 
   record(account: string, field: "in" | "out" | "drawn" | "interest", amount: number): void {
     this.current.accounts[account][field] += amount;
+  }
+
+  /** Once a day, after everything has moved. Two comparisons per account --
+   * cheap enough to always be on, which matters because the failure it
+   * catches is invisible to every other number here. */
+  recordLows(balances: Balances, when: ISODate): void {
+    for (const [name, flow] of Object.entries(this.current.accounts)) {
+      if (balances[name] < flow.low) {
+        flow.low = balances[name];
+        flow.lowOn = when;
+      }
+      // strictly below, not at-or-below -- sitting exactly on a $0 floor is
+      // a normal resting state for a pure ledger account, and a mortgage
+      // paid off to exactly zero is success, not a breach
+      if (flow.breachedOn === null && balances[name] < this.floors[name]) {
+        flow.breachedOn = when;
+      }
+    }
   }
 
   closePhase(when: ISODate, goalNames: string[], balances: Balances): void {
@@ -158,6 +193,9 @@ function openPhase(name: string, start: ISODate, balances: Balances, debts: Set<
       drawn: 0,
       interest: 0,
       closing: 0,
+      low: balances[account],
+      lowOn: start,
+      breachedOn: null,
       debt: debts.has(account),
     };
   }

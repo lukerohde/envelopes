@@ -9,7 +9,7 @@ import { addDays, daysBetween, horizonYears, todayISO, type ISODate } from "../d
 import { run, type History, type Phase } from "../simulate";
 import { groupAccounts, toBudget, type UIState, type UIGoal, type UIPerson } from "../state";
 import { sortMilestones } from "../milestones";
-import { summarise } from "../flows";
+import { breaches, summarise } from "../flows";
 import { renderFlows } from "./flows";
 import type { Budget } from "../model";
 
@@ -389,27 +389,24 @@ export function createSimulationView(elements: Elements) {
       renderTicks();
       const end = addDays(start, Math.round(absMax * 365.25));
       const trackNames = state.accounts.map((a) => a.name);
-      const { history, completed, phases } = run(budget, start, end, trackNames);
+      const result = run(budget, start, end, trackNames);
+      const { history, completed, phases } = result;
       lastPhases = phases;
       lastBudget = budget;
 
       series = {};
-      breachYear = Infinity;
-      breachAccount = null;
       for (const account of state.accounts) {
         const days: History[string] = history[account.name] ?? [];
-        const points = yearPoints(days, start);
-        series[account.name] = { floor: account.floor, points };
-        // strictly below, not at-or-below -- sitting exactly on a $0 floor
-        // is a normal resting state for a pure ledger account, and a
-        // mortgage paid off to exactly zero is success, not a breach
-        for (const [year, value] of points) {
-          if (value < account.floor) {
-            if (year < breachYear) { breachYear = year; breachAccount = account.name; }
-            break;
-          }
-        }
+        series[account.name] = { floor: account.floor, points: yearPoints(days, start) };
       }
+
+      // The run already worked out how low every account got and when, so
+      // this reads that rather than scanning for it again. Two detectors for
+      // one fact is two chances to disagree -- and the linter reports this
+      // same breach, from these same numbers, under account-below-floor.
+      const worst = breaches(budget, result)[0];
+      breachYear = worst ? daysBetween(start, worst.on) / 365.25 : Infinity;
+      breachAccount = worst ? worst.account : null;
 
       // the badge next to the account picker has always said "auto-selected
       // -- hit its floor", but nothing ever did the selecting: you only saw
