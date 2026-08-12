@@ -6,37 +6,37 @@ accounts:
   - name: pay
     balance: 3200
     floor: 800
-    kind: everyday
+    kind: clearing
     rate: 0
     offsets: null
   - name: groceries
     balance: 0
     floor: 0
-    kind: everyday
+    kind: expense
     rate: 0
     offsets: null
   - name: bills
     balance: 0
     floor: 0
-    kind: everyday
+    kind: expense
     rate: 0
     offsets: null
   - name: everyday
     balance: 0
     floor: 0
-    kind: everyday
+    kind: expense
     rate: 0
     offsets: null
   - name: car
     balance: 0
     floor: 0
-    kind: everyday
+    kind: expense
     rate: 0
     offsets: null
   - name: travel
-    balance: 0
+    balance: 6000
     floor: 0
-    kind: everyday
+    kind: sinking
     rate: 0
     offsets: null
   - name: mortgage
@@ -46,7 +46,7 @@ accounts:
     rate: 0.061
     offsets: null
   - name: early retirement
-    balance: 0
+    balance: 5000
     floor: 0
     kind: saving
     rate: 0.04
@@ -54,7 +54,7 @@ accounts:
   - name: super
     balance: 320000
     floor: 0
-    kind: saving
+    kind: investment
     rate: 0.07
     offsets: null
 transfers:
@@ -63,7 +63,6 @@ transfers:
     every: fortnight
     day: '2026-08-07'
     into: pay
-    escalation: 0
   - name: groceries
     amount: 150
     every: week
@@ -96,18 +95,29 @@ transfers:
     into: mortgage
     escalation: 0
   - name: into the offset
-    amount: 1200
+    amount: 1900
     every: month
     day: 5
     out_of: pay
     into: early retirement
+  - name: saving for a holiday
+    amount: 500
+    every: month
+    day: 5
+    out_of: pay
+    into: travel
+    escalation: 0
+  - name: the holiday
+    amount: 6000
+    every: year
+    day: 12-20
+    out_of: travel
     escalation: 0
   - name: super contribution
     amount: 540
     every: month
     day: 15
     into: super
-    escalation: 0
 goals:
   - name: pay off the house
     account: mortgage
@@ -117,7 +127,7 @@ goals:
         amount: 0
         escalation: 0
       - name: mortgage freed-up saving
-        amount: 5000
+        amount: 6800
         every: month
         day: 5
         out_of: pay
@@ -151,7 +161,7 @@ goals:
         amount: 0
         escalation: 0
       - name: bridge drawdown
-        amount: 1800
+        amount: 1900
         every: fortnight
         day: '2026-08-07'
         out_of: early retirement
@@ -166,38 +176,39 @@ goals:
     by_age:
       person: Alex
       turns: 55
-  - name: super access at 60
-    account: super
+  - name: super takes over
+    account: early retirement
     target: 0
+    wait_for_both: true
     transfers:
       - name: bridge drawdown
         amount: 0
         escalation: 0
       - name: super drawdown
-        amount: 2250
+        amount: 1650
         every: fortnight
         day: '2026-08-07'
         out_of: super
         into: pay
       - name: car costs
-        amount: 400
+        amount: 200
         every: week
         day: sat
         out_of: pay
         into: car
       - name: groceries
-        amount: 277
+        amount: 250
         every: week
         day: sat
         out_of: pay
         into: groceries
       - name: bills
-        amount: 400
+        amount: 350
         every: fortnight
         day: '2026-08-07'
         out_of: pay
         into: bills
-      - name: travel
+      - name: saving for a holiday
         amount: 500
         every: month
         day: 5
@@ -207,8 +218,3 @@ goals:
     by_age:
       person: Alex
       turns: 60
-  - name: 'Old & broke'
-    account: super
-    target: 1000
-    transfers: []
-    accounts: []

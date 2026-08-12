@@ -46,7 +46,201 @@ lifetime, modelled as data instead of hand-waved.
 - This app never calls you or any AI service itself, and never asks for an API key.
   You are here because the person brought you here, on their own terms.
 
-## Your job
+## Two ways you'll arrive here
+
+**They have nothing yet** — you're building a plan from scratch. Go to
+"Starting from nothing", below. Interview them first; don't write YAML until
+you have.
+
+**They handed you a link** — something like
+`https://envelopes.lukeroh.de/#H4sIAAAA...`. That fragment *is* their plan,
+gzipped. Go to "You've been handed an existing plan". Read it, run it, and
+hand back a new link — don't start over, and don't reimplement the engine to
+read it.
+
+## Getting the engine
+
+Whichever way you arrived, you can run the real projection instead of
+guessing at it. The whole engine is published as one self-contained
+JavaScript file — no clone, no package install, no Docker:
+
+    curl -O https://envelopes.lukeroh.de/envelopes-cli.mjs   # CLI, ~70KB
+    node envelopes-cli.mjs my-draft.yml
+    node envelopes-cli.mjs --json my-draft.yml    # machine-readable
+    node envelopes-cli.mjs --real my-draft.yml    # in today's dollars
+    node envelopes-cli.mjs --flows my-draft.yml   # annual in/out/net per phase
+    node envelopes-cli.mjs lint my-draft.yml      # named findings
+
+    curl -O https://envelopes.lukeroh.de/envelopes.mjs       # library, ~72KB
+
+**Prefer `--json`.** The text output is column-aligned for a human to read;
+parsing it means a change to the padding can break whatever you built. The
+JSON carries nominal *and* real balances together, so you don't have to
+decide up front which you wanted.
+
+**Nominal figures mislead over a 40-year run.** $1.66M of super in 2038 is
+about $1.16M in today's money. Before you tell someone a number that far
+out, look at the real one — `--real`, or the `real` field in the JSON.
+
+Zero dependencies, Node ≥18. `envelopes.mjs` exports:
+
+| export | what it does |
+|---|---|
+| `simulate(yamlText, opts)` | run a plan, get balances, milestones, history |
+| `report(yamlText, opts)` | the same text the CLI prints |
+| `reportJson(yamlText, opts)` | the same run as an object, nominal and real |
+| `deflate(amount, inflation, years)` | a future amount in today's dollars |
+| `lintPlan(yamlText, opts)` | named findings — what's wrong with this plan |
+| `summarise(phases, budget, start, real)` | annual in/out/net per account, per phase |
+| `load(yamlText)` | parse and validate, without running |
+| `run(budget, start, end, track)` | the raw engine, if you already have a `Budget` |
+| `formatReport(...)` | format a finished run as text |
+| `decodeShareUrl(url)` | a share link → the YAML inside it |
+| `encodeShareUrl(yamlText)` | YAML → a share link to hand back |
+| `ageAt`, `addDays`, `todayISO` | date helpers the engine uses |
+
+The four share-link functions are `async`; everything else is synchronous.
+
+**This is a JavaScript path.** If your sandbox only runs Python, don't
+reimplement the engine — the day-by-day interest, offset and goal-cascade
+behaviour is not something to guess at. There's a Python decode recipe below
+for reading a link, but for *running* a plan, write the YAML and let the
+person paste it into the site, which does the same calculation in their
+browser.
+
+If you'd rather work from source, clone https://github.com/lukerohde/envelopes
+and run `npm install && npx tsx src/cli.ts my-draft.yml`. That repo's
+`Makefile` wraps everything in Docker, which your sandbox almost certainly
+doesn't have — use the npm commands directly, or the published bundle above.
+`AGENTS.md` in that repo is for a *coding* agent working on the app itself,
+not for building someone's budget.
+
+## You've been handed an existing plan
+
+### 1. Decode the link
+
+The plan is gzipped and base64url-encoded into the URL fragment. With the
+bundle:
+
+    import { decodeShareUrl } from "./envelopes.mjs";
+    const yamlText = await decodeShareUrl("<share url>");
+
+If you only have Python, this needs no packages:
+
+```bash
+python3 -c "
+import base64, gzip, sys
+s = sys.argv[1].split('#',1)[1].replace('-','+').replace('_','/')
+open('plan.yml','wb').write(gzip.decompress(base64.b64decode(s + '='*(-len(s)%4))))
+" "<share url>"
+```
+
+Either way you now have their actual plan as YAML. The rest of this file —
+the schema, the worked example — tells you how to read it.
+
+### 2. Run it before you say anything about it
+
+    node envelopes-cli.mjs plan.yml
+
+You now have real milestones and real closing balances. Say those, not
+impressions of the config.
+
+### 3. Let the linter do the first pass
+
+    node envelopes-cli.mjs lint plan.yml
+    node envelopes-cli.mjs lint --json plan.yml
+
+Named findings, and it exits non-zero when there are any. Each one reads the
+same per-phase flows `--flows` prints, so you can always check a finding
+against the row it came from rather than taking it on faith. The rules:
+
+| rule | what it means |
+|---|---|
+| `account-ends-negative` | an account runs out before the plan does |
+| `clearing-account-accumulating` | income no envelope ever claimed, piling up |
+| `saving-below-inflation` | grows in dollars, shrinks in what it buys |
+| `sinking-fund-trending` | money in, none out, forever — the spending it saved for isn't modelled |
+| `goal-never-fires` | never reached, so everything downstream of it never happens |
+| `super-before-preservation-age` | super drawn before 60 |
+
+A clean run means no rule tripped. It does **not** mean the plan is good —
+the linter has no idea what they want. Read the checklist below too.
+
+### 4. Then review it yourself
+
+These are the failures that show up again and again, and most of them are
+invisible unless you go looking at the right account:
+
+- **An account ending negative.** Especially super or a bridge fund. This is
+  the single most common serious error and it doesn't announce itself.
+- **A drawdown that doesn't match the spending it funds.** A drawdown larger
+  than the spending quietly piles money up in a pay account while emptying
+  the account that fed it; smaller, and the pay account bleeds out. You can
+  only see either one on the account being drawn *from*.
+- **Escalation mismatches.** An escalating drawdown against fixed spending,
+  or the reverse. Check that each drawdown and the spending it funds agree.
+- **Savings below inflation.** A `rate` under the config's `inflation` means
+  the balance grows in dollars and shrinks in what it buys.
+- **A sinking fund that only trends up.** Money in, none out, forever — a
+  holiday or Christmas fund with no spending modelled against it.
+- **A goal that never fires.** If it isn't in the milestones, its transfer
+  overrides never happened, and everything downstream of it is wrong.
+- **Super drawn before preservation age.** In Australia that's 60 for anyone
+  retiring now. A bridge fund that runs dry early is the usual cause.
+- **A transfer still running that nothing pays for any more.** Every transfer
+  a goal starts keeps going until something stops it. Walk the plan forward
+  and ask of each one: what is still funding this?
+
+### 5. Hand back a new link
+
+An edit that only exists in your chat window is not a change to their plan.
+All four steps, or you've wasted their time:
+
+1. Decode the link to `plan.yml`.
+2. Edit with **minimal diffs**. Goals reference transfers and accounts by
+   exact string, so names must stay byte-identical — rename an account and
+   every goal pointing at it silently stops matching.
+3. Re-run and show before/after milestones, so they can see what your change
+   actually did.
+4. Re-encode and give them the new link:
+
+```js
+import { readFileSync } from "node:fs";
+import { encodeShareUrl } from "./envelopes.mjs";
+console.log(await encodeShareUrl(readFileSync("plan.yml", "utf-8")));
+```
+
+If the resulting URL is too long to paste comfortably, give them the YAML
+instead and tell them to paste it into "Edit as YAML" on the site.
+
+### 6. Iterate, don't speculate
+
+A 40-year projection runs in milliseconds, so test your ideas instead of
+reasoning about them. `simulate()` takes the YAML *text*, not a parsed
+object:
+
+```js
+import { simulate } from './envelopes.mjs';
+const s = simulate(yamlText, {
+  years: 40,            // default 40
+  start: '2026-08-12',  // default today
+  track: ['pay', 'early retirement']   // per-account daily timeseries
+});
+s.completed   // [["pay off the house","2032-11-05"], ...]
+s.balances    // closing balances
+s.history     // { "pay": [["2026-08-12", 3200], ...] }  ~14,600 rows
+```
+
+**Variant diffing.** Copy the YAML, change one thing, re-run, diff
+`completed`. That's how you answer "what if we retired at $500k" — with two
+dates, not an opinion.
+
+**Sensitivity.** Loop over each transfer amount, bump it, record the
+milestone deltas, sort by effect size. A few dozen runs, still under a
+second, and it tells you which knobs actually matter before you start
+suggesting changes.
+
+## Starting from nothing
 
 ### 1. Interview them first — properly
 
@@ -85,53 +279,22 @@ went — that gap is usually the most useful thing in the conversation.
 
 ### 2. Write a YAML config matching the schema below.
 
-### 3. Hand it over
+### 3. Check it, then hand it over
 
-Tell them: "Paste this into 'Edit as YAML' at https://envelopes.lukeroh.de — click the
-toggle near the top of the page, paste, and it'll build the rest of the page from what
-you gave it."
+Run it first. A config that looks right and quietly sends an account to minus forty
+thousand dollars is not a helpful thing to give someone — see "Getting the engine"
+above, and the review checklist, which applies just as much to a plan you wrote
+yourself as to one you were handed.
 
-Don't try to construct a share link yourself — that requires gzip-compressing the
-YAML and base64url-encoding it into a URL fragment exactly right, which is easy to get
-subtly wrong. Plain YAML text is robust; a hand-reimplemented binary encoding is not.
-The person can make their own share link with one click once they're happy with what
-you've given them.
+Then tell them: "Paste this into 'Edit as YAML' at https://envelopes.lukeroh.de —
+click the toggle near the top of the page, paste, and it'll build the rest of the page
+from what you gave it."
 
-## If you can run code, check your work first
-
-You can run the real engine on a draft config and see the actual numbers before
-handing anything back. This is worth doing: a config that looks right and quietly
-sends an account to minus forty thousand dollars is not a helpful thing to give
-someone.
-
-The whole engine is published as one self-contained JavaScript file. No clone, no
-package install, no Docker:
-
-    curl -O https://envelopes.lukeroh.de/envelopes-cli.mjs
-    node envelopes-cli.mjs my-draft.yml
-
-That prints the milestones each goal reaches, with dates and ages, and the closing
-balance of every account. Or use it as a library, if you want to poke at the numbers
-yourself:
-
-    curl -O https://envelopes.lukeroh.de/envelopes.mjs
-
-    import { simulate, report } from "./envelopes.mjs";
-    const result = simulate(yamlText, { years: 40 });
-    result.balances;          // every account's closing balance
-    result.completed;         // [goal name, date] for each goal that fired
-    console.log(report(yamlText));
-
-**This is a JavaScript path.** If your sandbox only runs Python, don't try to
-reimplement the engine — the day-by-day interest, offset and goal-cascade behaviour
-is not something to guess at. Write the YAML, hand it over, and let the person paste
-it into the site, which does the same calculation in their browser.
-
-If you'd rather work from source, clone https://github.com/lukerohde/envelopes and
-run `npm install && npx tsx src/cli.ts my-draft.yml`. That repo's `Makefile` wraps
-everything in Docker, which your sandbox almost certainly doesn't have — use the npm
-commands directly, or the published bundle above. `AGENTS.md` in that repo is for a
-*coding* agent working on the app itself, not for building someone's budget.
+If you can run JavaScript, you can also hand them a share link directly, with
+`encodeShareUrl` from the bundle. **Use that function; don't hand-roll it.** Gzipping
+and base64url-encoding a fragment yourself is easy to get subtly wrong, and a link
+that decodes to nothing is worse than no link at all. If you can't run the bundle,
+plain YAML text is the robust choice — they can make their own link with one click.
 
 ## The schema
 
@@ -163,16 +326,33 @@ goals:
 - name: alex pay          # unique, referenced by transfers/goals by this exact string
   balance: 3200            # opening balance, defaults to 0
   floor: 800                # minimum this account should hold, defaults to 0
-  kind: everyday             # everyday (default) | saving | loan
+  kind: clearing             # see the table below; defaults to `expense`
   rate: 0.04                  # annual interest rate, defaults to 0
-  offsets: mortgage             # only meaningful on a `saving` account: another
-                                  # account's name whose accrued interest this
-                                  # account's balance reduces (an offset account)
+  offsets: mortgage             # another account's name, whose accrued interest
+                                  # this account's balance reduces (an offset
+                                  # account). Not valid on `expense` or `loan`
 ```
 
-`kind: loan` marks debt — a mortgage, say. `kind: saving` is anything earning
-interest and/or offsetting a loan. Plain `everyday` (the default, can be omitted) is
-for pass-through spending accounts — groceries, bills, discretionary spending.
+`kind` says what an account is *for*. Pick it carefully — it's what makes a plan
+checkable, because each kind carries something that should be true of it:
+
+| kind | for | should be true |
+|---|---|---|
+| `expense` | groceries, bills, a credit card | pure pass-through; the closing balance is cumulative spend, not money anyone has |
+| `clearing` | pay, an account everything is paid from | shouldn't trend upward — if it does, that's surplus going nowhere in particular |
+| `sinking` | car, holidays, Christmas | fills and empties on a cycle; roughly flat in real terms across a full one |
+| `saving` | a house deposit, a bridge fund | accumulates towards a target, then drains once |
+| `investment` | super, shares | `rate` should beat `inflation`; should never go negative |
+| `loan` | mortgage, car loan | pays down towards zero |
+
+`expense` is the default and the old name `everyday` still loads as one, so older
+configs keep working. But a pay account written as `everyday` will be read as a
+spending envelope — if you're editing an existing plan, setting `kind: clearing` on
+the account income lands in is usually the single most useful correction you can make.
+
+`kind: loan` is the only one the simulation itself reads: money arriving at a loan
+pays it down instead of adding up. The rest are there so a plan can be checked
+against what it claims to be.
 
 ### Transfers
 
@@ -242,8 +422,33 @@ interest rates once it fires.
 ```
 
 A goal's `account`/`target` fields are only read for a balance trigger — if you use
-`by` or `by_age` instead, don't include `account`/`target` (or if you must, know
-they're ignored for that goal).
+`by` or `by_age` instead, they're ignored, unless you ask for both:
+
+```yaml
+- name: super access
+  by_age: {person: alex, turns: 60}
+  account: bridge fund
+  target: 0
+  wait_for_both: true    # fire on the LATER of the two, not the first
+```
+
+**This is the most important guard an early-retirement plan has.** Without it you
+can't say "the bridge fund is empty *and* they're 60" — only one or the other. Get it
+wrong in either direction and it's expensive: fire on the age alone and you stop the
+bridge drawdown with money still in it while starting super early; fire on the balance
+alone and you draw super before it's legally available.
+
+Two things to know:
+
+- **Direction is inferred from the account's *opening* balance.** If the target is
+  above where the account started, "reached" means rising to it; below, falling to it.
+  So a fund that starts at `0`, fills up, and drains again cannot express "back to
+  empty" with `target: 0` — that reads as "at or above 0", which is true on day one.
+  Give the account a real opening balance, or target a number it starts above.
+- A balance goal snaps its account exactly to the target when it fires, to absorb the
+  overshoot from checking once a day. With `wait_for_both` that only happens if the
+  balance crossed on the same day the goal fired — if it crossed years ago and the
+  goal was waiting on a birthday, the balance is left alone rather than rewritten.
 
 ## Worked example
 
@@ -261,11 +466,14 @@ redirects money that isn't coming in any more, draining a super balance for deca
 with no error and no warning.
 
 **Escalation is a pairing, not a preference.** Almost everything in the example
-carries `escalation: 0`, so amounts stay in today's money and each number keeps
-meaning what it says. The one exception is the bridge drawdown, which escalates on
-purpose so that it empties the fund it draws on by the time super unlocks.
+escalates with inflation — the salary, the spending, and both drawdowns — so they
+stay matched as the years pass. The exception is the mortgage repayment, fixed at
+`escalation: 0` because the loan contract fixes it.
 
-What matters is that each drawdown and the spending it funds agree. An escalating
+Get that pairing wrong and the plan fails slowly. A salary held flat against spending
+that grows at 3% drains the pay account over a working life, for no reason you can
+see on any single account. What matters is that each drawdown and the spending it
+funds agree. An escalating
 drawdown against fixed spending starves the pay account for years and then floods it
 while the account it draws from empties; a fixed drawdown against escalating spending
 drains the pay account instead. Both failures are invisible on the accounts you're
@@ -274,43 +482,43 @@ looking at — you only see them on the account being drawn down, so go and look
 ```yaml
 inflation: 0.03
 birthdays:
-  - name: alex
+  - name: Alex
     born: '1980-05-20'
 accounts:
   - name: pay
     balance: 3200
     floor: 800
-    kind: everyday
+    kind: clearing
     rate: 0
     offsets: null
   - name: groceries
     balance: 0
     floor: 0
-    kind: everyday
+    kind: expense
     rate: 0
     offsets: null
   - name: bills
     balance: 0
     floor: 0
-    kind: everyday
+    kind: expense
     rate: 0
     offsets: null
   - name: everyday
     balance: 0
     floor: 0
-    kind: everyday
+    kind: expense
     rate: 0
     offsets: null
   - name: car
     balance: 0
     floor: 0
-    kind: everyday
+    kind: expense
     rate: 0
     offsets: null
   - name: travel
-    balance: 0
+    balance: 6000
     floor: 0
-    kind: everyday
+    kind: sinking
     rate: 0
     offsets: null
   - name: mortgage
@@ -320,7 +528,7 @@ accounts:
     rate: 0.061
     offsets: null
   - name: early retirement
-    balance: 0
+    balance: 5000
     floor: 0
     kind: saving
     rate: 0.04
@@ -328,7 +536,7 @@ accounts:
   - name: super
     balance: 320000
     floor: 0
-    kind: saving
+    kind: investment
     rate: 0.07
     offsets: null
 transfers:
@@ -337,35 +545,30 @@ transfers:
     every: fortnight
     day: '2026-08-07'
     into: pay
-    escalation: 0
   - name: groceries
     amount: 150
     every: week
     day: sat
     out_of: pay
     into: groceries
-    escalation: 0
   - name: bills
     amount: 300
     every: fortnight
     day: '2026-08-07'
     out_of: pay
     into: bills
-    escalation: 0
   - name: everyday spending
     amount: 150
     every: week
     day: sat
     out_of: pay
     into: everyday
-    escalation: 0
   - name: car costs
     amount: 200
     every: week
     day: sat
     out_of: pay
     into: car
-    escalation: 0
   - name: mortgage repayment
     amount: 5180
     every: month
@@ -374,18 +577,29 @@ transfers:
     into: mortgage
     escalation: 0
   - name: into the offset
-    amount: 1200
+    amount: 1900
     every: month
     day: 5
     out_of: pay
     into: early retirement
+  - name: saving for a holiday
+    amount: 500
+    every: month
+    day: 5
+    out_of: pay
+    into: travel
+    escalation: 0
+  - name: the holiday
+    amount: 6000
+    every: year
+    day: 12-20
+    out_of: travel
     escalation: 0
   - name: super contribution
     amount: 540
     every: month
     day: 15
     into: super
-    escalation: 0
 goals:
   - name: pay off the house
     account: mortgage
@@ -393,8 +607,9 @@ goals:
     transfers:
       - name: mortgage repayment
         amount: 0
+        escalation: 0
       - name: mortgage freed-up saving
-        amount: 5000
+        amount: 6800
         every: month
         day: 5
         out_of: pay
@@ -406,7 +621,6 @@ goals:
         day: 5
         out_of: pay
         into: early retirement
-        escalation: 0
     accounts: []
   - name: retire at 55
     account: early retirement
@@ -414,70 +628,69 @@ goals:
     transfers:
       - name: salary
         amount: 0
+        escalation: 0
       - name: mortgage freed-up saving
         amount: 0
+        escalation: 0
       - name: into the offset
         amount: 0
       - name: savings
         amount: 0
+        escalation: 0
       - name: super contribution
         amount: 0
       - name: super contribution tax
         amount: 0
-      - name: car costs
-        amount: 200
-        every: week
-        day: sat
-      - name: travel
-        amount: 1000
-        every: month
-        day: 5
-        out_of: pay
-        into: travel
+        escalation: 0
       - name: bridge drawdown
-        amount: 1850
+        amount: 1900
         every: fortnight
         day: '2026-08-07'
         out_of: early retirement
         into: pay
+      - name: car costs
+        amount: 400
+        every: week
+        day: sat
+        out_of: pay
+        into: car
     accounts: []
     by_age:
-      person: alex
+      person: Alex
       turns: 55
-  - name: super access at 60
-    account: super
+  - name: super takes over
+    account: early retirement
     target: 0
+    wait_for_both: true
     transfers:
       - name: bridge drawdown
         amount: 0
+        escalation: 0
       - name: super drawdown
-        amount: 1500
+        amount: 1650
         every: fortnight
         day: '2026-08-07'
         out_of: super
         into: pay
       - name: car costs
-        amount: 500
+        amount: 200
         every: week
         day: sat
         out_of: pay
         into: car
-        escalation: 0
       - name: groceries
-        amount: 277
+        amount: 250
         every: week
         day: sat
         out_of: pay
         into: groceries
-        escalation: 0
       - name: bills
-        amount: 400
+        amount: 350
         every: fortnight
         day: '2026-08-07'
         out_of: pay
         into: bills
-        escalation: 0
-      - name: travel
+      - name: saving for a holiday
         amount: 500
         every: month
         day: 5
@@ -485,12 +698,23 @@ goals:
         into: travel
     accounts: []
     by_age:
-      person: alex
+      person: Alex
       turns: 60
 ```
 
+Notice "super takes over" uses `wait_for_both`. It watches the bridge fund, not
+super, and fires only once that fund is drained *and* alex is 60 — which here lands
+at 62, because the fund outlasts the birthday. Fire on the birthday alone and the
+plan would stop the bridge drawdown with two years of money still sitting in it.
+It's also *not* called "super access at 60", deliberately: a goal named after a date
+it doesn't actually fire on is a lie you'll believe later.
+
+Notice "the holiday": `travel` is a `sinking` fund, so money goes in monthly and comes
+out once a year. Without that outflow it would just grow forever, which is the most
+common thing wrong with a hand-written plan.
+
 Notice "bridge drawdown" — introduced fresh inside "retire at 55"'s own transfer
-overrides, not in the top-level `transfers:` list at all. "super access at 60" then
+overrides, not in the top-level `transfers:` list at all. "super takes over" then
 references that same name again to stop it. That's the override-cascading pattern
 described above, working in a real example.
 
@@ -503,3 +727,9 @@ happily drain a retirement account for forty years.
 And check the size of each drawdown against what's actually being spent. A drawdown
 larger than the spending it funds doesn't look wrong on a chart — it just quietly
 piles money up in a pay account while emptying the retirement account that fed it.
+
+**This example lints clean**, and that took work: balancing it meant cutting the
+post-60 spending to what super can actually sustain, and letting the salary escalate
+alongside the spending it pays for. Run `lint` on whatever you write and expect to
+iterate the same way. A plan that balances on the first try usually means something
+isn't modelled yet.

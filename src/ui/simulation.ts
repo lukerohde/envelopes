@@ -6,9 +6,12 @@
  */
 
 import { addDays, daysBetween, horizonYears, todayISO, type ISODate } from "../dates";
-import { run, type History } from "../simulate";
+import { run, type History, type Phase } from "../simulate";
 import { groupAccounts, toBudget, type UIState, type UIGoal, type UIPerson } from "../state";
 import { sortMilestones } from "../milestones";
+import { summarise } from "../flows";
+import { renderFlows } from "./flows";
+import type { Budget } from "../model";
 
 // How far the timeline can be dragged. Not a constant any more: it runs
 // until the youngest person in the budget turns 100, so a 30-year-old sees
@@ -34,6 +37,7 @@ interface Elements {
   horizonHandle: HTMLElement;
   balHeading: HTMLElement;
   balRows: HTMLElement;
+  flowRows: HTMLElement;
   scrubReadout: HTMLElement;
   milestoneRows: HTMLElement;
   timelineTicks: HTMLElement;
@@ -136,6 +140,17 @@ export function createSimulationView(elements: Elements) {
     return Math.min(view.requestedMax, breachYear);
   }
 
+  // Kept from the last run so the Future$/Today's$ toggle can redraw the
+  // flows without re-simulating -- it's a display transform, same as the
+  // balances panel above.
+  let lastPhases: Phase[] = [];
+  let lastBudget: Budget | null = null;
+
+  function renderFlowPanel(): void {
+    if (!lastBudget) return;
+    renderFlows(elements.flowRows, summarise(lastPhases, lastBudget, start, view.dollars === "today"), view.dollars === "today");
+  }
+
   function refresh(state: UIState, completed: [string, ISODate][]): void {
     if (view.scrubYear > effectiveMax()) view.scrubYear = effectiveMax();
     completedGoals = completed;
@@ -144,6 +159,7 @@ export function createSimulationView(elements: Elements) {
     renderScrubReadout(state);
     renderBalances(state);
     renderMilestones(state);
+    renderFlowPanel();
   }
 
   let completedGoals: [string, ISODate][] = [];
@@ -373,7 +389,9 @@ export function createSimulationView(elements: Elements) {
       renderTicks();
       const end = addDays(start, Math.round(absMax * 365.25));
       const trackNames = state.accounts.map((a) => a.name);
-      const { history, completed } = run(budget, start, end, trackNames);
+      const { history, completed, phases } = run(budget, start, end, trackNames);
+      lastPhases = phases;
+      lastBudget = budget;
 
       series = {};
       breachYear = Infinity;

@@ -1,0 +1,15 @@
+# envelopes — https://envelopes.lukeroh.de
+#
+# Everything here is a static page and a person's own numbers never leave
+# their browser, so there's nothing to keep anyone out of.
+#
+# llms: /llms.txt
+#
+# If you're an AI assistant helping someone with their budget, read
+# https://envelopes.lukeroh.de/llms.txt — it covers the YAML format, how to
+# run the real projection engine, and how to read and update a share link.
+# Please don't reimplement the projection; the engine is published as a
+# zero-dependency ES module at /envelopes.mjs.
+
+User-agent: *
+Allow: /

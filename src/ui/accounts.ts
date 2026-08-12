@@ -1,9 +1,17 @@
 import { removeAccount, renameAccount, type UIAccount, type UIState } from "../state";
+import { canOffset } from "../model";
 import { confirmRemove, removeButtonHTML } from "./remove-button";
 
+/** Ordered the way someone adding an account thinks, not alphabetically:
+ * the everyday two first, then the three that hold money, then debt. The
+ * parenthetical is doing real work -- "sinking" and "clearing" are the two
+ * nobody arrives already knowing. */
 const KIND_LABELS: Array<[UIAccount["kind"], string]> = [
-  ["everyday", "Everyday"],
-  ["saving", "Saving"],
+  ["expense", "Spending (an envelope)"],
+  ["clearing", "Clearing (pay lands here)"],
+  ["sinking", "Sinking fund (saves up, spends down)"],
+  ["saving", "Saving (towards a target)"],
+  ["investment", "Investment (super, shares)"],
   ["loan", "Loan"],
 ];
 
@@ -35,7 +43,7 @@ function kindSelectHTML(kind: UIAccount["kind"]): string {
 }
 
 function offsetSelectHTML(account: UIAccount, loanNames: string[]): string {
-  const disabled = account.kind !== "saving";
+  const disabled = !canOffset(account.kind);
   let html = `<select class="field-input"${disabled ? " disabled" : ""}>`;
   html += `<option value=""${!account.offsets ? " selected" : ""}>— none —</option>`;
   for (const name of loanNames) {
@@ -123,7 +131,7 @@ export function renderAccounts(container: HTMLElement, state: UIState, onChange:
     });
     kindSelect.addEventListener("change", () => {
       account.kind = kindSelect.value as UIAccount["kind"];
-      if (account.kind !== "saving") account.offsets = null;
+      if (!canOffset(account.kind)) account.offsets = null;
       renderAccounts(container, state, onChange, redrawAll);
       onChange();
     });

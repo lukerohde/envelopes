@@ -55,12 +55,14 @@ plans/archive/, and update the two lists below.
 CURRENT PLANS
 =============
 
-- ux-feedback-round-4-plan.md -- make goal overrides, account choices, the share
-  URL notice, and raw-YAML editing behave clearly and reliably.
+- agent-feedback-round-1-plan.md -- make the tool legible to an AI agent handed
+  a share link, then close the engine and schema gaps that review exposed.
 
 
 ARCHIVED PLANS
 ==============
+- archive/ux-feedback-round-4-plan.md -- clearer goal overrides, account
+  choices, share URL notice, and raw-YAML editing. Shipped, merged.
 - archive/phase-1-python-cli-plan.md -- built retirement goals into the Python
   CLI by cutting it down to what actually mattered (accounts, transfers,
   goals-with-overrides). Lives here for posterity; the actual work happened in

@@ -19,7 +19,7 @@ describe("load -- accounts", () => {
     expect(budget.account("pay").balance).toBe(7686);
     expect(budget.account("pay").floor).toBe(500);
     expect(budget.account("groceries").balance).toBe(0);
-    expect(budget.account("groceries").kind).toBe("everyday");
+    expect(budget.account("groceries").kind).toBe("expense");
   });
 
   it("parses kind and offsets", () => {

@@ -10,6 +10,6 @@ describe("mobile account row summaries", () => {
       rate: 0.04,
       floor: 0,
       offsets: "mortgage",
-    })).toBe("Saving · 12,500");
+    })).toBe("Saving (towards a target) · 12,500");
   });
 });

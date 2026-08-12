@@ -276,8 +276,8 @@ accounts:
   - {name: super, kind: saving}
 `).accounts;
 
-  it("puts loans first, then savings, then everyday", () => {
-    expect(groupAccounts(accounts()).map((g) => g.label)).toEqual(["Loans", "Savings", "Everyday"]);
+  it("puts loans first, then savings, then spending", () => {
+    expect(groupAccounts(accounts()).map((g) => g.label)).toEqual(["Loans", "Savings", "Spending"]);
   });
 
   it("keeps each group in the order the config listed them", () => {
@@ -288,8 +288,8 @@ accounts:
   });
 
   it("leaves out a group nothing belongs to", () => {
-    const onlyEveryday = parseYamlIntoState("accounts:\n  - {name: pay}\n").accounts;
-    expect(groupAccounts(onlyEveryday).map((g) => g.label)).toEqual(["Everyday"]);
+    const onlySpending = parseYamlIntoState("accounts:\n  - {name: pay}\n").accounts;
+    expect(groupAccounts(onlySpending).map((g) => g.label)).toEqual(["Spending"]);
   });
 
   it("shows every account exactly once", () => {
