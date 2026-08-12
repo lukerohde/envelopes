@@ -57,11 +57,12 @@ export function transferHeadHTML(): string {
   return html;
 }
 
-function everySelectHTML(every: string, disabled: boolean): string {
+function everySelectHTML(every: string, disabled: boolean, inherited: boolean): string {
   const options = ["once", "week", "fortnight", "month", "year"];
   let html = `<select class="field-input" data-field="every"${disabled ? " disabled" : ""}>`;
+  if (inherited) html += `<option value="" selected>inherits ${every}</option>`;
   for (const option of options) {
-    html += `<option${option === every ? " selected" : ""}>${option}</option>`;
+    html += `<option${!inherited && option === every ? " selected" : ""}>${option}</option>`;
   }
   return html + "</select>";
 }
@@ -92,25 +93,28 @@ export function dayFromInput(every: string, value: string): string {
  * as the engine's own `day` field for a fortnightly transfer. Month is a
  * day of the month; year needs a real date too (the engine only reads the
  * month-day part of it). Once is the date it happens, and no other day. */
-function onFieldHTML(every: string, day: string | number, disabled: boolean): string {
+function onFieldHTML(every: string, day: string | number, disabled: boolean, inherited: boolean): string {
   const dis = disabled ? " disabled" : "";
+  const inheritedOption = inherited ? `<option value="" selected>inherits ${day}</option>` : "";
   if (every === "week") {
     const selected = String(day).toLowerCase();
     let html = `<select class="field-input" data-field="day"${dis}>`;
+    html += inheritedOption;
     for (const [value, label] of WEEKDAYS) {
-      html += `<option value="${value}"${value === selected ? " selected" : ""}>${label}</option>`;
+      html += `<option value="${value}"${!inherited && value === selected ? " selected" : ""}>${label}</option>`;
     }
     return html + "</select>";
   }
   if (every === "month") {
     let html = `<select class="field-input t-on" data-field="day"${dis}>`;
+    html += inheritedOption;
     for (const dayOfMonth of DAYS_OF_MONTH) {
-      html += `<option${dayOfMonth === String(day) ? " selected" : ""}>${dayOfMonth}</option>`;
+      html += `<option${!inherited && dayOfMonth === String(day) ? " selected" : ""}>${dayOfMonth}</option>`;
     }
     return html + "</select>";
   }
   return (
-    `<input type="date" class="field-input t-on" data-field="day" value="${dayForInput(every, day)}"${dis} ` +
+    `<input type="date" class="field-input t-on" data-field="day" value="${inherited ? "" : dayForInput(every, day)}"${inherited ? ` placeholder="inherits ${day}"` : ""}${dis} ` +
     `min="${EARLIEST_PLAN_DATE}" max="${LATEST_PLAN_DATE}">`
   );
 }
@@ -124,12 +128,12 @@ function onFieldHTML(every: string, day: string | number, disabled: boolean): st
  * the row -- a repayment that was fixed while you were working can become
  * inflation-linked once a goal turns it into something else. That wasn't
  * obvious from a bare checkbox, hence the label spelling it out. */
-function inflationCheckboxHTML(escalates: boolean, disabled: boolean, inGoal: boolean): string {
-  const label = inGoal
+function inflationCheckboxHTML(escalates: boolean, disabled: boolean, inGoal: boolean, inherited: boolean): string {
+  const label = inherited ? "Inherits inflation from the transfer" : inGoal
     ? "Grows with inflation — set here, this goal onwards"
     : "Grows with inflation";
   return (
-    `<button type="button" class="chk infl-chk${escalates ? " checked" : ""}" data-field="escalates"` +
+    `<button type="button" class="chk infl-chk${escalates ? " checked" : ""}${inherited ? " inherited" : ""}" data-field="escalates" data-inherited-value="${escalates}"` +
     `${disabled ? " disabled" : ""} title="${label}" aria-label="${label}"></button>`
   );
 }
@@ -147,12 +151,17 @@ export interface RowOptions {
   tag?: string;
   /** Inside a goal's override list, where every field is per-goal. */
   inGoal?: boolean;
+  /** Fields omitted by this override, shown as muted inherited values. */
+  inherits?: Set<string>;
 }
 
 export function transferFieldsHTML(fields: RowFields, options: RowOptions = {}): string {
-  const { disabled = false, nameEditable = false, tag = "", inGoal = false } = options;
+  const { disabled = false, nameEditable = false, tag = "", inGoal = false, inherits = new Set<string>() } = options;
   const dis = disabled ? " disabled" : "";
   const name = escapeHTML(fields.name);
+  const inheritedInput = (key: string, value: string | number): string => inherits.has(key)
+    ? `value="" placeholder="inherits ${escapeHTML(String(value))}"`
+    : `value="${escapeHTML(String(value))}"`;
   return (
     `<div class="mobile-row-summary">` +
     `<span class="mobile-row-name">${name}</span>` +
@@ -164,13 +173,13 @@ export function transferFieldsHTML(fields: RowFields, options: RowOptions = {}):
     `<input type="text" class="field-input t-name" data-field="name" value="${name}"${nameEditable ? "" : " readonly"}>` +
     tag +
     `</div></div>` +
-    `<div class="mobile-field" data-label="From"><div class="combo" data-combo><input type="text" class="field-input combo-input" data-field="from" value="${escapeHTML(fields.from)}"${dis}></div></div>` +
+    `<div class="mobile-field" data-label="From"><div class="combo" data-combo><input type="text" class="field-input combo-input" data-field="from" ${inheritedInput("from", fields.from)}${dis}></div></div>` +
     `<span class="arrow mobile-arrow">→</span>` +
-    `<div class="mobile-field" data-label="To"><div class="combo" data-combo><input type="text" class="field-input combo-input" data-field="to" value="${escapeHTML(fields.to)}"${dis}></div></div>` +
-    `<div class="mobile-field" data-label="Amount"><input class="field-input fig t-amount" data-field="amount" value="${escapeHTML(String(fields.amount))}"${dis}></div>` +
-    `<div class="mobile-field" data-label="Every">${everySelectHTML(fields.every, disabled)}</div>` +
-    `<div class="mobile-field" data-label="On">${onFieldHTML(fields.every, fields.day, disabled)}</div>` +
-    `<div class="mobile-field" data-label="Inflation">${inflationCheckboxHTML(fields.escalates, disabled, inGoal)}</div>` +
+    `<div class="mobile-field" data-label="To"><div class="combo" data-combo><input type="text" class="field-input combo-input" data-field="to" ${inheritedInput("to", fields.to)}${dis}></div></div>` +
+    `<div class="mobile-field" data-label="Amount"><input class="field-input fig t-amount" data-field="amount" ${inheritedInput("amount", formatAmount(fields.amount))}${dis}></div>` +
+    `<div class="mobile-field" data-label="Every">${everySelectHTML(fields.every, disabled, inherits.has("every"))}</div>` +
+    `<div class="mobile-field" data-label="On">${onFieldHTML(fields.every, fields.day, disabled, inherits.has("day"))}</div>` +
+    `<div class="mobile-field" data-label="Inflation">${inflationCheckboxHTML(fields.escalates, disabled, inGoal, inherits.has("escalates"))}</div>` +
     `</div>`
   );
 }
@@ -214,8 +223,11 @@ export function wireTransferFieldRow(
     if (key === "name") return;
     if (key === "escalates") {
       field.addEventListener("click", () => {
-        const newValue = !field.classList.contains("checked");
+        const newValue = field.classList.contains("inherited")
+          ? field.dataset.inheritedValue !== "true"
+          : !field.classList.contains("checked");
         field.classList.toggle("checked", newValue);
+        field.classList.remove("inherited");
         setField("escalates", newValue);
         onAnyChange();
       });

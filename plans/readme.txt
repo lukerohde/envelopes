@@ -55,7 +55,8 @@ plans/archive/, and update the two lists below.
 CURRENT PLANS
 =============
 
-None.
+- ux-feedback-round-4-plan.md -- make goal overrides, account choices, the share
+  URL notice, and raw-YAML editing behave clearly and reliably.
 
 
 ARCHIVED PLANS

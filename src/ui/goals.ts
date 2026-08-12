@@ -67,24 +67,25 @@ function resolveBase(state: UIState, goalIndex: number, name: string): UITransfe
 }
 
 function toRowFields(base: UITransfer, override: UITransferOverride | undefined): RowFields {
-  const source = override ?? base;
+  const value = <T>(key: keyof UITransferOverride, fallback: T): T =>
+    override && Object.prototype.hasOwnProperty.call(override, key) ? override[key] as T : fallback;
   return {
     name: base.name,
-    from: (source.out_of ?? base.out_of) || "external income",
-    to: (source.into ?? base.into) || "",
-    amount: source.amount ?? base.amount,
-    every: source.every ?? base.every,
-    day: source.day ?? base.day,
-    escalates: source.escalates ?? base.escalates,
+    from: value("out_of", base.out_of) || "external income",
+    to: value("into", base.into) || "",
+    amount: value("amount", base.amount),
+    every: value("every", base.every),
+    day: value("day", base.day),
+    escalates: value("escalates", base.escalates),
   };
 }
 
 function setOverrideField(override: UITransferOverride, key: string, value: string | boolean): void {
-  if (key === "from") override.out_of = value === "external income" ? null : (value as string);
-  else if (key === "to") override.into = (value as string) || null;
-  else if (key === "amount") override.amount = parseFloat(String(value).replace(/,/g, "")) || 0;
-  else if (key === "every") override.every = value as string;
-  else if (key === "day") override.day = value as string;
+  if (key === "from") value ? override.out_of = value === "external income" ? null : String(value) : delete override.out_of;
+  else if (key === "to") value ? override.into = String(value) : delete override.into;
+  else if (key === "amount") value === "" ? delete override.amount : override.amount = parseFloat(String(value).replace(/,/g, "")) || 0;
+  else if (key === "every") value ? override.every = String(value) : delete override.every;
+  else if (key === "day") value ? override.day = String(value) : delete override.day;
   else if (key === "escalates") override.escalates = value as boolean;
 }
 
@@ -94,11 +95,18 @@ function setOverrideField(override: UITransferOverride, key: string, value: stri
  * exactly $0 is tagged "stopped": once the amount is zero, from/to/every/on
  * are moot, so say so plainly instead of leaving it to be read off an
  * empty "to" box. */
-function overrideRowHTML(state: UIState, goal: UIGoal, goalIndex: number, transferName: string, checked: boolean): string {
+export function overrideRowHTML(state: UIState, goal: UIGoal, goalIndex: number, transferName: string, checked: boolean): string {
   const base = resolveBase(state, goalIndex, transferName);
   const override = checked ? findOverride(goal, transferName) : undefined;
   const fields = toRowFields(base, override);
-  const stopped = checked && Number(fields.amount) === 0;
+  const inherits = new Set<string>();
+  if (override) {
+    const keys = ["out_of", "into", "amount", "every", "day", "escalates"] as const;
+    for (const key of keys) if (!Object.prototype.hasOwnProperty.call(override, key)) {
+      inherits.add(key === "out_of" ? "from" : key === "into" ? "to" : key);
+    }
+  }
+  const stopped = checked && override?.amount === 0;
   // A mark, not a word. It says one thing -- this transfer ends when the goal
   // fires -- which is already visible as a zero in the Amount column, so it
   // doesn't get to eat a column that's busy truncating people's names. Rides
@@ -114,6 +122,7 @@ function overrideRowHTML(state: UIState, goal: UIGoal, goalIndex: number, transf
       nameEditable: introducedHere(state, goalIndex, transferName),
       tag,
       inGoal: true,
+      inherits,
     }) +
     "</div></div>"
   );
@@ -326,8 +335,7 @@ function wireGoalRow(container: HTMLElement, row: HTMLElement, state: UIState, g
       if (existing) {
         goal.transfers = goal.transfers.filter((o) => o.name !== name);
       } else {
-        const fields = resolveBase(state, goalIndex, name);
-        goal.transfers.push({ ...fields, name });
+        goal.transfers.push({ name });
       }
       renderGoals(container, state, onChange);
       onChange();

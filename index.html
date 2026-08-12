@@ -105,6 +105,7 @@
       padding: 1rem; background: var(--surface); color: var(--ink); font-family: ui-monospace, "SF Mono", Menlo, monospace;
       font-size: .82rem; line-height: 1.5; tab-size: 2;
     }
+    .raw-status { min-height: 1.2em; margin: .45rem 0 0; color: var(--stamp); font-size: .78rem; }
 
     /* Sections collapse so the page opens on the simulation -- the numbers --
        rather than on five expanded forms you have to scroll past to see
@@ -590,6 +591,16 @@
       </div>
     </details>
 
+    </div>
+
+    <section class="block" aria-label="Raw YAML" id="rawSection" hidden>
+      <h2>Raw YAML</h2>
+      <div class="card">
+        <textarea class="raw-yaml" id="rawYaml" spellcheck="false"></textarea>
+        <p class="raw-status" id="rawStatus" role="status"></p>
+      </div>
+    </section>
+
     <details class="block" open>
       <summary><h2>Simulation over time</h2></summary>
       <div class="card">
@@ -634,15 +645,6 @@
         </div>
       </div>
     </details>
-
-    </div>
-
-    <section class="block" aria-label="Raw YAML" id="rawSection" hidden>
-      <h2>Raw YAML</h2>
-      <div class="card">
-        <textarea class="raw-yaml" id="rawYaml" spellcheck="false"></textarea>
-      </div>
-    </section>
 
   </div>
 

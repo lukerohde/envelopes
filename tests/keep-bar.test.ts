@@ -10,4 +10,9 @@ describe("bookmark change notice", () => {
     expect(HTML).not.toContain('id="keepCopy"');
     expect(HTML).not.toContain('id="keepDismiss"');
   });
+
+  it("is raised again after every successful edit", () => {
+    const io = readFileSync(new URL("../src/ui/io.ts", import.meta.url), "utf-8");
+    expect(io).toContain("writeUrl();\n      showBar();\n      unkept = true;");
+  });
 });
