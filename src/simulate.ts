@@ -50,6 +50,12 @@ export interface AccountFlow {
    * plan passes every closing-balance check and still fails on the page. */
   low: number;
   lowOn: ISODate;
+  /** And the highest, which is what catches money piling up somewhere it
+   * shouldn't. Opening-versus-closing can't: an account that hoards income
+   * for forty years and is then drained in a collapse looks, on those two
+   * numbers alone, like it shrank. */
+  high: number;
+  highOn: ISODate;
   /** The *first* day the balance went under the account's floor, which is a
    * different question to where it got worst -- a plan can slide under in
    * 2069 and bottom out in 2081. The first date is where the plan stopped
@@ -82,6 +88,10 @@ export interface RunResult {
   completed: [string, ISODate][];
   history: History;
   phases: Phase[];
+  /** Balances as at the day the plan first went under a floor -- the last
+   * day it described something real. Null when nothing ever breached, in
+   * which case the horizon is the end. Judge a plan on these. */
+  balancesAtEnd: Balances | null;
 }
 
 /** `track` names which accounts to record a daily history for -- pass none
@@ -110,6 +120,7 @@ export function run(budget: Budget, start: ISODate, end: ISODate, track: string[
   const floors: Record<string, number> = {};
   for (const account of budget.accounts) floors[account.name] = account.floor;
   const ledger = new Ledger(start, balances, debts, floors);
+  let balancesAtEnd: Balances | null = null;
 
   let when = start;
   while (when < end) {
@@ -125,12 +136,28 @@ export function run(budget: Budget, start: ISODate, end: ISODate, track: string[
         ledger.closePhase(when, completed.slice(before).map(([name]) => name), balances);
       }
     }
-    ledger.recordLows(balances, when);
+    // The walk carries on past a floor breach, because the chart draws that
+    // stretch and it's honest about how the hole deepens. What stops is the
+    // *measuring*: once an account is under its floor the plan has stopped
+    // describing anyone's life, and everything after is bills paid out of
+    // money that isn't there.
+    //
+    // Three separate rules were quietly reading numbers from beyond that
+    // point -- one reported -$3.5M as a closing balance, one missed a $297k
+    // leak because the later collapse made it look like shrinkage, and one
+    // found a pay account's "peak" forty years after the money ran out.
+    // Freezing the statistics here fixes all three at once, rather than each
+    // rule remembering to check. Ending the run outright would too, but it
+    // would also kill a plan that dips under a floor for three days a month
+    // and recovers, which is a timing problem and not a collapse.
+    if (ledger.recordLows(balances, when) && balancesAtEnd === null) {
+      balancesAtEnd = { ...balances };
+    }
     for (const name of track) history[name].push([when, balances[name]]);
     when = addDays(when, 1);
   }
 
-  return { balances, completed, history, phases: ledger.finish(end, balances) };
+  return { balances, completed, history, phases: ledger.finish(end, balances), balancesAtEnd };
 }
 
 /** Accumulates the in/out/interest totals as the run walks, one bucket per
@@ -150,21 +177,39 @@ class Ledger {
 
   /** Once a day, after everything has moved. Two comparisons per account --
    * cheap enough to always be on, which matters because the failure it
-   * catches is invisible to every other number here. */
-  recordLows(balances: Balances, when: ISODate): void {
+   * catches is invisible to every other number here.
+   *
+   * Returns true on the first day any account goes under its floor, so the
+   * caller can snapshot what the world looked like while it still made
+   * sense. */
+  recordLows(balances: Balances, when: ISODate): boolean {
+    let brokeToday = false;
     for (const [name, flow] of Object.entries(this.current.accounts)) {
+      // frozen once the plan has broken -- see the note at the call site
+      if (this.everBroke) break;
       if (balances[name] < flow.low) {
         flow.low = balances[name];
         flow.lowOn = when;
       }
+      if (balances[name] > flow.high) {
+        flow.high = balances[name];
+        flow.highOn = when;
+      }
       // strictly below, not at-or-below -- sitting exactly on a $0 floor is
       // a normal resting state for a pure ledger account, and a mortgage
       // paid off to exactly zero is success, not a breach
-      if (flow.breachedOn === null && balances[name] < this.floors[name]) {
+      if (flow.breachedOn === null && balances[name] < this.floors[name] && !this.debts.has(name)) {
         flow.breachedOn = when;
+        if (!this.everBroke) {
+          this.everBroke = true;
+          brokeToday = true;
+        }
       }
     }
+    return brokeToday;
   }
+
+  private everBroke = false;
 
   closePhase(when: ISODate, goalNames: string[], balances: Balances): void {
     this.seal(when, balances);
@@ -195,6 +240,8 @@ function openPhase(name: string, start: ISODate, balances: Balances, debts: Set<
       closing: 0,
       low: balances[account],
       lowOn: start,
+      high: balances[account],
+      highOn: start,
       breachedOn: null,
       debt: debts.has(account),
     };

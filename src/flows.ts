@@ -72,6 +72,17 @@ export function lowestOf(result: RunResult, account: string): { low: number; on:
   return worst;
 }
 
+/** The highest an account reached across the whole run, and when. */
+export function highestOf(result: RunResult, account: string): { high: number; on: ISODate } | null {
+  let best: { high: number; on: ISODate } | null = null;
+  for (const phase of result.phases) {
+    const flow = phase.accounts[account];
+    if (!flow) continue;
+    if (!best || flow.high > best.high) best = { high: flow.high, on: flow.highOn };
+  }
+  return best;
+}
+
 export interface Breach {
   account: string;
   /** When it first went under -- where the plan stopped working. */

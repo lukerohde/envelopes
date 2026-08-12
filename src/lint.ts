@@ -15,7 +15,7 @@
 import type { Budget } from "./model";
 import type { RunResult } from "./simulate";
 import { ageAt, type ISODate } from "./dates";
-import { annualise, breaches, yearsIn } from "./flows";
+import { annualise, breaches, highestOf, yearsIn } from "./flows";
 
 export type Rule =
   | "account-below-floor"
@@ -72,20 +72,36 @@ export function lint(budget: Budget, result: RunResult, start: ISODate, end: ISO
   // low" means -- there's no need for a second opinion.
   const broke = new Map(breaches(budget, result).map((b) => [b.account, b]));
 
-  for (const account of budget.accounts) {
-    const balance = result.balances[account.name];
+  // Judge the plan where it still described something real.
+  const closing = result.balancesAtEnd ?? result.balances;
 
+  for (const account of budget.accounts) {
+    const balance = closing[account.name];
+
+    // Measured at the peak, not the close. A clearing account is a buffer
+    // money passes through; the question is whether it ever piled up, and
+    // an account that hoards income for decades and is then drained by a
+    // collapse looks flat if you only compare the two ends.
     if (account.kind === "clearing") {
-      const grew = annualise(balance - account.balance, years);
+      const peak = highestOf(result, account.name);
       const throughput = annualise(totalFlow(result, account.name).in, years);
+      // A clearing account is meant to hold a working buffer, and a month's
+      // outgoings is a fair one -- pay lands fortnightly and the big bills
+      // fall on one day of the month, so the balance swings by roughly that
+      // much even when nothing is wrong. Only what sits above the buffer is
+      // money going nowhere.
+      const buffer = account.balance + throughput / 12;
+      const toPeak = peak ? yearsIn(start, peak.on) : 0;
+      const grew = peak ? annualise(peak.high - buffer, toPeak) : 0;
       const material = Math.max(SURPLUS_FLOOR_PER_YEAR, throughput * SURPLUS_SHARE_OF_INCOME);
-      if (grew > material) {
+      if (peak && grew > material) {
         findings.push({
           rule: "clearing-account-accumulating",
           account: account.name,
           detail:
-            `gains ${money(grew)}/yr and closes at ${money(balance)} — ` +
-            `${((grew / throughput) * 100).toFixed(1)}% of what passes through it, claimed by no envelope`,
+            `builds to ${money(peak.high)} by ${peak.on}, ${money(grew)}/yr — ` +
+            `${((grew / throughput) * 100).toFixed(1)}% of what passes through it, claimed by no envelope. ` +
+            `It earns no interest sitting there`,
         });
       }
     }

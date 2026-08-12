@@ -62,6 +62,8 @@ export interface SimulateResult {
   history: History;
   /** In/out/interest per account, split at each goal completion. */
   phases: Phase[];
+  /** Balances as at the day the plan first ran out -- see RunResult. */
+  balancesAtEnd: Record<string, number> | null;
 }
 
 /** YAML text in, results out. The one call worth knowing. */
@@ -69,8 +71,8 @@ export function simulate(yamlText: string, options: SimulateOptions = {}): Simul
   const budget = load(yamlText);
   const start = options.start ?? todayISO();
   const end = addDays(start, Math.round(365.25 * (options.years ?? 40)));
-  const { balances, completed, history, phases } = run(budget, start, end, options.track ?? []);
-  return { budget, start, end, balances, completed, history, phases };
+  const { balances, completed, history, phases, balancesAtEnd } = run(budget, start, end, options.track ?? []);
+  return { budget, start, end, balances, completed, history, phases, balancesAtEnd };
 }
 
 /** The same text the console tool prints -- milestones, then closing

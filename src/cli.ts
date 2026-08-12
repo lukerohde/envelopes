@@ -19,7 +19,7 @@
  */
 
 import { readFileSync } from "node:fs";
-import { addDays, todayISO } from "./dates";
+import { addDays, horizonYears, todayISO } from "./dates";
 import { load } from "./model";
 import { run } from "./simulate";
 import { formatReport, parseArgs, reportJson, yearsBetween } from "./report";
@@ -37,7 +37,12 @@ function main(): void {
 
   const budget = load(readFileSync(args.path, "utf-8"));
   const start = todayISO();
-  const end = addDays(start, Math.round(365.25 * 40));
+  // The same window the page uses: until the youngest person turns 100.
+  // It used to be a flat 40 years, which meant the console tool and the
+  // site could give different answers about the same plan -- and the one
+  // an agent sees would not be the one its user sees. A plan that survives
+  // 40 years and dies in year 44 was reported as fine.
+  const end = addDays(start, Math.round(365.25 * horizonYears(budget.birthdays, start)));
   const result = run(budget, start, end);
   const { balances, completed, phases } = result;
 

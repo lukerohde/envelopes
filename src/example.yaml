@@ -95,9 +95,9 @@ transfers:
     into: mortgage
     escalation: 0
   - name: into the offset
-    amount: 1300
+    amount: 2000
     every: month
-    day: 5
+    day: 20
     out_of: pay
     into: early retirement
   - name: saving for a holiday
@@ -127,7 +127,7 @@ goals:
         amount: 0
         escalation: 0
       - name: mortgage freed-up saving
-        amount: 8000
+        amount: 10000
         every: month
         day: 5
         out_of: pay
@@ -179,19 +179,19 @@ goals:
         amount: 0
         escalation: 0
       - name: super drawdown
-        amount: 2280
+        amount: 2500
         every: fortnight
         day: '2026-08-07'
         out_of: super
         into: pay
       - name: car costs
-        amount: 400
+        amount: 500
         every: week
         day: sat
         out_of: pay
         into: car
       - name: groceries
-        amount: 277
+        amount: 300
         every: week
         day: sat
         out_of: pay
@@ -203,7 +203,7 @@ goals:
         out_of: pay
         into: bills
       - name: saving for a holiday
-        amount: 500
+        amount: 900
         every: month
         day: 5
         out_of: pay
@@ -212,10 +212,3 @@ goals:
     by_age:
       person: Alex
       turns: 60
-  - name: super exhausted
-    account: super
-    target: 0
-    transfers:
-      - name: super drawdown
-        amount: 0
-    accounts: []
