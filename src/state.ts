@@ -137,7 +137,7 @@ export function parseYamlIntoState(yamlText: string): UIState {
   for (const item of transferItems) {
     transfers.push({
       name: item.name as string,
-      amount: item.amount as number,
+      amount: (item.amount as number) ?? 0,
       sweep_above: item.sweep_above === undefined ? undefined : item.sweep_above as number,
       every: item.every as string,
       day: stringifyDay(item.day),
