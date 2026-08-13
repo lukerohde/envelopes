@@ -21,6 +21,16 @@ must also make excess cash visible in the right place — to the harness, and
 possibly to the person using the site — without pretending every possible
 detector, model feature and UI treatment is necessary.
 
+**Product principle:** every dollar has two uses: what it buys today, and the
+future freedom it could buy if saved. The app exists to make that trade visible
+in time — Luke uses it by changing spending and seeing what happens to financial
+independence. The family shorthand was "every $1 spent today is $10 you don't
+have tomorrow," but the product must not present 10× as a universal fact: the
+actual multiplier depends on time and return, and the real output is the change
+to milestones and working time. This is not an instruction to minimise life.
+Spending remains the person's input; the tool shows the consequence so they can
+decide whether the purchase is worth the time.
+
 ---
 
 ## Tasks
@@ -279,9 +289,9 @@ the existing example test pass by accepting its new findings.
       requires it, and deliberately regenerate the snapshot if numbers move
 - [ ] Document only the shipped mechanism in `llms.txt`
 
-### Phase 7 — Catch the opposite of overspending
+### Phase 7 — Make the present/future trade visible
 
-`commit: feat: flag a plan that saves past its purpose`
+`commit: feat: show spending in future freedom`
 
 - [ ] Decide whether the upper bound is universal or declared by the plan
 - [ ] POC the measurable candidate from the first eval: a retirement fund
@@ -291,6 +301,15 @@ the existing example test pass by accepting its new findings.
       money late, without changing the person's declared spending
 - [ ] Give the harness a next move that cannot silently turn spending into a
       tuning knob
+- [ ] Compare the smallest ways to surface the product principle: clearer copy
+      around the existing live edit/resimulate loop; before/after milestone
+      deltas for a change the person actually made; and a marginal sensitivity
+      such as "$100/month changes milestone X by Y"
+- [ ] Do not invent a universal "financial independence" date. If a config has
+      no declared goal that means retirement, report exact milestone changes
+      rather than guessing which one is independence
+- [ ] Prefer explanation over a new feature if the existing simulator already
+      makes the trade visible once the page tells the person what to look for
 
 ### Phase 8 — Re-run the real eval
 
@@ -334,6 +353,9 @@ the existing example test pass by accepting its new findings.
 - Rebaselining must not turn an oversized retirement drawdown into a passing
   result by sweeping the surplus back to its source. Fixing the drawdown is the
   first candidate in that phase.
+- The uncle's 10× rule is the product's framing, not a hard-coded multiplier.
+  Engine output must use the plan's actual dates, returns and milestones. The
+  wording should express agency and future freedom, not shame present spending.
 - The eval always tests the built downloadable artefact. Source-only success
   does not count.
 
