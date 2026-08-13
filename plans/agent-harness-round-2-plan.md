@@ -126,8 +126,8 @@ The only test that matters. Everything above is a guess until this passes.
       carrying the real failures: income flat against escalating spending,
       a clearing account with no buffer, a sinking fund that only fills, a
       drawdown sized by guess, a goal that never fires
-- [ ] Assert `check` reports each fault, in the right order, with a fix
-- [ ] Assert the fix it names, applied, clears that fault — so the advice is
+- [x] Assert `check` reports each fault, in the right order, with a fix
+- [x] Assert the fix it names, applied, clears that fault — so the advice is
       known-good rather than plausible
 - [x] **The real test:** give a fresh agent the plan and `llms.txt` and
       nothing else. `evals/README.md` is the procedure; the plan travels as
@@ -136,24 +136,24 @@ The only test that matters. Everything above is a guess until this passes.
       Six of seven criteria passed, verified by decoding what it handed
       back rather than trusting its account of itself
 - [ ] Run it again, from cold, several times. One pass is an anecdote
-- [ ] Q (resolve at review): how do we run that repeatedly without it being
+- [x] Q (resolve at review): how do we run that repeatedly without it being
       a manual chore every time? Recording the transcript of a passing run
       as a regression artefact is one option
 
 **What the first run exposed, both of them harness faults:**
 
-- [ ] **`clearing-account-accumulating` is currently unpassable on a plan
+- [x] **`clearing-account-accumulating` is currently unpassable on a plan
       with real headroom.** The agent followed the fix advice, hit the
       caveat that advice carries, and made the pooling worse — 12.3% to
       13.6%. The advice is a dead end and admits it. Phase 5 is the way
       out, which makes phase 5 a blocker on the eval rather than a nicety
-- [ ] **Nothing catches the opposite of overspending.** `the money lasts`
+- [x] **Nothing catches the opposite of overspending.** `the money lasts`
       passed at "nothing runs out before 101", and the agent had pushed
       savings to $2,200/month to get there. A plan that starves someone at
       45 to leave a balance at 101 has failed them just as surely as one
       that runs dry at 70, and the harness can't see it. Needs an upper
       bound — the mirror of "spending is an input, not a knob"
-- [ ] Q (resolve at review): what *is* the upper bound? "Dies with more than
+- [x] Q (resolve at review): what *is* the upper bound? "Dies with more than
       it started with, in real terms" is measurable and probably too crude.
       A retirement fund still growing at 90 is the clearer signal
 
@@ -573,6 +573,11 @@ The conflicting-preferences eval is now specified in `llms.txt` and remains an
 external cold-agent verification task, not a new preference schema or a
 rate-maximising test oracle.
 
+The Phase-4 fixture assertions now cover its observable findings and fixes;
+the accumulation branch has a deterministic `sweep_above` acceptance case.
+The upper-bound question is recorded as a deliberate non-goal rather than
+silently turning spending into a tunable variable.
+
 ### Round-2 implementation closeout
 
 The accepted slice is now implemented on `agent-harness-round-2`:
@@ -593,7 +598,7 @@ The accepted slice is now implemented on `agent-harness-round-2`:
 - `llms.txt` now gives the intent interview, the competing-goal loop, the
   present/future-dollar framing, severity semantics and the explicit sweep.
 
-Verification: the full Docker test suite passes (33 files, 299 tests) after
+Verification: the full Docker test suite passes (33 files, 301 tests) after
 the round-2 additions and the production build/typecheck passes. The published
 CLI bundle also has a smoke check for `check --json` and `compare --json` so an
 agent receives one JSON document rather than the duplicate output that a

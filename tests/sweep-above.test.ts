@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { load } from "../src/model";
 import { run } from "../src/simulate";
+import { lint } from "../src/lint";
 
 const START = "2026-01-01";
 
@@ -85,5 +86,22 @@ goals:
 `);
     const result = run(budget, START, "2026-02-01");
     expect(result.balances.reserve).toBeCloseTo(0);
+  });
+
+  it("gives a clearing surplus an explicit job so the accumulation finding clears", () => {
+    const budget = load(`
+inflation: 0
+accounts:
+  - {name: pay, balance: 1000, kind: clearing}
+  - {name: reserve, balance: 0, kind: saving}
+transfers:
+  - {name: salary, amount: 2000, every: month, day: 5, into: pay, escalation: 0}
+  - {name: sweep, sweep_above: 1000, every: month, day: 5, out_of: pay, into: reserve, escalation: 0}
+goals: []
+`);
+    const start = "2026-01-01";
+    const end = "2028-01-01";
+    const result = run(budget, start, end);
+    expect(lint(budget, result, start, end).some((finding) => finding.rule === "clearing-account-accumulating")).toBe(false);
   });
 });
