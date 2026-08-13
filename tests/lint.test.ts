@@ -91,21 +91,6 @@ goals: []
 
 describe("clearing-account-accumulating", () => {
   it("catches income that no envelope ever claimed", () => {
-    const plan = `
-inflation: 0
-birthdays: []
-accounts:
-  - {name: pay, balance: 0, kind: clearing}
-  - {name: groceries, balance: 0, kind: expense}
-transfers:
-  - {name: salary, amount: 2000, every: fortnight, day: 2026-01-02, into: pay, escalation: 0}
-  - {name: shopping, amount: 100, every: fortnight, day: 2026-01-02, out_of: pay, into: groceries, escalation: 0}
-goals: []
-`;
-    expect(findings(plan)).toContain("clearing-account-accumulating");
-  });
-
-  it("points to the goal transfer overrides when the peak is in a later phase", () => {
     const budget = load(`
 inflation: 0
 birthdays: []
@@ -115,11 +100,59 @@ accounts:
 transfers:
   - {name: salary, amount: 2000, every: fortnight, day: 2026-01-02, into: pay, escalation: 0}
   - {name: shopping, amount: 100, every: fortnight, day: 2026-01-02, out_of: pay, into: groceries, escalation: 0}
+goals: []
+`);
+    const result = run(budget, "2026-01-01", "2046-01-01");
+    const finding = lint(budget, result, "2026-01-01", "2046-01-01")
+      .find((item) => item.rule === "clearing-account-accumulating")!;
+    expect(finding.detail).toContain("from the start");
+    expect(finding.detail).toContain("base Transfers");
+  });
+
+  it("does not call cash unused when a later phase consumes it", () => {
+    const budget = load(`
+inflation: 0
+birthdays: []
+accounts:
+  - {name: pay, balance: 5000, kind: clearing}
+  - {name: groceries, balance: 0, kind: expense}
+transfers:
+  - {name: salary, amount: 2000, every: fortnight, day: 2026-01-02, into: pay, escalation: 0}
+  - {name: shopping, amount: 100, every: fortnight, day: 2026-01-02, out_of: pay, into: groceries, escalation: 0}
 goals:
-  - {name: retire at 55, account: pay, target: 0, by: 2027-01-01, transfers: []}
+  - name: retire at 55
+    account: pay
+    target: 0
+    by: 2027-01-01
+    transfers:
+      - {name: shopping, amount: 3900}
+`);
+    const result = run(budget, "2026-01-01", "2028-01-01");
+    const finding = lint(budget, result, "2026-01-01", "2028-01-01").find((f) => f.rule === "clearing-account-accumulating");
+    expect(finding).toBeUndefined();
+  });
+
+  it("points to goal overrides when that phase actually creates the surplus", () => {
+    const budget = load(`
+inflation: 0
+birthdays: []
+accounts:
+  - {name: pay, balance: 0, kind: clearing}
+  - {name: groceries, balance: 0, kind: expense}
+transfers:
+  - {name: salary, amount: 2000, every: fortnight, day: 2026-01-02, into: pay, escalation: 0}
+  - {name: shopping, amount: 2000, every: fortnight, day: 2026-01-02, out_of: pay, into: groceries, escalation: 0}
+goals:
+  - name: retire at 55
+    account: pay
+    target: 0
+    by: 2027-01-01
+    transfers:
+      - {name: shopping, amount: 100}
 `);
     const result = run(budget, "2026-01-01", "2028-01-01");
     const finding = lint(budget, result, "2026-01-01", "2028-01-01").find((f) => f.rule === "clearing-account-accumulating")!;
+    expect(finding.detail).toContain('after "retire at 55"');
     expect(finding.detail).toContain('transfer overrides under "retire at 55" in Goals');
   });
 
@@ -427,5 +460,23 @@ describe("the shipped example", () => {
     const { budget, result, start, end } = atPageHorizon();
     const other = lint(budget, result, start, end).filter((f) => f.rule !== "account-below-floor");
     expect(other.map((f) => `${f.rule}:${f.account}`)).toEqual(["clearing-account-accumulating:pay"]);
+    expect(other[0].detail).toContain('after "retire at 55"');
+    expect(other[0].detail).toContain("reduce that incoming transfer");
+    expect(other[0].detail).not.toContain("base Transfers");
+    expect(other[0].detail).not.toContain('under "pay off the house"');
+  });
+
+  it("proves the pre-house balance is needed by showing that sweeping it causes the later floor breach", () => {
+    const { budget, start, end } = atPageHorizon();
+    budget.transfers.push({
+      name: "clear excess pay", amount: 0, sweepAbove: 10000,
+      every: "year", day: "08-14", outOf: "pay", into: "early retirement",
+      escalation: budget.inflation,
+    });
+    budget.goals.find((goal) => goal.name === "pay off the house")!.transfers.push({
+      name: "clear excess pay", amount: 0,
+    });
+    const result = run(budget, start, end);
+    expect(breaches(budget, result)[0]).toMatchObject({ account: "pay", on: "2033-03-05" });
   });
 });

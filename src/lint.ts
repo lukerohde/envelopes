@@ -15,7 +15,7 @@
 import type { Budget } from "./model";
 import type { RunResult } from "./simulate";
 import { ageAt, type ISODate } from "./dates";
-import { annualise, breaches, highestOf, yearsIn } from "./flows";
+import { annualise, breaches, yearsIn } from "./flows";
 
 export type Rule =
   | "account-below-floor"
@@ -100,6 +100,45 @@ function editorHintAt(result: RunResult, when: ISODate): string {
     : `review the transfer overrides under "${phase.replace(/^after /, "")}" in Goals`;
 }
 
+interface UnusedGrowth {
+  phase: RunResult["phases"][number];
+  perYear: number;
+  throughput: number;
+}
+
+/** Match positive clearing growth against later phases that draw it back
+ * down. That is a cash buffer doing its job, not idle money. Walking backward
+ * leaves only growth no future phase consumes, and returns its earliest
+ * material source so the next instruction names the first transfer set to
+ * fix. */
+function firstUnusedGrowth(result: RunResult, account: string): UnusedGrowth | null {
+  const finalPhase = result.phases.at(-1);
+  const finalFlow = finalPhase?.accounts[account];
+  const finalYears = finalPhase ? yearsIn(finalPhase.start, finalPhase.end) : 0;
+  // One month's incoming cash is normal operating swing, not accumulation.
+  // Treat it like future use before matching the larger inter-phase draws.
+  let futureUse = finalFlow ? annualise(finalFlow.in, finalYears) / 12 : 0;
+  const unused: UnusedGrowth[] = [];
+  for (let i = result.phases.length - 1; i >= 0; i--) {
+    const phase = result.phases[i];
+    const flow = phase.accounts[account];
+    if (!flow) continue;
+    const growth = flow.closing - flow.opening;
+    if (growth <= 0) {
+      futureUse += -growth;
+      continue;
+    }
+    const amount = Math.max(0, growth - futureUse);
+    futureUse = Math.max(0, futureUse - growth);
+    const phaseYears = yearsIn(phase.start, phase.end);
+    const perYear = annualise(amount, phaseYears);
+    const throughput = annualise(flow.in, phaseYears);
+    const material = Math.max(SURPLUS_FLOOR_PER_YEAR, throughput * SURPLUS_SHARE_OF_INCOME);
+    if (perYear > material) unused.push({ phase, perYear, throughput });
+  }
+  return unused.at(-1) ?? null;
+}
+
 export function lint(budget: Budget, result: RunResult, start: ISODate, end: ISODate): Finding[] {
   const findings: Finding[] = [];
   const years = yearsIn(start, end);
@@ -123,39 +162,35 @@ export function lint(budget: Budget, result: RunResult, start: ISODate, end: ISO
   for (const account of budget.accounts) {
     const balance = closing[account.name];
 
-    // Measured at the peak, not the close. A clearing account is a buffer
-    // money passes through; the question is whether it ever piled up, and
-    // an account that hoards income for decades and is then drained by a
-    // collapse looks flat if you only compare the two ends.
+    // Positive growth is only unused if no later phase draws it back down.
+    // A pay account deliberately building before an expensive transition is
+    // a future cashflow buffer; sweeping it away makes the later phase fail.
     if (account.kind === "clearing") {
-      const peak = highestOf(result, account.name);
-      const throughput = annualise(totalFlow(result, account.name).in, years);
-      // A clearing account is meant to hold a working buffer, and a month's
-      // outgoings is a fair one -- pay lands fortnightly and the big bills
-      // fall on one day of the month, so the balance swings by roughly that
-      // much even when nothing is wrong. Only what sits above the buffer is
-      // money going nowhere.
-      const buffer = account.balance + throughput / 12;
-      const toPeak = peak ? yearsIn(start, peak.on) : 0;
-      const grew = peak ? annualise(peak.high - buffer, toPeak) : 0;
-      const material = Math.max(SURPLUS_FLOOR_PER_YEAR, throughput * SURPLUS_SHARE_OF_INCOME);
-      if (peak && grew > material) {
-        const editHint = editorHintAt(result, peak.on);
+      const unused = firstUnusedGrowth(result, account.name);
+      if (unused) {
+        const phaseName = unused.phase.name;
+        const goal = phaseName.replace(/^after /, "");
+        const share = unused.throughput > 0
+          ? ` — ${((unused.perYear / unused.throughput) * 100).toFixed(1)}% of what passes through it`
+          : "";
+        const editHint = phaseName === "from the start"
+          ? `The unused growth starts from the start; add a sweep in base Transfers only after choosing the retained buffer and destination`
+          : `The unused growth starts after "${goal}"; review the transfer overrides under "${goal}" in Goals. ` +
+            `If this is an incoming retirement drawdown, reduce that incoming transfer before adding a sweep`;
         findings.push({
           rule: "clearing-account-accumulating",
           severity: "fail",
           account: account.name,
           detail:
-            `builds to ${money(peak.high)} by ${peak.on}, ${money(grew)}/yr — ` +
-            `${((grew / throughput) * 100).toFixed(1)}% of what passes through it, claimed by no envelope. ` +
-            `It earns no interest sitting there — ${editHint}`,
-          fix:
-            `Give it a job: raise an envelope to what they really spend, or move more into savings. ` +
-            `Careful -- pushing it into a fund they can't reach until 60 makes the plan last longer, ` +
-            `which gives any over-sized drawdown more years to pool, and the surplus grows instead. ` +
-            `If the residual is real rather than an oversized retirement drawdown, add a named ` +
-            `sweep_above transfer with an explicit retained balance and destination; goal overrides ` +
-            `can redirect it when the household's focus changes.`,
+            `keeps ${money(unused.perYear)}/yr that no later phase uses${share}, ` +
+            `leaving ${money(balance)} in the account when the plan ends. ${editHint}`,
+          fix: phaseName === "from the start"
+            ? `Give the genuine residual a job in base Transfers. A named sweep_above is safe only after ` +
+              `retaining enough for every later low point and choosing an explicit destination; rerun the ` +
+              `daily floor check after adding it.`
+            : `Review what begins after "${goal}". If an investment or savings drawdown is putting more ` +
+              `into ${account.name} than spending removes, reduce that drawdown first. Sweep only a genuine ` +
+              `residual to an explicit destination, never back to the account funding the drawdown.`,
         });
       }
     }

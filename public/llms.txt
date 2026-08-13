@@ -174,8 +174,9 @@ are coupled and you'll chase your tail.
 3. **The account that finally gives out is the retirement fund**, not the pay
    account. Super running dry at 84 is the plan reaching its end. A pay
    account running dry at 46 means the cashflow never worked.
-4. **Nothing pools unspent.** A clearing account that climbs is income no
-   envelope claimed, earning nothing.
+4. **Nothing remains pooled unspent.** A clearing account may climb to carry
+   a known future cashflow gap. Only growth that no later phase draws back
+   down is unallocated and earning nothing.
 5. **Sinking funds cycle, savings beat inflation, every goal fires.**
 
 **Spending is an input, not a knob.** If you balance a plan by cutting
@@ -224,11 +225,19 @@ against the row it came from rather than taking it on faith. The rules:
 | rule | what it means |
 |---|---|
 | `account-below-floor` | the balance drops under the floor the account declares — the money isn't there on the day it's needed |
-| `clearing-account-accumulating` | income no envelope ever claimed, piling up |
+| `clearing-account-accumulating` | clearing growth that no later phase uses, left unallocated |
 | `saving-below-inflation` | `REVIEW`: grows in dollars, shrinks in what it buys; low yield may be intentional |
 | `sinking-fund-trending` | money in, none out, forever — the spending it saved for isn't modelled |
 | `goal-never-fires` | never reached, so everything downstream of it never happens |
 | `super-before-preservation-age` | super drawn before 60 |
+
+Growth a later phase draws back down is a future cashflow buffer, not idle
+cash. Do not sweep it merely because the chart has a high point. The
+accumulation finding matches phase growth against later drawdowns and names the
+earliest phase whose residual is still unused. If that phase is funded by a
+retirement drawdown, reduce the incoming drawdown before considering a sweep;
+otherwise a sweep can hide the mismatch and make the clearing account fail at
+its next low point.
 
 **`account-below-floor` is not always an error.** Read the date it gives you.
 Falling under the floor at 46, while someone is still working, is insolvency
@@ -349,7 +358,9 @@ The source must be `kind: clearing`, the destination is explicit, and
 retained balance, caps a loan destination at its remaining principal, and can
 be redirected by an existing goal override. Do not infer the destination, and
 never sweep a systematic retirement surplus back into the investment funding
-that drawdown: reduce the drawdown first.
+that drawdown: reduce the drawdown first. Before adding any sweep, check whether
+a later phase consumes the apparent surplus and rerun the daily floor check;
+the balance to retain must cover future lows, not merely the next pay cycle.
 
 ## Starting from nothing
 
@@ -450,7 +461,7 @@ checkable, because each kind carries something that should be true of it:
 | kind | for | should be true |
 |---|---|---|
 | `expense` | groceries, bills, a credit card | pure pass-through; the closing balance is cumulative spend, not money anyone has |
-| `clearing` | pay, an account everything is paid from | shouldn't trend upward — if it does, that's surplus going nowhere in particular |
+| `clearing` | pay, an account everything is paid from | may build for a later cashflow gap; only growth no later phase uses is unallocated |
 | `sinking` | car, holidays, Christmas | fills and empties on a cycle; roughly flat in real terms across a full one |
 | `saving` | a house deposit, a bridge fund | accumulates towards a target, then drains once |
 | `investment` | super, shares | `rate` should beat `inflation`; should never go negative |

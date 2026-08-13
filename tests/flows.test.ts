@@ -262,10 +262,10 @@ describe("the page carries it too, not just the CLI", () => {
     expect(simulation).toContain("Later milestones are not assessed");
   });
 
-  it("suggests a periodic sweep for accumulating clearing cash", () => {
+  it("uses the shared finding's exact guidance for accumulating clearing cash", () => {
     const simulation = readFileSync(new URL("../src/ui/simulation.ts", import.meta.url), "utf-8");
-    expect(simulation).toContain('firstProblem?.rule === "clearing-account-accumulating"');
-    expect(simulation).toContain("consider adding a sweep to periodically clear excess cash");
+    expect(simulation).toContain("firstProblem.detail");
+    expect(simulation).not.toContain("Suggestion: consider adding a sweep");
   });
 
   it("explains that a sweep keeps a scheduled, inflation-aware balance", () => {

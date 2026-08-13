@@ -393,12 +393,15 @@ The ordered loop is:
 6. Show the remaining trade-offs and ask the person which one expresses their
    intent. Apply that choice, rerun the check, and hand back the plan.
 
-`clearing-account-accumulating` should carry phase, account, accumulation rate
-and peak evidence so both an agent and a person can see where it begins. Its fix
-branches explicitly: reduce a mismatched drawdown, or rebaseline genuine
-surplus. The prompt teaches the distinction; deterministic fixtures prove both
-branches. A sweep back into the investment currently funding the clearing
-account is invalid because it launders a drawdown error into a tidy balance.
+`clearing-account-accumulating` should carry phase, account and accumulation
+rate so both an agent and a person can see where unused growth begins. A peak
+alone is not evidence: one phase may deliberately build the cash another phase
+draws down. Match positive phase growth against later negative growth before
+calling the residual unused. Its fix branches explicitly: reduce a mismatched
+drawdown, or rebaseline genuine surplus. The prompt teaches the distinction;
+deterministic fixtures prove both branches. A sweep back into the investment
+currently funding the clearing account is invalid because it launders a
+drawdown error into a tidy balance.
 
 Opportunity cost remains a prompt principle: review accessible low-yield cash
 against debt and savings alternatives, ask about access/risk/tax, and never
@@ -577,6 +580,9 @@ pre-existing unallocated surplus.
       complete transfer state through successive goal overrides, explain its
       schedule/inflation semantics in the editor, and direct floor failures to
       the goal phase whose transfers are active
+- [x] Exclude clearing growth consumed by a later phase, and attribute only the
+      unused residual to the earliest transfer set that creates it; a chart
+      peak is not sufficient evidence that cash can safely be swept
 - [x] Add an eval whose preferences genuinely conflict: earlier retirement,
       longer funded retirement, home ownership certainty, accessible savings
       and super tax treatment. Passing means the agent offers alternatives and
@@ -617,7 +623,7 @@ The accepted slice is now implemented on `agent-harness-round-2`:
 - `llms.txt` now gives the intent interview, the competing-goal loop, the
   present/future-dollar framing, severity semantics and the explicit sweep.
 
-Verification: the full Docker test suite passes (33 files, 322 tests) after
+Verification: the full Docker test suite passes (33 files, 325 tests) after
 the round-2 additions and the production build/typecheck passes. The published
 CLI bundle also has a smoke check for `check --json` and `compare --json` so an
 agent receives one JSON document rather than the duplicate output that a
@@ -682,6 +688,10 @@ session; it is intentionally not hidden as a deterministic unit test.
 - Rebaselining must not turn an oversized retirement drawdown into a passing
   result by sweeping the surplus back to its source. Fixing the drawdown is the
   first candidate in that phase.
+- A clearing balance rising in one phase and falling in a later phase is a
+  future cashflow buffer, not idle cash. Peak-date attribution is rejected:
+  positive phase growth is matched against later drawdowns before any sweep is
+  suggested, and every proposed sweep must still pass the daily floor check.
 - The uncle's 10× rule is the product's framing, not a hard-coded multiplier.
   Engine output must use the plan's actual dates, returns and milestones. The
   wording should express agency and future freedom, not shame present spending.
