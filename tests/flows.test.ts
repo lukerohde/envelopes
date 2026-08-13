@@ -244,4 +244,11 @@ describe("the page carries it too, not just the CLI", () => {
     expect(HTML).toContain('class="cadence-btn" data-cadence="month"');
     expect(HTML).toContain('class="cadence-btn active" data-cadence="year"');
   });
+
+  it("keeps plan and edit feedback in a fixed bottom notice dock", () => {
+    expect(HTML).toContain('class="notice-dock"');
+    expect(HTML).toContain('id="impactStatus"');
+    expect(HTML).toContain('id="planStatus"');
+    expect(HTML).toContain("position: fixed; left: 50%;");
+  });
 });

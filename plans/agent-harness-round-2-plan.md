@@ -564,6 +564,9 @@ pre-existing unallocated surplus.
 - [x] Add a compact transfer-mode selector for fixed amount versus
       `sweep_above`, reused in goal overrides and disabled unless the source
       account is clearing
+- [x] Keep the shared plan warning and edit-impact feedback in a responsive
+      fixed bottom notice dock so the consequence remains visible while the
+      person scrolls between an edit and its milestones
 - [x] Add an eval whose preferences genuinely conflict: earlier retirement,
       longer funded retirement, home ownership certainty, accessible savings
       and super tax treatment. Passing means the agent offers alternatives and
