@@ -254,6 +254,7 @@
     .transfer-fields-grid .combo, .transfer-fields-grid .field-input { min-width: 0; }
     .transfer-row .t-on { text-align: center; }
     .transfer-row input:disabled, .transfer-row select:disabled { color: var(--ink-faint); background: var(--surface-2); cursor: not-allowed; }
+    .transfer-help { margin: .65rem 0 0; color: var(--ink-muted); font-size: .75rem; line-height: 1.4; max-width: 54rem; }
     .infl-chk {
       justify-self: center; width: 1.3rem; height: 1.3rem; border-radius: 5px; border: 1.5px solid var(--line-strong);
       background: var(--surface); color: var(--ink-faint); font-size: .74rem; font-weight: 700; cursor: pointer;
@@ -647,6 +648,7 @@
             <div id="transferRows"></div>
           </div>
         </div>
+        <p class="transfer-help">A sweep runs only on its Every / On schedule. It keeps the Amount / keep balance in From and transfers only the excess. With inflation on, that retained balance grows from the simulation start.</p>
         <button class="add-ghost" type="button" id="addTransfer"><span class="plus">+</span> Add a transfer</button>
       </div>
     </details>

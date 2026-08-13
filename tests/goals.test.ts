@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { overrideRowHTML } from "../src/ui/goals";
-import type { UIState } from "../src/state";
+import { overrideRowHTML, setOverrideAmount } from "../src/ui/goals";
+import type { UIState, UITransferOverride } from "../src/state";
 
 const state: UIState = {
   inflation: 0.03,
@@ -21,5 +21,26 @@ describe("goal transfer overrides", () => {
     expect(html).toContain('placeholder="inherits 1,200"');
     expect(html).not.toContain("stopped-mark");
     expect(html).not.toContain('value="0"');
+  });
+
+  it("keeps an amount edit in the inherited sweep mode", () => {
+    const override: UITransferOverride = { name: "sweep" };
+    setOverrideAmount(override, "600", "sweep");
+    expect(override).toEqual({ name: "sweep", sweep_above: 600 });
+  });
+
+  it("inherits the transfer state left by an earlier goal", () => {
+    const sweeping: UIState = {
+      ...state,
+      accounts: [{ name: "pay", balance: 10000, floor: 800, kind: "clearing", rate: 0, offsets: null }],
+      transfers: [{ name: "sweep", amount: 0, sweep_above: 10000, every: "year", day: "08-14", out_of: "pay", into: null, escalates: true }],
+      goals: [
+        { ...state.goals[0], name: "Pay off the house", transfers: [{ name: "sweep", sweep_above: 12000, escalates: false }] },
+        { ...state.goals[0], name: "Retire at 55", transfers: [{ name: "sweep" }] },
+      ],
+    };
+    const html = overrideRowHTML(sweeping, sweeping.goals[1], 1, "sweep", true);
+    expect(html).toContain('placeholder="inherits 12,000"');
+    expect(html).toContain('data-inherited-value="false"');
   });
 });

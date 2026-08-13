@@ -573,6 +573,10 @@ pre-existing unallocated surplus.
 - [x] Make a newly added transfer's sweep mode become available as soon as its
       source is chosen, and make `external income` an explicit From choice;
       unknown account names can be added directly from the Transfers picker
+- [x] Preserve sweep mode when its inherited keep-balance is edited, carry the
+      complete transfer state through successive goal overrides, explain its
+      schedule/inflation semantics in the editor, and direct floor failures to
+      the goal phase whose transfers are active
 - [x] Add an eval whose preferences genuinely conflict: earlier retirement,
       longer funded retirement, home ownership certainty, accessible savings
       and super tax treatment. Passing means the agent offers alternatives and
@@ -613,7 +617,7 @@ The accepted slice is now implemented on `agent-harness-round-2`:
 - `llms.txt` now gives the intent interview, the competing-goal loop, the
   present/future-dollar framing, severity semantics and the explicit sweep.
 
-Verification: the full Docker test suite passes (33 files, 301 tests) after
+Verification: the full Docker test suite passes (33 files, 322 tests) after
 the round-2 additions and the production build/typecheck passes. The published
 CLI bundle also has a smoke check for `check --json` and `compare --json` so an
 agent receives one JSON document rather than the duplicate output that a

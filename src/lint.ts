@@ -93,6 +93,13 @@ function phaseNameAt(result: RunResult, when: ISODate): string {
   return name;
 }
 
+function editorHintAt(result: RunResult, when: ISODate): string {
+  const phase = phaseNameAt(result, when);
+  return phase === "from the start"
+    ? "review the matching transfer in the base Transfers section"
+    : `review the transfer overrides under "${phase.replace(/^after /, "")}" in Goals`;
+}
+
 export function lint(budget: Budget, result: RunResult, start: ISODate, end: ISODate): Finding[] {
   const findings: Finding[] = [];
   const years = yearsIn(start, end);
@@ -133,10 +140,7 @@ export function lint(budget: Budget, result: RunResult, start: ISODate, end: ISO
       const grew = peak ? annualise(peak.high - buffer, toPeak) : 0;
       const material = Math.max(SURPLUS_FLOOR_PER_YEAR, throughput * SURPLUS_SHARE_OF_INCOME);
       if (peak && grew > material) {
-        const phase = phaseNameAt(result, peak.on);
-        const editHint = phase === "from the start"
-          ? " — review the matching transfer in the base Transfers section"
-          : ` — review the transfer overrides under "${phase.replace(/^after /, "")}" in Goals`;
+        const editHint = editorHintAt(result, peak.on);
         findings.push({
           rule: "clearing-account-accumulating",
           severity: "fail",
@@ -144,7 +148,7 @@ export function lint(budget: Budget, result: RunResult, start: ISODate, end: ISO
           detail:
             `builds to ${money(peak.high)} by ${peak.on}, ${money(grew)}/yr — ` +
             `${((grew / throughput) * 100).toFixed(1)}% of what passes through it, claimed by no envelope. ` +
-            `It earns no interest sitting there${editHint}`,
+            `It earns no interest sitting there — ${editHint}`,
           fix:
             `Give it a job: raise an envelope to what they really spend, or move more into savings. ` +
             `Careful -- pushing it into a fund they can't reach until 60 makes the plan last longer, ` +
@@ -221,6 +225,7 @@ export function lint(budget: Budget, result: RunResult, start: ISODate, end: ISO
     // a recovery is a cashflow timing problem. One that never recovers is
     // the plan ending, and its "low" is just the horizon.
     const recovered = result.balances[breach.account] >= breach.floor;
+    const editHint = editorHintAt(result, breach.on);
     findings.push({
       rule: "account-below-floor",
       severity: "fail",
@@ -229,7 +234,8 @@ export function lint(budget: Budget, result: RunResult, start: ISODate, end: ISO
         `falls under its floor of ${money(breach.floor)} on ${breach.on}` +
         (recovered
           ? `, down to ${money(breach.low)}, before recovering — the money isn't there on the day it's needed`
-          : ` and doesn't recover — that's where the plan runs out`),
+          : ` and doesn't recover — that's where the plan runs out`) +
+        `; ${editHint}`,
       fix: recovered
         ? `A timing problem, not a shortfall: the money arrives after it's needed. Move a big monthly ` +
           `transfer to a different day, or raise the account's opening balance to carry the gap.`

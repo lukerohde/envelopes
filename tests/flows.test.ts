@@ -258,11 +258,20 @@ describe("the page carries it too, not just the CLI", () => {
     expect(simulation).toContain("firstProblem.account");
     expect(simulation).toContain('elements.terminalStatus.classList.toggle("floor-stop", floorStopped)');
     expect(simulation).toContain("Simulation stopped:");
+    expect(simulation).toContain('firstProblem?.rule === "account-below-floor"');
+    expect(simulation).toContain("Later milestones are not assessed");
   });
 
   it("suggests a periodic sweep for accumulating clearing cash", () => {
     const simulation = readFileSync(new URL("../src/ui/simulation.ts", import.meta.url), "utf-8");
     expect(simulation).toContain('firstProblem?.rule === "clearing-account-accumulating"');
     expect(simulation).toContain("consider adding a sweep to periodically clear excess cash");
+  });
+
+  it("explains that a sweep keeps a scheduled, inflation-aware balance", () => {
+    const html = readFileSync(new URL("../index.html", import.meta.url), "utf-8");
+    expect(html).toContain("A sweep runs only on its Every / On schedule");
+    expect(html).toContain("keeps the Amount / keep balance in From");
+    expect(html).toContain("grows from the simulation start");
   });
 });

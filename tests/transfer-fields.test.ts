@@ -74,6 +74,9 @@ describe("mobile transfer rows", () => {
     const html = transferFieldsHTML({ ...fields, mode: "sweep", amount: 1000 });
     expect(mobileTransferSummary({ ...fields, mode: "sweep", amount: 1000 })).toBe("above 1,000 · fortnight");
     expect(html).toContain('value="sweep" selected');
+    expect(html).toContain('data-label="Keep balance"');
+    expect(html).toContain('aria-label="Balance to keep when the sweep runs"');
+    expect(html).toContain("grows from the simulation start");
   });
 
   it("keeps the desktop mode labels short", () => {

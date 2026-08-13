@@ -230,6 +230,24 @@ goals: []
     expect(f.detail).toMatch(/2026-0[12]-\d\d/);
   });
 
+  it("points to the goal overrides active when the floor is breached", () => {
+    const budget = load(`
+inflation: 0
+birthdays: []
+accounts:
+  - {name: pay, balance: 1000, floor: 800, kind: clearing}
+  - {name: bills, balance: 0, kind: expense}
+transfers:
+  - {name: salary, amount: 2400, every: month, day: 20, into: pay, escalation: 0}
+  - {name: rates, amount: 2400, every: month, day: 5, out_of: pay, into: bills, escalation: 0}
+goals:
+  - {name: pay off the house, account: pay, target: 0, by: 2026-01-02, transfers: []}
+`);
+    const result = run(budget, "2026-01-01", "2028-01-01");
+    const finding = lint(budget, result, "2026-01-01", "2028-01-01").find((f) => f.rule === "account-below-floor")!;
+    expect(finding.detail).toContain('transfer overrides under "pay off the house" in Goals');
+  });
+
   it("leaves an account that stays above its floor alone", () => {
     expect(findings(clean())).not.toContain("account-below-floor");
   });

@@ -39,32 +39,42 @@ function triggerText(goal: UIGoal): string {
   return `${goal.byAgePerson} turns ${goal.byAgeTurns}`;
 }
 
-// What a transfer's fields are right before a given goal runs: the base
-// transfer if there is one, else whatever the most recent earlier goal set
-// them to (a goal can introduce a transfer -- "bridge drawdown" -- that
-// only ever exists inside goals' own overrides, never in the base list),
-// else a blank starting point matching the engine's own defaulting for a
-// brand-new override (applyOverrides() in simulate.ts): fortnightly, no
-// source or destination until you set one, grows with inflation.
+function blankTransfer(name: string): UITransfer {
+  return { name, amount: 0, every: "fortnight", day: "", out_of: null, into: null, escalates: true };
+}
+
+function applyOverride(transfer: UITransfer, override: UITransferOverride): UITransfer {
+  const next = { ...transfer };
+  const has = (key: keyof UITransferOverride): boolean => Object.prototype.hasOwnProperty.call(override, key);
+  if (has("every")) next.every = override.every!;
+  if (has("day")) next.day = override.day!;
+  if (has("out_of")) next.out_of = override.out_of ?? null;
+  if (has("into")) next.into = override.into ?? null;
+  if (has("escalates")) next.escalates = override.escalates!;
+  if (has("amount")) {
+    next.amount = override.amount!;
+    delete next.sweep_above;
+  }
+  if (has("sweep_above")) {
+    next.amount = 0;
+    next.sweep_above = override.sweep_above;
+  }
+  return next;
+}
+
+// What a transfer's fields are right before a given goal runs: start with
+// the base transfer, then apply every earlier goal in order. A goal override
+// changes the live transfer left by the previous phase; it does not jump back
+// to the original base settings. A transfer introduced by a goal starts from
+// the engine's own defaults and follows the same path.
 function resolveBase(state: UIState, goalIndex: number, name: string): UITransfer {
   const base = findTransfer(state, name);
-  if (base) return base;
-  for (let i = goalIndex - 1; i >= 0; i--) {
+  let resolved = base ? { ...base } : blankTransfer(name);
+  for (let i = 0; i < goalIndex; i++) {
     const override = findOverride(state.goals[i], name);
-    if (override) {
-      return {
-        name,
-        amount: override.amount ?? 0,
-        sweep_above: override.sweep_above,
-        every: override.every ?? "fortnight",
-        day: override.day ?? "",
-        out_of: override.out_of ?? null,
-        into: override.into ?? null,
-        escalates: override.escalates ?? true,
-      };
-    }
+    if (override) resolved = applyOverride(resolved, override);
   }
-  return { name, amount: 0, every: "fortnight", day: "", out_of: null, into: null, escalates: true };
+  return resolved;
 }
 
 function toRowFields(state: UIState, base: UITransfer, override: UITransferOverride | undefined): RowFields {
@@ -89,7 +99,30 @@ function toRowFields(state: UIState, base: UITransfer, override: UITransferOverr
   };
 }
 
-function setOverrideField(state: UIState, override: UITransferOverride, key: string, value: string | boolean, inheritedAmount: number | string): void {
+export function setOverrideAmount(override: UITransferOverride, value: string | number, mode: RowFields["mode"]): void {
+  if (value === "") {
+    delete override.amount;
+    delete override.sweep_above;
+    return;
+  }
+  const amount = parseFloat(String(value).replace(/,/g, "")) || 0;
+  if (mode === "sweep") {
+    override.sweep_above = amount;
+    delete override.amount;
+  } else {
+    override.amount = amount;
+    delete override.sweep_above;
+  }
+}
+
+function setOverrideField(
+  state: UIState,
+  override: UITransferOverride,
+  key: string,
+  value: string | boolean,
+  inheritedAmount: number | string,
+  inheritedMode: RowFields["mode"],
+): void {
   if (key === "from") {
     value ? override.out_of = value === "external income" ? null : String(value) : delete override.out_of;
     if (override.sweep_above !== undefined && !state.accounts.some((account) => account.name === override.out_of && account.kind === "clearing")) {
@@ -108,14 +141,7 @@ function setOverrideField(state: UIState, override: UITransferOverride, key: str
       delete override.sweep_above;
     }
   }
-  else if (key === "amount") {
-    const amount = value === "" ? null : parseFloat(String(value).replace(/,/g, "")) || 0;
-    if (amount === null) {
-      delete override.amount;
-      delete override.sweep_above;
-    } else if (override.sweep_above !== undefined) override.sweep_above = amount;
-    else override.amount = amount;
-  }
+  else if (key === "amount") setOverrideAmount(override, String(value), inheritedMode);
   else if (key === "every") value ? override.every = String(value) : delete override.every;
   else if (key === "day") value ? override.day = String(value) : delete override.day;
   else if (key === "escalates") override.escalates = value as boolean;
@@ -445,7 +471,7 @@ function wireGoalRow(container: HTMLElement, row: HTMLElement, state: UIState, g
       transferRow,
       (key, value) => {
         const override = findOverride(goal, name);
-        if (override) setOverrideField(state, override, key, value, fields.amount);
+        if (override) setOverrideField(state, override, key, value, fields.amount, fields.mode);
       },
       () => renderGoals(container, state, onChange),
       onChange,

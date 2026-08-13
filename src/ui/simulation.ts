@@ -445,11 +445,16 @@ export function createSimulationView(elements: Elements) {
         ? `${firstProblem.severity.toUpperCase()}: ${firstProblem.account} — ${firstProblem.detail}.${suggestion}`
         : "PASS: no mechanical findings";
       if (showImpact && before) {
-        const text = formatImpact(compareOutcomes(before, current));
-        const accumulation = checked.findings.find((finding) => finding.rule === "clearing-account-accumulating");
-        elements.impactStatus.textContent = accumulation && text.startsWith("No named milestone moved")
-          ? `${text} in ${accumulation.account}`
-          : text;
+        if (firstProblem?.rule === "account-below-floor") {
+          elements.impactStatus.textContent =
+            `Cashflow failure: ${firstProblem.account} — ${firstProblem.detail}. Later milestones are not assessed.`;
+        } else {
+          const text = formatImpact(compareOutcomes(before, current));
+          const accumulation = checked.findings.find((finding) => finding.rule === "clearing-account-accumulating");
+          elements.impactStatus.textContent = accumulation && text.startsWith("No named milestone moved")
+            ? `${text} in ${accumulation.account}`
+            : text;
+        }
       } else if (!showImpact) elements.impactStatus.textContent = "";
 
       series = {};

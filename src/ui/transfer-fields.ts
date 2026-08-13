@@ -52,7 +52,7 @@ function formatAmount(value: number | string): string {
 // "Infl." rather than "Inflation" -- the column under it is one checkbox
 // wide, and the full word overflows the card it sits in. The button itself
 // carries the long form as its title and aria-label.
-const COLUMN_LABELS = ["Name", "From", "→", "To", "Type", "Amount", "Every", "On", "Infl."];
+const COLUMN_LABELS = ["Name", "From", "→", "To", "Type", "Amount / keep", "Every", "On", "Infl."];
 
 export function transferHeadHTML(): string {
   let html = "";
@@ -75,7 +75,8 @@ function modeSelectHTML(mode: RowFields["mode"], disabled: boolean, inherited: b
   const inheritedOption = inherited ? `<option value="" selected>inherits ${mode === "sweep" ? "sweep" : "fixed"}</option>` : "";
   const sweepOption = `<option value="sweep"${!inherited && mode === "sweep" ? " selected" : ""}${!sweepAllowed ? " disabled" : ""}>Sweep</option>`;
   return (
-    `<select class="field-input amount-mode" data-field="mode"${dis} aria-label="Transfer mode">` +
+    `<select class="field-input amount-mode" data-field="mode"${dis} aria-label="Transfer mode" ` +
+    `title="Fixed transfers the amount. Sweep keeps the configured balance in From and transfers only the excess when its schedule runs.">` +
     `${inheritedOption}<option value="fixed"${!inherited && mode === "fixed" ? " selected" : ""}>Fixed</option>` +
     sweepOption +
     `</select>`
@@ -143,10 +144,16 @@ function onFieldHTML(every: string, day: string | number, disabled: boolean, inh
  * the row -- a repayment that was fixed while you were working can become
  * inflation-linked once a goal turns it into something else. That wasn't
  * obvious from a bare checkbox, hence the label spelling it out. */
-function inflationCheckboxHTML(escalates: boolean, disabled: boolean, inGoal: boolean, inherited: boolean): string {
-  const label = inherited ? "Inherits inflation from the transfer" : inGoal
-    ? "Grows with inflation — set here, this goal onwards"
-    : "Grows with inflation";
+function inflationCheckboxHTML(escalates: boolean, disabled: boolean, inGoal: boolean, inherited: boolean, mode: RowFields["mode"]): string {
+  const label = mode === "sweep"
+    ? inherited
+      ? "Inherits whether the retained balance grows with inflation from the simulation start"
+      : inGoal
+        ? "Retained balance grows with inflation from the simulation start — set here, this goal onwards"
+        : "Retained balance grows with inflation from the simulation start"
+    : inherited ? "Inherits inflation from the transfer" : inGoal
+      ? "Grows with inflation — set here, this goal onwards"
+      : "Grows with inflation";
   return (
     `<button type="button" class="chk infl-chk${escalates ? " checked" : ""}${inherited ? " inherited" : ""}" data-field="escalates" data-inherited-value="${escalates}"` +
     `${disabled ? " disabled" : ""} title="${label}" aria-label="${label}"></button>`
@@ -177,6 +184,11 @@ export function transferFieldsHTML(fields: RowFields, options: RowOptions = {}):
   const inheritedInput = (key: string, value: string | number): string => inherits.has(key)
     ? `value="" placeholder="inherits ${escapeHTML(String(value))}"`
     : `value="${escapeHTML(String(value))}"`;
+  const amountLabel = fields.mode === "sweep" ? "Keep balance" : "Amount";
+  const amountHelp = fields.mode === "sweep"
+    ? "A sweep runs only on its schedule, keeps this balance in From, and transfers the excess. With inflation on, the retained balance grows from the simulation start."
+    : "Amount transferred whenever the schedule runs.";
+  const amountAria = fields.mode === "sweep" ? "Balance to keep when the sweep runs" : "Transfer amount";
   return (
     `<div class="mobile-row-summary">` +
     `<span class="mobile-row-name">${name}</span>` +
@@ -192,10 +204,11 @@ export function transferFieldsHTML(fields: RowFields, options: RowOptions = {}):
     `<span class="arrow mobile-arrow">→</span>` +
     `<div class="mobile-field" data-label="To"><div class="combo" data-combo><input type="text" class="field-input combo-input" data-field="to" ${inheritedInput("to", fields.to)}${dis}></div></div>` +
     `<div class="mobile-field" data-label="Type">${modeSelectHTML(fields.mode, disabled, inherits.has("mode"), fields.sweepAllowed !== false)}</div>` +
-    `<div class="mobile-field" data-label="Amount"><input class="field-input fig t-amount" data-field="amount" ${inheritedInput("amount", formatAmount(fields.amount))}${dis}></div>` +
+    `<div class="mobile-field" data-label="${amountLabel}"><input class="field-input fig t-amount" data-field="amount" ${inheritedInput("amount", formatAmount(fields.amount))}${dis} ` +
+    `aria-label="${amountAria}" title="${amountHelp}"></div>` +
     `<div class="mobile-field" data-label="Every">${everySelectHTML(fields.every, disabled, inherits.has("every"))}</div>` +
     `<div class="mobile-field" data-label="On">${onFieldHTML(fields.every, fields.day, disabled, inherits.has("day"))}</div>` +
-    `<div class="mobile-field" data-label="Inflation">${inflationCheckboxHTML(fields.escalates, disabled, inGoal, inherits.has("escalates"))}</div>` +
+    `<div class="mobile-field" data-label="Inflation">${inflationCheckboxHTML(fields.escalates, disabled, inGoal, inherits.has("escalates"), fields.mode)}</div>` +
     `</div>`
   );
 }
@@ -260,7 +273,9 @@ export function wireTransferFieldRow(
       setField(key, key === "day" ? dayFromInput(every, input.value) : input.value);
       updateMobileSummary(row);
       onAnyChange();
-      if (key === "every") onEveryChange();
+      // Mode changes what the adjacent number and inflation toggle mean, so
+      // redraw it as well as the schedule-dependent On control.
+      if (key === "every" || key === "mode") onEveryChange();
     });
     // A source account determines whether Sweep above is legal. The combo
     // emits change only when an option is chosen (not on every search
