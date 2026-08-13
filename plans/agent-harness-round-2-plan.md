@@ -166,6 +166,22 @@ There are four separate questions hiding inside "excess cash":
 4. **Surface:** is this a failing harness criterion, a lint finding, a user
    insight in the flow table/UI, or some combination?
 
+There are also three quantities that must not be averaged into one:
+
+- **flow headroom:** income minus spending over a phase;
+- **liquidity reserve:** balance retained so lumpy scheduled outflows never
+  take the clearing account below its floor, even when the low point is months
+  after the decision; and
+- **rebalance cadence:** how long genuine surplus is allowed to accumulate
+  before it is redirected.
+
+The underlying optimization is `maximize funding of the declared current goal,
+subject to every daily clearing balance staying at or above its floor`. Annual
+net flow alone cannot prove that constraint: a plan can have positive annual
+cashflow and still be insolvent on the fifth of every month. Opening balance can
+carry the timing gap; periodic rebalancing is how some households reset the
+surplus without pretending the fixed allocation was exact forever.
+
 We may not need an answer in every layer. POC the candidates, then choose the
 smallest combination that gives an agent a known-good next move and gives a
 person useful information rather than noise.
@@ -272,6 +288,12 @@ example test pass by accepting its new findings.
       a non-dominating opportunity-cost comparison is advisory and must not
       make every diversified or liquidity-conscious plan exit non-zero. Keep
       severity in the shared result so CLI and browser cannot disagree
+- [ ] Compare the named sweep with a bounded "safe to save" calculation: vary
+      only an explicitly named current-focus transfer and find the greatest
+      amount for which the real daily run never breaches a clearing floor.
+      This is not the general solver deferred from round 1; it is one declared
+      lever against one existing invariant. Reject it if the extra runs and
+      monotonicity assumptions buy less than the sweep
 - [ ] Record the decision and why the rejected options are unnecessary; remove
       rejected POC code rather than leaving parallel mechanisms behind
 
@@ -363,6 +385,16 @@ fixed by definition and may not move when spending changes; report the exact
 milestone or plan-end consequence that did move rather than forcing the word
 "retirement" into the message.
 
+There is a simpler, conditional version when the edit reduces a scheduled
+expense. For an impact experiment, redirect exactly the freed amount from the
+same source on the same dates to an explicitly declared current focus. The
+clearing-account path is then unchanged from the valid baseline, so the
+experiment cannot create a new timing low. Its wording must stay conditional —
+`If you save the $100/month you freed, Early retirement moves 47 days earlier`
+— because the edit alone has not actually allocated the money. This solves the
+uncle's present-versus-future question without pretending it also solves
+pre-existing unallocated surplus.
+
 - [ ] Decide whether the upper bound is universal or declared by the plan
 - [ ] POC the measurable candidate from the first eval: a retirement fund
       still growing in real terms at 90, rather than merely surviving to the
@@ -378,6 +410,13 @@ milestone or plan-end consequence that did move rather than forcing the word
 - [ ] POC the immediate previous-run delta first: stable goal-name matching,
       exact calendar-day difference, earlier/later wording, newly reached/no
       longer reached, and no toast on initial load
+- [ ] POC the matched-redirect experiment for a reduced scheduled expense:
+      same source, cadence, day and escalation; amount limited to exactly what
+      the edit freed; destination explicit or uniquely unambiguous. Prove the
+      clearing balance path is unchanged, then compare its transition dates
+- [ ] If several savings/debt focuses are live, ask or omit the conditional
+      estimate. Do not pick the highest rate, largest contribution or first
+      account in config order
 - [ ] Decide which edits establish a new baseline without producing a message
       (loading YAML/share links and structural renames are the obvious cases),
       so a half-typed number or renamed goal does not generate nonsense
