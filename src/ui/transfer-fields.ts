@@ -52,7 +52,7 @@ function formatAmount(value: number | string): string {
 // "Infl." rather than "Inflation" -- the column under it is one checkbox
 // wide, and the full word overflows the card it sits in. The button itself
 // carries the long form as its title and aria-label.
-const COLUMN_LABELS = ["Name", "From", "→", "To", "Amount", "Every", "On", "Infl."];
+const COLUMN_LABELS = ["Name", "From", "→", "To", "Type", "Amount", "Every", "On", "Infl."];
 
 export function transferHeadHTML(): string {
   let html = "";
@@ -191,8 +191,8 @@ export function transferFieldsHTML(fields: RowFields, options: RowOptions = {}):
     `<div class="mobile-field" data-label="From"><div class="combo" data-combo><input type="text" class="field-input combo-input" data-field="from" ${inheritedInput("from", fields.from)}${dis}></div></div>` +
     `<span class="arrow mobile-arrow">→</span>` +
     `<div class="mobile-field" data-label="To"><div class="combo" data-combo><input type="text" class="field-input combo-input" data-field="to" ${inheritedInput("to", fields.to)}${dis}></div></div>` +
-    `<div class="mobile-field" data-label="Amount"><div class="amount-editor">${modeSelectHTML(fields.mode, disabled, inherits.has("mode"), fields.sweepAllowed !== false)}` +
-    `<input class="field-input fig t-amount" data-field="amount" ${inheritedInput("amount", formatAmount(fields.amount))}${dis}></div></div>` +
+    `<div class="mobile-field" data-label="Type">${modeSelectHTML(fields.mode, disabled, inherits.has("mode"), fields.sweepAllowed !== false)}</div>` +
+    `<div class="mobile-field" data-label="Amount"><input class="field-input fig t-amount" data-field="amount" ${inheritedInput("amount", formatAmount(fields.amount))}${dis}></div>` +
     `<div class="mobile-field" data-label="Every">${everySelectHTML(fields.every, disabled, inherits.has("every"))}</div>` +
     `<div class="mobile-field" data-label="On">${onFieldHTML(fields.every, fields.day, disabled, inherits.has("day"))}</div>` +
     `<div class="mobile-field" data-label="Inflation">${inflationCheckboxHTML(fields.escalates, disabled, inGoal, inherits.has("escalates"))}</div>` +

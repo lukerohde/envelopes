@@ -210,12 +210,12 @@
 
     /* ── Transfers, and the shared row format Goals reuses ──────────── */
     .transfers-scroll, .override-scroll { overflow-x: auto; }
-    /* wide enough that eight columns stay readable, narrow enough that a goal
+    /* wide enough that nine columns stay readable, narrow enough that a goal
        card (the tighter of the two places this grid appears) doesn't need to
        scroll on a desktop -- below that it scrolls, which is what it's for */
-    .transfers-table, .override-table { min-width: 660px; display: flex; flex-direction: column; gap: 0; }
+    .transfers-table, .override-table { min-width: 760px; display: flex; flex-direction: column; gap: 0; }
     .t-head, .transfer-fields-grid {
-      display: grid; grid-template-columns: 1.1fr .85fr auto .85fr .8fr .8fr .8fr 2.1rem; gap: .5rem; align-items: center;
+      display: grid; grid-template-columns: 1.1fr .85fr auto .85fr .95fr .85fr .8fr .8fr 2.1rem; gap: .5rem; align-items: center;
     }
     .mobile-row-summary { display: none; }
     .mobile-field { display: contents; }
@@ -232,9 +232,7 @@
     .t-name-cell { display: flex; align-items: center; gap: .35rem; min-width: 0; }
     .transfer-row .t-name { font-weight: 600; min-width: 0; }
     .transfer-row .t-name[readonly] { border-color: transparent; background: none; cursor: default; padding-left: 0; }
-    .amount-editor { display: flex; align-items: center; gap: .25rem; min-width: 0; }
-    .amount-editor .amount-mode { flex: 0 1 6.2rem; min-width: 0; padding-left: .35rem; padding-right: 1.25rem; font-size: .72rem; }
-    .amount-editor .t-amount { flex: 1 1 4rem; min-width: 0; }
+    .transfer-row .amount-mode { min-width: 0; padding-left: .35rem; padding-right: 1.25rem; font-size: .72rem; }
 
     .override-head { display: flex; align-items: center; gap: .5rem; }
     .override-head .chk-spacer { flex: 0 0 .9rem; }
@@ -375,9 +373,6 @@
       .flow-controls { justify-content: flex-start; margin-top: .8rem; }
       .flow-control { align-items: flex-start; flex-direction: column; gap: .2rem; }
       .flow-control-label { font-size: .62rem; }
-      .amount-editor { flex-wrap: wrap; }
-      .amount-editor .amount-mode, .amount-editor .t-amount { flex-basis: 100%; }
-
       .override-row { display: grid; grid-template-columns: .9rem minmax(0, 1fr); align-items: start; gap: .5rem; padding: .5rem .1rem; }
       .override-row > .chk { margin-top: .7rem; }
       .override-row .transfer-row { grid-column: 2; width: 100%; padding: 0; min-width: 0; }

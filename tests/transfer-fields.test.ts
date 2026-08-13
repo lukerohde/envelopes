@@ -65,6 +65,8 @@ describe("mobile transfer rows", () => {
     expect(html).toContain('class="transfer-fields-grid"');
     expect(html).toContain('data-label="From"');
     expect(html).toContain('data-label="Inflation"');
+    expect(html).toContain('data-label="Type"');
+    expect(html).toContain('data-label="Amount"');
     expect(html).toContain('data-field="mode"');
   });
 
