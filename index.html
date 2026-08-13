@@ -57,6 +57,9 @@
     .mono, .fig { font-family: ui-monospace, "SF Mono", "Menlo", monospace; font-variant-numeric: tabular-nums; }
 
     .wrap { max-width: 800px; margin: 0 auto; padding: 0 1.5rem 5rem; }
+    @media (min-width: 700px) {
+      .wrap { max-width: 1100px; }
+    }
 
     header.app-head { padding: 2.6rem 0 1.6rem; }
     header.app-head h1 { margin: 0; font-size: 1.6rem; font-family: Georgia, "Iowan Old Style", ui-serif, serif; }
@@ -211,12 +214,12 @@
 
     /* ── Transfers, and the shared row format Goals reuses ──────────── */
     .transfers-scroll, .override-scroll { overflow-x: auto; }
-    /* wide enough that nine columns stay readable, narrow enough that a goal
-       card (the tighter of the two places this grid appears) doesn't need to
-       scroll on a desktop -- below that it scrolls, which is what it's for */
-    .transfers-table, .override-table { min-width: 760px; display: flex; flex-direction: column; gap: 0; }
+    /* Wide enough that nine columns stay readable on a desktop. Every track
+       may shrink below its content width; otherwise a long account name or
+       select label pushes the inflation and delete controls off the card. */
+    .transfers-table, .override-table { width: 100%; min-width: 760px; display: flex; flex-direction: column; gap: 0; }
     .t-head, .transfer-fields-grid {
-      display: grid; grid-template-columns: 1.1fr .85fr auto .85fr .95fr .85fr .8fr .8fr 2.1rem; gap: .5rem; align-items: center;
+      display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .85fr) 1.1rem minmax(0, .85fr) minmax(4.5rem, .65fr) minmax(0, .9fr) minmax(0, .8fr) minmax(0, .8fr) 1.8rem; gap: .5rem; align-items: center;
     }
     .mobile-row-summary { display: none; }
     .mobile-field { display: contents; }
@@ -233,7 +236,7 @@
     .t-name-cell { display: flex; align-items: center; gap: .35rem; min-width: 0; }
     .transfer-row .t-name { font-weight: 600; min-width: 0; }
     .transfer-row .t-name[readonly] { border-color: transparent; background: none; cursor: default; padding-left: 0; }
-    .transfer-row .amount-mode { min-width: 0; padding-left: .35rem; padding-right: 1.25rem; font-size: .72rem; }
+    .transfer-row .amount-mode { min-width: 0; padding-left: .35rem; padding-right: .9rem; font-size: .72rem; }
 
     .override-head { display: flex; align-items: center; gap: .5rem; }
     .override-head .chk-spacer { flex: 0 0 .9rem; }
@@ -247,6 +250,7 @@
     .transfer-row .arrow { color: var(--ink-faint); text-align: center; font-size: .82rem; }
     .transfer-row .t-amount { text-align: right; }
     .transfer-row .field-input, .transfer-row .combo-input { padding: .3rem .5rem; font-size: .83rem; }
+    .transfer-fields-grid .combo, .transfer-fields-grid .field-input { min-width: 0; }
     .transfer-row .t-on { text-align: center; }
     .transfer-row input:disabled, .transfer-row select:disabled { color: var(--ink-faint); background: var(--surface-2); cursor: not-allowed; }
     .infl-chk {

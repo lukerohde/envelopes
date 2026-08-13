@@ -76,6 +76,12 @@ describe("mobile transfer rows", () => {
     expect(html).toContain('value="sweep" selected');
   });
 
+  it("keeps the desktop mode labels short", () => {
+    const html = transferFieldsHTML({ ...fields, sweepAllowed: false });
+    expect(html).toContain('value="fixed" selected>Fixed</option>');
+    expect(html).toContain('value="sweep" disabled>Sweep</option>');
+  });
+
   it("keeps sweep visible but disabled until the source is a clearing account", () => {
     const html = transferFieldsHTML({ ...fields, sweepAllowed: false });
     expect(html).toContain('value="sweep" disabled');

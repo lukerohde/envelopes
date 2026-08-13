@@ -72,11 +72,11 @@ function everySelectHTML(every: string, disabled: boolean, inherited: boolean): 
 
 function modeSelectHTML(mode: RowFields["mode"], disabled: boolean, inherited: boolean, sweepAllowed: boolean): string {
   const dis = disabled ? " disabled" : "";
-  const inheritedOption = inherited ? `<option value="" selected>inherits ${mode === "sweep" ? "sweep above" : "fixed amount"}</option>` : "";
-  const sweepOption = `<option value="sweep"${!inherited && mode === "sweep" ? " selected" : ""}${!sweepAllowed ? " disabled" : ""}>Sweep above</option>`;
+  const inheritedOption = inherited ? `<option value="" selected>inherits ${mode === "sweep" ? "sweep" : "fixed"}</option>` : "";
+  const sweepOption = `<option value="sweep"${!inherited && mode === "sweep" ? " selected" : ""}${!sweepAllowed ? " disabled" : ""}>Sweep</option>`;
   return (
     `<select class="field-input amount-mode" data-field="mode"${dis} aria-label="Transfer mode">` +
-    `${inheritedOption}<option value="fixed"${!inherited && mode === "fixed" ? " selected" : ""}>Fixed amount</option>` +
+    `${inheritedOption}<option value="fixed"${!inherited && mode === "fixed" ? " selected" : ""}>Fixed</option>` +
     sweepOption +
     `</select>`
   );
