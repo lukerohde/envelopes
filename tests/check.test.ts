@@ -69,7 +69,6 @@ describe("a plan that needs balancing", () => {
     const { check: c } = check(BROKEN);
     expect(c.findings.map((finding) => finding.rule)).toEqual([
       "account-below-floor",
-      "clearing-account-accumulating",
       "saving-below-inflation",
     ]);
     for (const finding of c.findings) expect(finding.fix.length).toBeGreaterThan(30);

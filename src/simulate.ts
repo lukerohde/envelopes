@@ -153,6 +153,7 @@ export function run(budget: Budget, start: ISODate, end: ISODate, track: string[
     // and recovers, which is a timing problem and not a collapse.
     if (ledger.recordLows(balances, when) && balancesAtEnd === null) {
       balancesAtEnd = { ...balances };
+      ledger.stop(when, balancesAtEnd);
     }
     for (const name of track) history[name].push([when, balances[name]]);
     when = addDays(when, 1);
@@ -173,6 +174,7 @@ class Ledger {
   }
 
   record(account: string, field: "in" | "out" | "drawn" | "interest", amount: number): void {
+    if (this.stopped) return;
     this.current.accounts[account][field] += amount;
   }
 
@@ -184,6 +186,7 @@ class Ledger {
    * caller can snapshot what the world looked like while it still made
    * sense. */
   recordLows(balances: Balances, when: ISODate): boolean {
+    if (this.stopped) return false;
     let brokeToday = false;
     for (const [name, flow] of Object.entries(this.current.accounts)) {
       // frozen once the plan has broken -- see the note at the call site
@@ -211,13 +214,25 @@ class Ledger {
   }
 
   private everBroke = false;
+  private stopped = false;
+
+  /** Freeze flow measurement at the first breach. The day itself has already
+   * been fully recorded; later chart samples may continue, but they must not
+   * accrue transfers or negative interest into the flow table. */
+  stop(when: ISODate, balances: Balances): void {
+    if (this.stopped) return;
+    this.stopped = true;
+    this.seal(when, balances);
+  }
 
   closePhase(when: ISODate, goalNames: string[], balances: Balances): void {
+    if (this.stopped) return;
     this.seal(when, balances);
     this.current = openPhase(`after ${goalNames.join(" + ")}`, when, balances, this.debts);
   }
 
   finish(end: ISODate, balances: Balances): Phase[] {
+    if (this.stopped) return this.done;
     this.seal(end, balances);
     return this.done;
   }

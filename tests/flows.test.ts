@@ -13,7 +13,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { load } from "../src/model";
 import { run } from "../src/simulate";
-import { annualise, coverYears, expectedClosing, formatFlows, summarise, surplusOf } from "../src/flows";
+import { annualise, breaches, coverYears, expectedClosing, formatFlows, summarise, surplusOf } from "../src/flows";
 
 const PLAN = `
 inflation: 0
@@ -94,6 +94,27 @@ describe("goal-delimited phases", () => {
     for (const name of Object.keys(working.accounts)) {
       expect(retired.accounts[name].opening).toBeCloseTo(working.accounts[name].closing, 6);
     }
+  });
+});
+
+describe("phase measurement after a floor breach", () => {
+  it("ends the flow phase on the first breach instead of accruing negative interest to the horizon", () => {
+    const budget = load(`
+inflation: 0
+accounts:
+  - {name: pay, balance: 0, kind: clearing}
+  - {name: super, balance: 100, kind: investment, rate: 0.1}
+transfers:
+  - {name: super drawdown, amount: 100, every: month, day: 1, out_of: super, into: pay, escalation: 0}
+goals:
+  - {name: super takes over, account: pay, target: 0, by: 2026-01-02, transfers: []}
+`);
+    const result = run(budget, "2026-01-01", "2028-01-01");
+    const breach = breaches(budget, result).find((item) => item.account === "super")!;
+    const phase = result.phases.find((item) => item.name === "after super takes over")!;
+    expect(phase.end).toBe(breach.on);
+    expect(phase.accounts.super.closing).toBeCloseTo(result.balancesAtEnd!.super);
+    expect(phase.accounts.super.interest).toBeGreaterThan(-1);
   });
 });
 
