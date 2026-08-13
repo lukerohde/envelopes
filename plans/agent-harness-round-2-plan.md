@@ -15,11 +15,20 @@ about *goals*. It has feedback and no feedforward. An agent that doesn't
 already know what a good plan looks like will optimise against the checks
 rather than the plan, which is exactly what happened.
 
-**The measure of done:** hand a fresh agent a deliberately broken plan and
-`llms.txt`, and it balances it without a human catching anything. The answer
-must also make excess cash visible in the right place — to the harness, and
-possibly to the person using the site — without pretending every possible
-detector, model feature and UI treatment is necessary.
+**Design correction:** there is no universal optimum for a household plan.
+Earlier retirement, longer funded retirement, earlier home ownership,
+accessible cash, tax-efficient super and certainty under policy risk can move
+against one another. The engine can calculate those consequences; neither it
+nor an agent may invent how the person values them. The harness is a
+decision-support loop: elicit intent, enforce hard constraints, compare feasible
+variants, explain the trade-offs, and let the person choose.
+
+**The measure of done:** hand a fresh agent a deliberately broken plan, a
+person's stated constraints/preferences and `llms.txt`. It repairs the
+mechanics, presents the genuine competing variants, asks rather than assumes
+where values decide the answer, and returns the option the person chose without
+a human catching a hidden failure. Excess cash must be visible without
+pretending every detector, model feature and UI treatment is necessary.
 
 **Product principle:** every dollar has two uses: what it buys today, and the
 future freedom it could buy if saved. The app exists to make that trade visible
@@ -53,9 +62,19 @@ written down nowhere. A fresh agent re-derives them and gets them wrong.
 - [x] **Spending is an input, not a tuning knob.** An agent that balances a
       plan by cutting someone's groceries has not balanced anything. Say it
       in those words
-- [ ] Q (resolve at review): are these criteria universal, or does a plan
-      need to declare its own? A 25-year-old saving a house deposit has a
-      different shape and "runs out in the eighties" is meaningless for them
+- [x] Mechanical criteria are universal; financial objectives are not. Daily
+      floors, legal access and internally consistent transitions can be checked.
+      Retirement timing, funded longevity, home ownership, liquidity, risk and
+      tax preferences must be elicited from the person and restated before an
+      agent proposes variants. A 25-year-old saving a deposit does not inherit a
+      retiree's "last into the eighties" objective
+- [ ] Add the short intent interview to `llms.txt`: which outcomes are hard
+      constraints; which direction each preference should move; which levers
+      the agent may alter; and which uncertainties (market, liquidity, tax or
+      policy) the person values enough to prefer certainty over expected return
+- [ ] Make the agent restate that intent before changing the plan. Do not demand
+      numerical weights: a partial ordering and a few minimum/maximum constraints
+      are enough to compare useful scenarios
 
 ---
 
@@ -347,8 +366,10 @@ parallel warning system.
 
 The ordered loop is:
 
-1. Fix the first daily floor breach. Nothing downstream is real yet.
-2. Fix unreachable goals and illegal early drawdown.
+1. Ask for intent: hard constraints, desired directions, allowed levers and
+   preferences where the model cannot price certainty, access or policy risk.
+2. Run the baseline and fix the first daily floor breach. Nothing downstream is
+   real yet. Then fix unreachable transitions and illegal early drawdown.
 3. For each goal-delimited phase, resolve clearing accumulation. If systematic
    retirement drawdown exceeds spending, reduce the drawdown; do not hide it
    with a sweep. Otherwise route genuine residual surplus to the explicitly
@@ -357,8 +378,11 @@ The ordered loop is:
    rebudget practice. Start with the person's retained working balance, run the
    real engine, and adjust that one value until the daily floor holds. An agent
    can bisect variants itself; the product does not need a solver.
-5. Rerun until the check passes, then report the person's trade-offs rather than
-   continuing to optimize spending they did not authorize changing.
+5. Produce a small set of one-change variants and compare their whole outcome
+   vectors. Do not collapse them into one score. Discard an option only when it
+   is no worse on every declared outcome and introduces no unmodelled risk.
+6. Show the remaining trade-offs and ask the person which one expresses their
+   intent. Apply that choice, rerun the check, and hand back the plan.
 
 `clearing-account-accumulating` should carry phase, account, accumulation rate
 and peak evidence so both an agent and a person can see where it begins. Its fix
@@ -370,6 +394,15 @@ account is invalid because it launders a drawdown error into a tidy balance.
 Opportunity cost remains a prompt principle: review accessible low-yield cash
 against debt and savings alternatives, ask about access/risk/tax, and never
 infer the winner. It is not a lint rule, check failure or optimizer.
+
+Add one neutral comparison tool shared by agents and the browser. A pure
+`compareOutcomes(before, after)` reports named milestone movement, fixed
+date/age goals that cannot move, first floor-breach movement, retirement-fund
+exhaustion, lowest clearing margin and unallocated surplus by phase. A CLI
+`compare before.yml after.yml --json` runs both real plans and prints that same
+structure. It never labels earlier/later or more/less as better/worse. This is
+the tool an agent uses to build a trade-off table instead of doing date
+arithmetic in its prompt.
 
 #### Engine recommendation
 
@@ -394,10 +427,11 @@ actionable issue and links the person to the affected account/phase. Warnings
 and agent feedback therefore agree word-for-word and number-for-number.
 
 On a committed numeric edit, retain the prior valid outcome, rerun, and show a
-non-modal transient impact message from exact date differences. List the moved
-named milestones compactly, for example `Mortgage paid off 12 days earlier ·
-Early retirement 47 days earlier`. If retirement is fixed by age/date, compare
-the first retirement-fund exhaustion instead: `Money lasts 73 days less`.
+non-modal transient impact message from `compareOutcomes`. Show competing
+movement together rather than selecting a winner, for example `Early retirement
+47 days earlier · mortgage paid off 8 months later · money lasts 14 months
+less`. A fixed date/age transition can be labelled `unchanged — fixed at age
+60` when it is relevant to the comparison.
 
 Never show a delta past a floor breach. If no milestone moves because surplus
 pools, say that. Initial load, YAML/share replacement, structural rename and a
@@ -411,6 +445,12 @@ the message needs no hypothetical optimizer. Without one, the UI can later POC
 the conditional matched redirect (`If you save the $100/month you freed…`), but
 that is second choice: ship the actual-result delta first and add the
 counterfactual only if real use shows a gap.
+
+The UI reports consequences and can ask `Is this the direction you intended?`;
+it does not store or infer a utility function. Scenario selection and the richer
+conversation about home certainty, super policy risk and liquidity belong with
+the person and their agent. Do not add a preferences schema in this round unless
+the eval proves that an agent cannot reliably retain the stated intent.
 
 ### Phase 6 — Implement only the chosen excess-cash path
 
@@ -483,6 +523,12 @@ pre-existing unallocated surplus.
 - [ ] POC the immediate previous-run delta first: stable goal-name matching,
       exact calendar-day difference, earlier/later wording, newly reached/no
       longer reached, and no toast on initial load
+- [ ] Write `compareOutcomes` as a pure, deterministic result before wiring any
+      presentation. Cover milestone dates, fixed transitions, first breach,
+      funded longevity, clearing low margin and phase surplus; no qualitative
+      score or winner field
+- [ ] Use the same comparator for `compare before.yml after.yml --json` and the
+      browser edit message. Prove the two surfaces return identical facts
 - [ ] POC the matched-redirect experiment for a reduced scheduled expense:
       same source, cadence, day and escalation; amount limited to exactly what
       the edit freed; destination explicit or uniquely unambiguous. Prove the
@@ -503,6 +549,11 @@ pre-existing unallocated surplus.
       rather than guessing which one is independence
 - [ ] Prefer explanation over a new feature if the existing simulator already
       makes the trade visible once the page tells the person what to look for
+- [ ] Add an eval whose preferences genuinely conflict: earlier retirement,
+      longer funded retirement, home ownership certainty, accessible savings
+      and super tax treatment. Passing means the agent offers alternatives and
+      asks; choosing a single rate-maximising answer without eliciting intent
+      fails
 
 ### Phase 8 — Re-run the real eval
 
@@ -520,6 +571,18 @@ pre-existing unallocated surplus.
 
 ## Decisions
 
+- An engine `Goal` is a transition trigger, not proof that moving its date in
+  one direction is the person's objective. Age/date goals may be fixed
+  constraints; balance goals may be levers or milestones. User intent lives in
+  the planning conversation unless repeated evals prove it must be persisted.
+- The agent facilitates a decision rather than maximizing a scalar score. Its
+  required tools are `check` for mechanical feasibility and a neutral shared
+  comparator for consequences. Its required instructions are intent elicitation,
+  one-change variants, trade-off presentation and asking before choosing.
+- Low yield is not itself a defect. Cash may deliberately buy access, certainty
+  or protection from risks the engine does not model. Unallocated accumulation
+  in an account declared `clearing` remains a structural finding; once the
+  person gives that cash a deliberate job, the harness must respect the choice.
 - Phases 1–3 and the first Phase 4 eval landed on round 1's branch because the
   eval immediately exercised the harness it was reviewing. Round 2 starts from
   that commit rather than rewriting history to manufacture a clean boundary.
