@@ -9,7 +9,7 @@ import { addDays, daysBetween, horizonYears, todayISO, type ISODate } from "../d
 import { run, type History, type Phase } from "../simulate";
 import { groupAccounts, toBudget, type UIState, type UIGoal, type UIPerson } from "../state";
 import { sortMilestones } from "../milestones";
-import { breaches, summarise } from "../flows";
+import { breaches, summarise, type FlowCadence } from "../flows";
 import { renderFlows } from "./flows";
 import type { Budget } from "../model";
 import { compareOutcomes, formatImpact, type PlanOutcome } from "../compare";
@@ -46,6 +46,7 @@ interface Elements {
   impactStatus: HTMLElement;
   planStatus: HTMLElement;
   dollarButtons: NodeListOf<HTMLButtonElement>;
+  cadenceButtons: NodeListOf<HTMLButtonElement>;
 }
 
 function money(n: number): string {
@@ -115,6 +116,7 @@ export function createSimulationView(elements: Elements) {
     requestedMax: absMax,
     scrubYear: 0,
     dollars: "future" as "future" | "today",
+    cadence: "year" as FlowCadence,
   };
   let start = todayISO();
   let series: Record<string, { floor: number; points: [number, number][] }> = {};
@@ -153,7 +155,12 @@ export function createSimulationView(elements: Elements) {
 
   function renderFlowPanel(): void {
     if (!lastBudget) return;
-    renderFlows(elements.flowRows, summarise(lastPhases, lastBudget, start, view.dollars === "today"), view.dollars === "today");
+    renderFlows(
+      elements.flowRows,
+      summarise(lastPhases, lastBudget, start, view.dollars === "today"),
+      view.dollars === "today",
+      view.cadence,
+    );
   }
 
   function refresh(state: UIState, completed: [string, ISODate][]): void {
@@ -487,6 +494,13 @@ export function createSimulationView(elements: Elements) {
           view.dollars = btn.dataset.mode as "future" | "today";
           elements.dollarButtons.forEach((b) => b.classList.toggle("active", b === btn));
           refresh(state, completedGoals);
+        });
+      });
+      elements.cadenceButtons.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          view.cadence = btn.dataset.cadence as FlowCadence;
+          elements.cadenceButtons.forEach((b) => b.classList.toggle("active", b === btn));
+          renderFlowPanel();
         });
       });
     },

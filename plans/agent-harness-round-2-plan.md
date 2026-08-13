@@ -558,6 +558,12 @@ pre-existing unallocated surplus.
       rather than guessing which one is independence
 - [x] Prefer explanation over a new feature if the existing simulator already
       makes the trade visible once the page tells the person what to look for
+- [x] Add flow-table display controls for future/today dollars and
+      weekly/fortnightly/monthly/yearly rates; keep the simulator's annual
+      facts as the single source and leave balances/closing amounts unscaled
+- [x] Add a compact transfer-mode selector for fixed amount versus
+      `sweep_above`, reused in goal overrides and disabled unless the source
+      account is clearing
 - [x] Add an eval whose preferences genuinely conflict: earlier retirement,
       longer funded retirement, home ownership certainty, accessible savings
       and super tax treatment. Passing means the agent offers alternatives and

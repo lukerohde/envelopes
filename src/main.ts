@@ -36,6 +36,7 @@ function main(state: UIState): void {
     impactStatus: document.querySelector<HTMLElement>("#impactStatus")!,
     planStatus: document.querySelector<HTMLElement>("#planStatus")!,
     dollarButtons: document.querySelectorAll<HTMLButtonElement>(".dt-btn"),
+    cadenceButtons: document.querySelectorAll<HTMLButtonElement>(".cadence-btn"),
   });
 
   // every edit anywhere on the page funnels through here: re-run the real

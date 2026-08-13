@@ -27,6 +27,19 @@ export function annualise(total: number, years: number): number {
   return years <= 0 ? 0 : total / years;
 }
 
+/** Display rates for a cadence a person can reason about without doing the
+ * conversion in their head. The engine keeps annual rates as its stable
+ * interchange format; this is only a presentation scale. */
+export const FLOW_CADENCES = ["week", "fortnight", "month", "year"] as const;
+export type FlowCadence = (typeof FLOW_CADENCES)[number];
+
+export function cadenceFactor(cadence: FlowCadence): number {
+  if (cadence === "week") return 7 / 365.25;
+  if (cadence === "fortnight") return 14 / 365.25;
+  if (cadence === "month") return 1 / 12;
+  return 1;
+}
+
 /** How long this balance lasts at this year's burn rate. The question the
  * bridge fund exists to answer: does it reach preservation age. */
 export function coverYears(balance: number, annualOut: number): number {

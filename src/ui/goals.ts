@@ -55,6 +55,7 @@ function resolveBase(state: UIState, goalIndex: number, name: string): UITransfe
       return {
         name,
         amount: override.amount ?? 0,
+        sweep_above: override.sweep_above,
         every: override.every ?? "fortnight",
         day: override.day ?? "",
         out_of: override.out_of ?? null,
@@ -66,24 +67,55 @@ function resolveBase(state: UIState, goalIndex: number, name: string): UITransfe
   return { name, amount: 0, every: "fortnight", day: "", out_of: null, into: null, escalates: true };
 }
 
-function toRowFields(base: UITransfer, override: UITransferOverride | undefined): RowFields {
+function toRowFields(state: UIState, base: UITransfer, override: UITransferOverride | undefined): RowFields {
   const value = <T>(key: keyof UITransferOverride, fallback: T): T =>
     override && Object.prototype.hasOwnProperty.call(override, key) ? override[key] as T : fallback;
+  let amount = base.sweep_above ?? base.amount;
+  if (override && Object.prototype.hasOwnProperty.call(override, "sweep_above")) amount = override.sweep_above!;
+  else if (override && Object.prototype.hasOwnProperty.call(override, "amount")) amount = override.amount!;
+  const from = value("out_of", base.out_of) || "external income";
   return {
     name: base.name,
-    from: value("out_of", base.out_of) || "external income",
+    from,
     to: value("into", base.into) || "",
-    amount: value("amount", base.amount),
+    mode: override && Object.prototype.hasOwnProperty.call(override, "sweep_above") ? "sweep"
+      : override && Object.prototype.hasOwnProperty.call(override, "amount") ? "fixed"
+      : base.sweep_above === undefined ? "fixed" : "sweep",
+    amount,
     every: value("every", base.every),
     day: value("day", base.day),
     escalates: value("escalates", base.escalates),
+    sweepAllowed: state.accounts.some((account) => account.name === from && account.kind === "clearing"),
   };
 }
 
-function setOverrideField(override: UITransferOverride, key: string, value: string | boolean): void {
-  if (key === "from") value ? override.out_of = value === "external income" ? null : String(value) : delete override.out_of;
+function setOverrideField(state: UIState, override: UITransferOverride, key: string, value: string | boolean, inheritedAmount: number | string): void {
+  if (key === "from") {
+    value ? override.out_of = value === "external income" ? null : String(value) : delete override.out_of;
+    if (override.sweep_above !== undefined && !state.accounts.some((account) => account.name === override.out_of && account.kind === "clearing")) {
+      override.amount = override.sweep_above;
+      delete override.sweep_above;
+    }
+  }
   else if (key === "to") value ? override.into = String(value) : delete override.into;
-  else if (key === "amount") value === "" ? delete override.amount : override.amount = parseFloat(String(value).replace(/,/g, "")) || 0;
+  else if (key === "mode") {
+    const amount = override.sweep_above ?? override.amount ?? (parseFloat(String(inheritedAmount).replace(/,/g, "")) || 0);
+    if (value === "sweep") {
+      override.sweep_above = amount;
+      delete override.amount;
+    } else {
+      override.amount = amount;
+      delete override.sweep_above;
+    }
+  }
+  else if (key === "amount") {
+    const amount = value === "" ? null : parseFloat(String(value).replace(/,/g, "")) || 0;
+    if (amount === null) {
+      delete override.amount;
+      delete override.sweep_above;
+    } else if (override.sweep_above !== undefined) override.sweep_above = amount;
+    else override.amount = amount;
+  }
   else if (key === "every") value ? override.every = String(value) : delete override.every;
   else if (key === "day") value ? override.day = String(value) : delete override.day;
   else if (key === "escalates") override.escalates = value as boolean;
@@ -98,12 +130,17 @@ function setOverrideField(override: UITransferOverride, key: string, value: stri
 export function overrideRowHTML(state: UIState, goal: UIGoal, goalIndex: number, transferName: string, checked: boolean): string {
   const base = resolveBase(state, goalIndex, transferName);
   const override = checked ? findOverride(goal, transferName) : undefined;
-  const fields = toRowFields(base, override);
+  const fields = toRowFields(state, base, override);
   const inherits = new Set<string>();
   if (override) {
-    const keys = ["out_of", "into", "amount", "every", "day", "escalates"] as const;
+    const keys = ["out_of", "into", "every", "day", "escalates"] as const;
     for (const key of keys) if (!Object.prototype.hasOwnProperty.call(override, key)) {
       inherits.add(key === "out_of" ? "from" : key === "into" ? "to" : key);
+    }
+    const hasAmount = Object.prototype.hasOwnProperty.call(override, "amount") || Object.prototype.hasOwnProperty.call(override, "sweep_above");
+    if (!hasAmount) {
+      inherits.add("amount");
+      inherits.add("mode");
     }
   }
   const stopped = checked && override?.amount === 0;
@@ -388,6 +425,7 @@ function wireGoalRow(container: HTMLElement, row: HTMLElement, state: UIState, g
 
   row.querySelectorAll<HTMLElement>(".transfer-row[data-transfer-name]").forEach((transferRow) => {
     const name = transferRow.dataset.transferName!;
+    const fields = toRowFields(state, resolveBase(state, goalIndex, name), findOverride(goal, name));
 
     // only editable on the goal that introduced it -- elsewhere the name is
     // the key picking out which transfer this row overrides
@@ -407,7 +445,7 @@ function wireGoalRow(container: HTMLElement, row: HTMLElement, state: UIState, g
       transferRow,
       (key, value) => {
         const override = findOverride(goal, name);
-        if (override) setOverrideField(override, key, value);
+        if (override) setOverrideField(state, override, key, value, fields.amount);
       },
       () => renderGoals(container, state, onChange),
       onChange,

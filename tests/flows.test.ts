@@ -13,7 +13,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { load } from "../src/model";
 import { run } from "../src/simulate";
-import { annualise, breaches, coverYears, expectedClosing, formatFlows, summarise, surplusOf } from "../src/flows";
+import { annualise, breaches, cadenceFactor, coverYears, expectedClosing, formatFlows, summarise, surplusOf } from "../src/flows";
 
 const PLAN = `
 inflation: 0
@@ -130,6 +130,15 @@ describe("annualise", () => {
   });
 });
 
+describe("display cadence", () => {
+  it("scales annual rates to the four everyday cadences", () => {
+    expect(cadenceFactor("year")).toBe(1);
+    expect(cadenceFactor("week")).toBeCloseTo(7 / 365.25, 10);
+    expect(cadenceFactor("fortnight")).toBeCloseTo(14 / 365.25, 10);
+    expect(cadenceFactor("month")).toBeCloseTo(1 / 12, 10);
+  });
+});
+
 describe("years of cover", () => {
   it("answers 'how long does this fund last at this burn rate'", () => {
     expect(coverYears(100000, 25000)).toBe(4);
@@ -225,5 +234,14 @@ describe("the page carries it too, not just the CLI", () => {
 
   it("lets a wide table scroll inside itself rather than breaking the page", () => {
     expect(HTML).toContain(".flow-scroll { overflow-x: auto");
+  });
+
+  it("offers dollar basis and an everyday display cadence in the flow section", () => {
+    expect(HTML).toContain('class="dt-btn active" data-mode="future"');
+    expect(HTML).toContain('class="dt-btn" data-mode="today"');
+    expect(HTML).toContain('class="cadence-btn" data-cadence="week"');
+    expect(HTML).toContain('class="cadence-btn" data-cadence="fortnight"');
+    expect(HTML).toContain('class="cadence-btn" data-cadence="month"');
+    expect(HTML).toContain('class="cadence-btn active" data-cadence="year"');
   });
 });

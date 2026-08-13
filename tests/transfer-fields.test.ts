@@ -45,6 +45,7 @@ describe("mobile transfer rows", () => {
     name: "salary",
     from: "external income",
     to: "pay",
+    mode: "fixed" as const,
     amount: 4500,
     every: "fortnight",
     day: "2026-08-07",
@@ -64,5 +65,12 @@ describe("mobile transfer rows", () => {
     expect(html).toContain('class="transfer-fields-grid"');
     expect(html).toContain('data-label="From"');
     expect(html).toContain('data-label="Inflation"');
+    expect(html).toContain('data-field="mode"');
+  });
+
+  it("labels a sweep without adding another transfer-table column", () => {
+    const html = transferFieldsHTML({ ...fields, mode: "sweep", amount: 1000 });
+    expect(mobileTransferSummary({ ...fields, mode: "sweep", amount: 1000 })).toBe("above 1,000 · fortnight");
+    expect(html).toContain('value="sweep" selected');
   });
 });

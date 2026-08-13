@@ -8,7 +8,7 @@
  * paper is miserable.
  */
 
-import type { PhaseSummary } from "../flows";
+import { cadenceFactor, type FlowCadence, type PhaseSummary } from "../flows";
 
 function money(value: number): string {
   return Math.round(value).toLocaleString();
@@ -25,8 +25,22 @@ function cell(value: number): string {
   return `<td class="fig${value < 0 ? " flow-neg" : ""}">${money(value)}</td>`;
 }
 
-export function renderFlows(container: HTMLElement, summaries: PhaseSummary[], real: boolean): void {
+function cadenceSuffix(cadence: FlowCadence): string {
+  if (cadence === "week") return "wk";
+  if (cadence === "fortnight") return "fortnight";
+  if (cadence === "month") return "mo";
+  return "yr";
+}
+
+export function renderFlows(
+  container: HTMLElement,
+  summaries: PhaseSummary[],
+  real: boolean,
+  cadence: FlowCadence = "year",
+): void {
   container.innerHTML = "";
+  const scale = cadenceFactor(cadence);
+  const suffix = cadenceSuffix(cadence);
 
   for (const phase of summaries) {
     const block = document.createElement("div");
@@ -35,8 +49,8 @@ export function renderFlows(container: HTMLElement, summaries: PhaseSummary[], r
     const rows = phase.rows
       .map(
         (row) =>
-          `<tr><td>${row.account}</td>${cell(row.inPerYear)}${cell(row.outPerYear)}` +
-          `${cell(row.interestPerYear)}${cell(row.netPerYear)}${cell(row.closing)}` +
+          `<tr><td>${row.account}</td>${cell(row.inPerYear * scale)}${cell(row.outPerYear * scale)}` +
+          `${cell(row.interestPerYear * scale)}${cell(row.netPerYear * scale)}${cell(row.closing)}` +
           `<td>${cover(row.cover)}</td></tr>`,
       )
       .join("");
@@ -46,10 +60,10 @@ export function renderFlows(container: HTMLElement, summaries: PhaseSummary[], r
       `<div class="flow-when">${phase.start} to ${phase.end} · ${phase.years.toFixed(1)} years` +
       `${real ? " · today's dollars" : ""}</div>` +
       `<div class="flow-scroll"><table class="flow-table">` +
-      `<thead><tr><th>Account</th><th>In /yr</th><th>Out /yr</th><th>Interest /yr</th>` +
-      `<th>Net /yr</th><th>Closing</th><th>Lasts</th></tr></thead>` +
+      `<thead><tr><th>Account</th><th>In /${suffix}</th><th>Out /${suffix}</th><th>Interest /${suffix}</th>` +
+      `<th>Net /${suffix}</th><th>Closing</th><th>Lasts</th></tr></thead>` +
       `<tbody>${rows}` +
-      `<tr class="flow-surplus"><td>Unallocated surplus</td>${cell(phase.surplusPerYear)}` +
+      `<tr class="flow-surplus"><td>Unallocated surplus</td>${cell(phase.surplusPerYear * scale)}` +
       `<td colspan="5"></td></tr>` +
       `</tbody></table></div>`;
 

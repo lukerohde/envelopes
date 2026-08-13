@@ -22,10 +22,12 @@ export interface RowFields {
   name: string;
   from: string;
   to: string;
+  mode: "fixed" | "sweep";
   amount: number | string;
   every: string;
   day: string | number;
   escalates: boolean;
+  sweepAllowed?: boolean;
 }
 
 function escapeHTML(value: string): string {
@@ -36,7 +38,8 @@ function escapeHTML(value: string): string {
 }
 
 export function mobileTransferSummary(fields: RowFields): string {
-  return `${formatAmount(fields.amount)} · ${fields.every}`;
+  const amount = fields.mode === "sweep" ? `above ${formatAmount(fields.amount)}` : formatAmount(fields.amount);
+  return `${amount} · ${fields.every}`;
 }
 
 function formatAmount(value: number | string): string {
@@ -65,6 +68,18 @@ function everySelectHTML(every: string, disabled: boolean, inherited: boolean): 
     html += `<option${!inherited && option === every ? " selected" : ""}>${option}</option>`;
   }
   return html + "</select>";
+}
+
+function modeSelectHTML(mode: RowFields["mode"], disabled: boolean, inherited: boolean, sweepAllowed: boolean): string {
+  const dis = disabled ? " disabled" : "";
+  const inheritedOption = inherited ? `<option value="" selected>inherits ${mode === "sweep" ? "sweep above" : "fixed amount"}</option>` : "";
+  const sweepOption = `<option value="sweep"${!inherited && mode === "sweep" ? " selected" : ""}${!sweepAllowed ? " disabled" : ""}>Sweep above</option>`;
+  return (
+    `<select class="field-input amount-mode" data-field="mode"${dis} aria-label="Transfer mode">` +
+    `${inheritedOption}<option value="fixed"${!inherited && mode === "fixed" ? " selected" : ""}>Fixed amount</option>` +
+    sweepOption +
+    `</select>`
+  );
 }
 
 /** A yearly transfer's `day` is "MM-DD" -- the engine matches on month and
@@ -165,7 +180,7 @@ export function transferFieldsHTML(fields: RowFields, options: RowOptions = {}):
   return (
     `<div class="mobile-row-summary">` +
     `<span class="mobile-row-name">${name}</span>` +
-    `<span class="mobile-row-meta"><span data-mobile-amount="${escapeHTML(formatAmount(fields.amount))}">${escapeHTML(formatAmount(fields.amount))}</span> · <span data-mobile-every="${escapeHTML(fields.every)}">${escapeHTML(fields.every)}</span></span>` +
+    `<span class="mobile-row-meta"><span data-mobile-amount="${escapeHTML(formatAmount(fields.amount))}">${escapeHTML(fields.mode === "sweep" ? `above ${formatAmount(fields.amount)}` : formatAmount(fields.amount))}</span> · <span data-mobile-every="${escapeHTML(fields.every)}">${escapeHTML(fields.every)}</span></span>` +
     `<button type="button" class="mobile-toggle" data-mobile-toggle aria-expanded="false" aria-label="Edit ${name}">Edit</button>` +
     `</div>` +
     `<div class="transfer-fields-grid">` +
@@ -176,7 +191,8 @@ export function transferFieldsHTML(fields: RowFields, options: RowOptions = {}):
     `<div class="mobile-field" data-label="From"><div class="combo" data-combo><input type="text" class="field-input combo-input" data-field="from" ${inheritedInput("from", fields.from)}${dis}></div></div>` +
     `<span class="arrow mobile-arrow">→</span>` +
     `<div class="mobile-field" data-label="To"><div class="combo" data-combo><input type="text" class="field-input combo-input" data-field="to" ${inheritedInput("to", fields.to)}${dis}></div></div>` +
-    `<div class="mobile-field" data-label="Amount"><input class="field-input fig t-amount" data-field="amount" ${inheritedInput("amount", formatAmount(fields.amount))}${dis}></div>` +
+    `<div class="mobile-field" data-label="Amount"><div class="amount-editor">${modeSelectHTML(fields.mode, disabled, inherits.has("mode"), fields.sweepAllowed !== false)}` +
+    `<input class="field-input fig t-amount" data-field="amount" ${inheritedInput("amount", formatAmount(fields.amount))}${dis}></div></div>` +
     `<div class="mobile-field" data-label="Every">${everySelectHTML(fields.every, disabled, inherits.has("every"))}</div>` +
     `<div class="mobile-field" data-label="On">${onFieldHTML(fields.every, fields.day, disabled, inherits.has("day"))}</div>` +
     `<div class="mobile-field" data-label="Inflation">${inflationCheckboxHTML(fields.escalates, disabled, inGoal, inherits.has("escalates"))}</div>` +
@@ -186,11 +202,12 @@ export function transferFieldsHTML(fields: RowFields, options: RowOptions = {}):
 
 function updateMobileSummary(row: HTMLElement): void {
   const amount = row.querySelector<HTMLInputElement>('[data-field="amount"]');
+  const mode = row.querySelector<HTMLSelectElement>('[data-field="mode"]');
   const every = row.querySelector<HTMLSelectElement>('[data-field="every"]');
   const amountSummary = row.querySelector<HTMLElement>("[data-mobile-amount]");
   const everySummary = row.querySelector<HTMLElement>("[data-mobile-every]");
-  if (!amount || !every || !amountSummary || !everySummary) return;
-  amountSummary.textContent = formatAmount(amount.value);
+  if (!amount || !mode || !every || !amountSummary || !everySummary) return;
+  amountSummary.textContent = mode.value === "sweep" ? `above ${formatAmount(amount.value)}` : formatAmount(amount.value);
   amountSummary.dataset.mobileAmount = formatAmount(amount.value);
   everySummary.textContent = every.value;
   everySummary.dataset.mobileEvery = every.value;
@@ -237,7 +254,7 @@ export function wireTransferFieldRow(
     if (key === "day" && input.getAttribute("type") === "date") {
       wireDateClamp(input as HTMLInputElement, EARLIEST_PLAN_DATE, LATEST_PLAN_DATE);
     }
-    const eventName = key === "every" ? "change" : "input";
+    const eventName = key === "every" || key === "mode" ? "change" : "input";
     input.addEventListener(eventName, () => {
       const every = row.querySelector<HTMLSelectElement>('[data-field="every"]')!.value;
       setField(key, key === "day" ? dayFromInput(every, input.value) : input.value);
