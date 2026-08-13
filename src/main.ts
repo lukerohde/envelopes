@@ -33,6 +33,8 @@ function main(state: UIState): void {
     scrubReadout: document.querySelector<HTMLElement>("#scrubReadout")!,
     milestoneRows: document.querySelector<HTMLElement>("#milestoneRows")!,
     timelineTicks: document.querySelector<HTMLElement>("#timelineTicks")!,
+    impactStatus: document.querySelector<HTMLElement>("#impactStatus")!,
+    planStatus: document.querySelector<HTMLElement>("#planStatus")!,
     dollarButtons: document.querySelectorAll<HTMLButtonElement>(".dt-btn"),
   });
 
@@ -44,18 +46,18 @@ function main(state: UIState): void {
   // recompute reruns the whole 40-year simulation (~150ms), which is fine
   // once, but would stutter if it ran on every single keystroke of a fast
   // typist.
-  function update(): void {
+  function update(showImpact = false): void {
     simulation.populateAccountSelect(state);
-    simulation.recompute(state);
+    simulation.recompute(state, showImpact);
   }
 
   // Everything a user actually changes goes through here rather than
   // update() directly: the recompute, plus pushing the new state into the
   // address bar so a link copied from it is never a stale snapshot. Boot's
   // own first update() deliberately isn't an edit.
-  function edited(): void {
+  function edited(showImpact = true): void {
     io.markEdited();
-    update();
+    update(showImpact);
   }
   const scheduleUpdate = debounce(edited, 200);
 
@@ -79,7 +81,7 @@ function main(state: UIState): void {
     state.transfers = next.transfers;
     state.goals = next.goals;
     renderAll();
-    edited();
+    edited(false);
   }
 
   const io = initIO(

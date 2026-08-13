@@ -12,6 +12,8 @@ import { sortMilestones } from "../milestones";
 import { breaches, summarise } from "../flows";
 import { renderFlows } from "./flows";
 import type { Budget } from "../model";
+import { compareOutcomes, formatImpact, type PlanOutcome } from "../compare";
+import { checkPlan } from "../check";
 
 // How far the timeline can be dragged. Not a constant any more: it runs
 // until the youngest person in the budget turns 100, so a 30-year-old sees
@@ -41,6 +43,8 @@ interface Elements {
   scrubReadout: HTMLElement;
   milestoneRows: HTMLElement;
   timelineTicks: HTMLElement;
+  impactStatus: HTMLElement;
+  planStatus: HTMLElement;
   dollarButtons: NodeListOf<HTMLButtonElement>;
 }
 
@@ -145,6 +149,7 @@ export function createSimulationView(elements: Elements) {
   // balances panel above.
   let lastPhases: Phase[] = [];
   let lastBudget: Budget | null = null;
+  let lastOutcome: PlanOutcome | null = null;
 
   function renderFlowPanel(): void {
     if (!lastBudget) return;
@@ -377,7 +382,8 @@ export function createSimulationView(elements: Elements) {
   return {
     /** Runs the real simulator against the current state and redraws
      * everything -- called whenever anything in the page changes. */
-    recompute(state: UIState): void {
+    recompute(state: UIState, showImpact = false): void {
+      const before = lastOutcome;
       const budget = toBudget(state);
       start = todayISO();
       // editing a birthday moves the far end of the timeline, so this is
@@ -393,6 +399,15 @@ export function createSimulationView(elements: Elements) {
       const { history, completed, phases } = result;
       lastPhases = phases;
       lastBudget = budget;
+      const current: PlanOutcome = { budget, result, start, end };
+      lastOutcome = current;
+      if (showImpact && before) elements.impactStatus.textContent = formatImpact(compareOutcomes(before, current));
+      else if (!showImpact) elements.impactStatus.textContent = "";
+      const checked = checkPlan(budget, result, start, end);
+      const firstProblem = checked.findings[0];
+      elements.planStatus.textContent = firstProblem
+        ? `${firstProblem.severity.toUpperCase()}: ${firstProblem.detail}`
+        : "PASS: no mechanical findings";
 
       series = {};
       for (const account of state.accounts) {
