@@ -507,7 +507,10 @@ export function createSimulationView(elements: Elements) {
       elements.dollarButtons.forEach((btn) => {
         btn.addEventListener("click", () => {
           view.dollars = btn.dataset.mode as "future" | "today";
-          elements.dollarButtons.forEach((b) => b.classList.toggle("active", b === btn));
+          // The selector appears beside both the flow table and account
+          // snapshot. They share one display mode, so keep both pairs in
+          // sync rather than leaving the other control stale.
+          elements.dollarButtons.forEach((b) => b.classList.toggle("active", b.dataset.mode === view.dollars));
           refresh(state, completedGoals);
         });
       });

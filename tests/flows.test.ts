@@ -239,6 +239,7 @@ describe("the page carries it too, not just the CLI", () => {
   it("offers dollar basis and an everyday display cadence in the flow section", () => {
     expect(HTML).toContain('class="dt-btn active" data-mode="future"');
     expect(HTML).toContain('class="dt-btn" data-mode="today"');
+    expect(HTML).toContain('aria-label="Show account values in"');
     expect(HTML).toContain('class="cadence-btn" data-cadence="week"');
     expect(HTML).toContain('class="cadence-btn" data-cadence="fortnight"');
     expect(HTML).toContain('class="cadence-btn" data-cadence="month"');

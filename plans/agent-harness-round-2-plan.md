@@ -561,6 +561,9 @@ pre-existing unallocated surplus.
 - [x] Add flow-table display controls for future/today dollars and
       weekly/fortnightly/monthly/yearly rates; keep the simulator's annual
       facts as the single source and leave balances/closing amounts unscaled
+- [x] Put the Future $ / Today's $ control beside the Accounts-at snapshot too;
+      both controls share one display mode so balances and flow figures cannot
+      silently disagree
 - [x] Add a compact transfer-mode selector for fixed amount versus
       `sweep_above`, reused in goal overrides and disabled unless the source
       account is clearing
