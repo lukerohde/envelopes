@@ -252,4 +252,9 @@ describe("the page carries it too, not just the CLI", () => {
     expect(HTML).toContain('id="planStatus"');
     expect(HTML).toContain("position: fixed; left: 50%;");
   });
+
+  it("keeps the finding account visible in the fixed notice", () => {
+    const simulation = readFileSync(new URL("../src/ui/simulation.ts", import.meta.url), "utf-8");
+    expect(simulation).toContain("firstProblem.account");
+  });
 });

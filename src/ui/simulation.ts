@@ -426,7 +426,7 @@ export function createSimulationView(elements: Elements) {
       const checked = checkPlan(budget, result, start, end);
       const firstProblem = checked.findings[0];
       elements.planStatus.textContent = firstProblem
-        ? `${firstProblem.severity.toUpperCase()}: ${firstProblem.detail}`
+        ? `${firstProblem.severity.toUpperCase()}: ${firstProblem.account} — ${firstProblem.detail}`
         : "PASS: no mechanical findings";
       if (showImpact && before) {
         const text = formatImpact(compareOutcomes(before, current));
