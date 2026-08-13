@@ -222,32 +222,39 @@ survives. The POC must include this case. It may decide that a systematic
 retirement surplus should reduce the drawdown instead, and that rebaselining is
 only for genuine residual variance or an explicitly chosen destination.
 
+**Current work:** establish the deterministic POC cases and use them to
+characterise the uncommitted analytic opportunity-cost spike in `src/flows.ts`,
+`src/lint.ts` and `src/simulate.ts`. It is evidence-gathering code, not a rule
+being implemented. The task is complete when the cases expose what it gets
+right, its false positives, and the information it cannot infer. Do not make
+the existing example test pass by accepting its new findings.
+
 - [x] Record the three candidate mechanisms from review before developing the
       current `idle-cash` experiment further
-- [ ] Build synthetic, deterministic cases for: genuine low-yield accumulation;
+- [ ] **Current — build synthetic, deterministic POC cases** for: genuine low-yield accumulation;
       a normal cycling sinking fund; an account already offsetting a loan; a
       locked or risky investment with a higher headline rate; a financially
       trivial difference; multiple simultaneous savings/debt destinations; and
-      an oversized retirement drawdown swept back to its source
-- [ ] POC `ceiling` on clearing accounts, including first crossing, peak excess,
+      an oversized retirement drawdown swept back to its source. Record the
+      analytic spike's output against each case before changing its algorithm
+- [ ] **POC 1 — clearing ceiling:** first crossing, peak excess,
       schema/UI cost, and a rule of thumb an agent can use to propose the value
       without the engine silently choosing it
-- [ ] POC the current opportunity-cost calculation: average balance × the gap
+- [ ] **POC 2a — analytic opportunity cost:** average balance × the gap
       to the best genuinely comparable return, expressed as dollars per year.
       Treat loan interest as a return only while debt remains and credit an
       existing offset with that effective rate
-- [ ] POC a counterfactual calculation through the real engine: make one
+- [ ] **POC 2b — counterfactual opportunity cost:** make one
       equivalent placement change, rerun, and measure the actual difference.
       This costs more code and runtime but naturally sees offsets, loan payoff
       dates, and goal phases that a headline-rate comparison misses. Define
       "equivalent placement" explicitly so the rerun does not quietly choose
       a risk level, lock-up or tax treatment
-- [ ] Keep annual rebaseline as a candidate remedy, not a foregone schema
-      change. Compare a balance-dependent transfer such as `sweep_above` with
+- [ ] **POC 3 — annual rebaseline:** compare a balance-dependent transfer such as `sweep_above` with
       an account policy such as `rebaseline_to`, inferring the active focus,
       explicitly routing a named sweep through existing goal overrides, and
       making no engine change at all
-- [ ] Decide whether any result belongs in `lint`, the `check` acceptance
+- [ ] **Decision — compare the POC evidence:** decide whether any result belongs in `lint`, the `check` acceptance
       criteria, `--flows`, the browser UI, or more than one of them. One shared
       finding/result must feed every chosen surface. Agent output needs exact
       fields and a next move; user output needs plain language and must not
