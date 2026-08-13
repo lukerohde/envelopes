@@ -256,6 +256,8 @@ describe("the page carries it too, not just the CLI", () => {
   it("keeps the finding account visible in the fixed notice", () => {
     const simulation = readFileSync(new URL("../src/ui/simulation.ts", import.meta.url), "utf-8");
     expect(simulation).toContain("firstProblem.account");
+    expect(simulation).toContain('elements.terminalStatus.classList.toggle("floor-stop", floorStopped)');
+    expect(simulation).toContain("Simulation stopped:");
   });
 
   it("suggests a periodic sweep for accumulating clearing cash", () => {

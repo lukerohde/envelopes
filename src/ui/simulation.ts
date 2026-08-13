@@ -96,6 +96,13 @@ export function defaultScrubYear(completed: [string, ISODate][], start: ISODate,
   return Math.min(latest, breachYear);
 }
 
+/** A goal reached after a floor breach is beyond the point where the plan
+ * describes a real life. Keep it in the raw run for diagnostics, but don't
+ * present it as a reached milestone in the page. */
+export function completedThrough(completed: [string, ISODate][], stopOn: ISODate | null): [string, ISODate][] {
+  return stopOn ? completed.filter(([, when]) => when <= stopOn) : completed;
+}
+
 function ageAtISO(born: ISODate, when: ISODate): number {
   const b = new Date(born), w = new Date(when);
   let years = w.getUTCFullYear() - b.getUTCFullYear();
@@ -412,13 +419,19 @@ export function createSimulationView(elements: Elements) {
       const trackNames = state.accounts.map((a) => a.name);
       const result = run(budget, start, end, trackNames);
       const { history, completed, phases, endedOn } = result;
-      terminalYear = endedOn ? daysBetween(start, endedOn) / 365.25 : Infinity;
-      const terminalGoal = endedOn
-        ? budget.goals.find((goal) => goal.exit && completed.some(([name, when]) => name === goal.name && when === endedOn))
-        : undefined;
-      elements.terminalStatus.textContent = terminalGoal && endedOn
-        ? `Simulation ended: ${terminalGoal.name} reached ${money(terminalGoal.target)} on ${formatDateLong(endedOn)}`
-        : "";
+      const worst = breaches(budget, result)[0];
+      const floorStopped = worst !== undefined && (endedOn === null || worst.on < endedOn);
+      const visibleCompleted = completedThrough(completed, floorStopped ? worst.on : null);
+      terminalYear = floorStopped || !endedOn ? Infinity : daysBetween(start, endedOn) / 365.25;
+      const terminalGoal = !floorStopped && endedOn
+          ? budget.goals.find((goal) => goal.exit && completed.some(([name, when]) => name === goal.name && when === endedOn))
+          : undefined;
+      elements.terminalStatus.classList.toggle("floor-stop", floorStopped);
+      elements.terminalStatus.textContent = floorStopped
+        ? `Simulation stopped: ${worst.account} fell under its floor of ${money(worst.floor)} on ${formatDateLong(worst.on)}`
+        : terminalGoal && endedOn
+          ? `Simulation ended: ${terminalGoal.name} reached ${money(terminalGoal.target)} on ${formatDateLong(endedOn)}`
+          : "";
       lastPhases = phases;
       lastBudget = budget;
       const current: PlanOutcome = { budget, result, start, end };
@@ -449,7 +462,6 @@ export function createSimulationView(elements: Elements) {
       // this reads that rather than scanning for it again. Two detectors for
       // one fact is two chances to disagree -- and the linter reports this
       // same breach, from these same numbers, under account-below-floor.
-      const worst = breaches(budget, result)[0];
       breachYear = worst ? daysBetween(start, worst.on) / 365.25 : Infinity;
       breachAccount = worst ? worst.account : null;
 
@@ -458,8 +470,8 @@ export function createSimulationView(elements: Elements) {
       // it if you happened to pick the breaching account yourself
       if (!pickedByHand && breachAccount) elements.acctSelect.value = breachAccount;
 
-      moveScrubTo(defaultScrubYear(completed, start, breachYear));
-      refresh(state, completed);
+      moveScrubTo(defaultScrubYear(visibleCompleted, start, breachYear));
+      refresh(state, visibleCompleted);
     },
 
     bindControls(state: UIState, onChange: () => void): void {

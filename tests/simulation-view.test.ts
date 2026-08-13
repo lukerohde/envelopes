@@ -1,5 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { defaultScrubYear, simulationHorizonLabel } from "../src/ui/simulation";
+import { completedThrough, defaultScrubYear, simulationHorizonLabel } from "../src/ui/simulation";
+
+describe("completedThrough", () => {
+  it("does not present goals reached after a floor stop", () => {
+    expect(completedThrough([
+      ["retire", "2030-01-01"],
+      ["old and broke", "2069-06-14"],
+    ], "2033-03-05")).toEqual([["retire", "2030-01-01"]]);
+  });
+
+  it("keeps every goal when there was no floor stop", () => {
+    const completed: [string, string][] = [["retire", "2030-01-01"]];
+    expect(completedThrough(completed, null)).toBe(completed);
+  });
+});
 
 describe("defaultScrubYear", () => {
   it("uses the final completed milestone, not the goals' configured order", () => {
