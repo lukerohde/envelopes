@@ -321,7 +321,7 @@ transfers. A headline-rate winner cannot prove two placements have comparable
 risk or access. Sweeping a retirement surplus back to its source can hide an
 oversized drawdown.
 
-**Leading minimal combination — pending Luke's decision:**
+**Recommended decision — pending Luke's acceptance:**
 
 1. Keep the existing configuration-free `clearing-account-accumulating`
    detector instead of adding `ceiling`; improve its next instruction and feed
@@ -338,6 +338,79 @@ oversized drawdown.
 4. Surface the product principle using the real simulator: a change the person
    makes produces exact before/after milestone movement. POC clearer copy and
    that delta before adding a generalized sensitivity engine.
+
+#### Agent harness recommendation
+
+Keep one source of deterministic feedback: `checkPlan`, exposed as human text
+and JSON. The browser consumes the same structured result; it does not grow a
+parallel warning system.
+
+The ordered loop is:
+
+1. Fix the first daily floor breach. Nothing downstream is real yet.
+2. Fix unreachable goals and illegal early drawdown.
+3. For each goal-delimited phase, resolve clearing accumulation. If systematic
+   retirement drawdown exceeds spending, reduce the drawdown; do not hide it
+   with a sweep. Otherwise route genuine residual surplus to the explicitly
+   declared current focus.
+4. Add a named periodic `sweep_above` only when the plan represents that real
+   rebudget practice. Start with the person's retained working balance, run the
+   real engine, and adjust that one value until the daily floor holds. An agent
+   can bisect variants itself; the product does not need a solver.
+5. Rerun until the check passes, then report the person's trade-offs rather than
+   continuing to optimize spending they did not authorize changing.
+
+`clearing-account-accumulating` should carry phase, account, accumulation rate
+and peak evidence so both an agent and a person can see where it begins. Its fix
+branches explicitly: reduce a mismatched drawdown, or rebaseline genuine
+surplus. The prompt teaches the distinction; deterministic fixtures prove both
+branches. A sweep back into the investment currently funding the clearing
+account is invalid because it launders a drawdown error into a tidy balance.
+
+Opportunity cost remains a prompt principle: review accessible low-yield cash
+against debt and savings alternatives, ask about access/risk/tax, and never
+infer the winner. It is not a lint rule, check failure or optimizer.
+
+#### Engine recommendation
+
+Add `sweep_above` to a normal named transfer, mutually exclusive with a fixed
+`amount`. On its schedule it moves `max(0, source balance - retained balance)`.
+The retained balance escalates like other nominal transfer amounts; below it,
+the sweep does nothing and never tops the account up. The source must be
+`clearing`, destination is explicit, and loan destinations cap at remaining
+principal. Fixed transfers on that day run before the sweep. Existing goal
+overrides redirect or stop the named transfer at transitions, so no second
+routing or phase system is introduced.
+
+Do not add `ceiling`, `rebaseline_to`, inferred focus, analytic opportunity
+cost, counterfactual opportunity cost, or a general/bounded solver in this
+round. They either duplicate an existing concept or make a financial choice
+the config has not declared.
+
+#### UI recommendation
+
+Add one compact plan-status warning fed by `checkPlan`. It shows the first
+actionable issue and links the person to the affected account/phase. Warnings
+and agent feedback therefore agree word-for-word and number-for-number.
+
+On a committed numeric edit, retain the prior valid outcome, rerun, and show a
+non-modal transient impact message from exact date differences. List the moved
+named milestones compactly, for example `Mortgage paid off 12 days earlier ·
+Early retirement 47 days earlier`. If retirement is fixed by age/date, compare
+the first retirement-fund exhaustion instead: `Money lasts 73 days less`.
+
+Never show a delta past a floor breach. If no milestone moves because surplus
+pools, say that. Initial load, YAML/share replacement, structural rename and a
+half-typed number establish or await a baseline without producing a message.
+The chart may continue updating on input; impact feedback waits for a committed
+change so it does not chatter while somebody types.
+
+With a configured sweep, reducing spending automatically leaves more for the
+declared focus at the next rebalance, so the actual plan's milestone moves and
+the message needs no hypothetical optimizer. Without one, the UI can later POC
+the conditional matched redirect (`If you save the $100/month you freed…`), but
+that is second choice: ship the actual-result delta first and add the
+counterfactual only if real use shows a gap.
 
 ### Phase 6 — Implement only the chosen excess-cash path
 
