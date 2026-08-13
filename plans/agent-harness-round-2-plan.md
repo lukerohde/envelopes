@@ -160,25 +160,102 @@ We may not need an answer in every layer. POC the candidates, then choose the
 smallest combination that gives an agent a known-good next move and gives a
 person useful information rather than noise.
 
-- [ ] Record the full candidate set from review before developing the current
-      `idle-cash` experiment further
+#### Option 1 — A ceiling for clearing accounts
+
+An optional `ceiling` would be the upper counterpart to `floor`: the balance
+can move around inside that operating band, but crossing the ceiling says cash
+has accumulated beyond the account's job. It applies only to `clearing`.
+`expense` accounts do not hold money, and a `sinking` fund is supposed to rise
+and fall, so applying it to either would manufacture warnings.
+
+For the harness this is strong: `account-above-ceiling`, its first crossing and
+the excess are exact, testable facts. For a person it is also legible: "you said
+pay only needs $8,000; it reached $14,300." The cost is configuration, and a
+bad ceiling gives a precise but wrong answer. POC both a declared ceiling and a
+documented rule of thumb for proposing one from the account's pay/bill cycle.
+Do not silently turn the rule of thumb into user intent.
+
+The same finding should feed `lint`/`check` and, if it survives the POC, one
+small browser warning near the simulation or flow row. Do not build a second UI
+calculation.
+
+#### Option 2 — Opportunity cost across places capital can sit
+
+This is broader than clearing-account accumulation. Savings, investments and
+loans all offer a return on marginal money: account interest for the first two,
+and avoided interest for a loan while principal remains. An offset already
+earns the linked loan's effective rate, not merely the account's printed rate.
+
+A cost in dollars per year would let the harness prioritise material choices
+and help an agent goal-seek. The simple POC is average movable balance × return
+gap. Its advantage is a short, explainable calculation. Its risks are equally
+important: it can ignore payoff dates and goal phases, mistake locked or risky
+investments for reachable alternatives, ignore tax, and call two unlike risks
+interchangeable because one has a higher headline rate.
+
+Therefore the warning may say "this costs about $X/yr; review where it sits"
+without prescribing a destination. An automatic recommendation is allowed
+only for a demonstrably dominated choice the model can prove, such as cash
+already eligible to offset a dearer loan. POC a real-engine counterfactual as
+the more accurate alternative and decide whether the extra machinery buys a
+materially better answer.
+
+#### Option 3 — Periodic rebaseline of a clearing account
+
+This models the real practice: let a clearing account cover a chosen operating
+period, then periodically move only the surplus above its working balance to
+the household's current savings or debt focus. It remedies accumulation rather
+than merely reporting it.
+
+For the harness it creates a known-good lever when fixed transfers cannot tune
+away drift. For a person it matches an understandable annual rebudget. The hard
+part is the destination. Inferring it from active transfers is configuration-
+free but ambiguous when mortgage repayments, super contributions and several
+savings goals are live together. An explicit destination is deterministic but
+has to change as goals change; expressing it as a named transfer would let the
+existing goal overrides do that without inventing another routing system.
+
+After retirement, blindly sweeping a pay surplus back into the investment that
+funded it can hide an oversized drawdown: money leaves the investment, pools in
+pay, then returns to the same place. The harness looks tidy and the actual bug
+survives. The POC must include this case. It may decide that a systematic
+retirement surplus should reduce the drawdown instead, and that rebaselining is
+only for genuine residual variance or an explicitly chosen destination.
+
+- [x] Record the three candidate mechanisms from review before developing the
+      current `idle-cash` experiment further
 - [ ] Build synthetic, deterministic cases for: genuine low-yield accumulation;
       a normal cycling sinking fund; an account already offsetting a loan; a
-      locked investment with a higher headline rate; and a financially trivial
-      difference
+      locked or risky investment with a higher headline rate; a financially
+      trivial difference; multiple simultaneous savings/debt destinations; and
+      an oversized retirement drawdown swept back to its source
+- [ ] POC `ceiling` on clearing accounts, including first crossing, peak excess,
+      schema/UI cost, and a rule of thumb an agent can use to propose the value
+      without the engine silently choosing it
 - [ ] POC the current opportunity-cost calculation: average balance × the gap
-      to the best reachable return, expressed as dollars per year
+      to the best genuinely comparable return, expressed as dollars per year.
+      Treat loan interest as a return only while debt remains and credit an
+      existing offset with that effective rate
 - [ ] POC a counterfactual calculation through the real engine: make one
       equivalent placement change, rerun, and measure the actual difference.
       This costs more code and runtime but naturally sees offsets, loan payoff
-      dates, and goal phases that a headline-rate comparison misses
+      dates, and goal phases that a headline-rate comparison misses. Define
+      "equivalent placement" explicitly so the rerun does not quietly choose
+      a risk level, lock-up or tax treatment
 - [ ] Keep annual rebaseline as a candidate remedy, not a foregone schema
       change. Compare a balance-dependent transfer such as `sweep_above` with
-      an account policy such as `rebaseline_to`, and with making no engine
-      change at all
+      an account policy such as `rebaseline_to`, inferring the active focus,
+      explicitly routing a named sweep through existing goal overrides, and
+      making no engine change at all
 - [ ] Decide whether any result belongs in `lint`, the `check` acceptance
       criteria, `--flows`, the browser UI, or more than one of them. One shared
-      calculation must feed every chosen surface
+      finding/result must feed every chosen surface. Agent output needs exact
+      fields and a next move; user output needs plain language and must not
+      imply that a higher return is free of risk or loss of access
+- [ ] Decide warning semantics. A breached declared ceiling can fail a check;
+      a non-dominating opportunity-cost comparison is advisory and must not
+      make every diversified or liquidity-conscious plan exit non-zero. Keep
+      severity in the shared result so CLI and browser cannot disagree
 - [ ] Record the decision and why the rejected options are unnecessary; remove
       rejected POC code rather than leaving parallel mechanisms behind
 
@@ -233,6 +310,23 @@ person useful information rather than noise.
 - Excess-cash detection, a model remedy, a harness criterion and a browser
   presentation are separate choices. Phase 5 decides which are actually
   needed before Phase 6 implements any of them.
+- Prefer no new configuration when the engine can infer a fact. Require an
+  explicit value when inference would choose the person's liquidity buffer,
+  investment risk, access to money or savings priority. Determinism outranks a
+  configuration-free guess.
+- `expense` and `sinking` accounts are excluded from clearing-account ceilings.
+  Opportunity-cost comparisons concern capital-bearing savings, investments
+  and loans; a clearing account's excess can participate only after its working
+  buffer has been separated from the movable amount.
+- A costed opportunity warning may prioritise a review without recommending a
+  destination. Higher headline return alone does not prove that money is
+  movable or that two accounts have comparable risk, access or tax treatment.
+- The existing all-findings-are-failures contract is not automatically suitable
+  for opportunity cost. The POC must distinguish a violated declared constraint
+  from an advisory comparison before adding it to `lint` or `check`.
+- Rebaselining must not turn an oversized retirement drawdown into a passing
+  result by sweeping the surplus back to its source. Fixing the drawdown is the
+  first candidate in that phase.
 - The eval always tests the built downloadable artefact. Source-only success
   does not count.
 
