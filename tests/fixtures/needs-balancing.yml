@@ -1,0 +1,124 @@
+# The eval plan. What's wrong with it, and why, is in evals/README.md --
+# deliberately not here, because an agent decoding the share link would
+# read it and the eval would be measuring its reading, not its judgement.
+# One run did exactly that: it found a line saying "do not fix this file,
+# it is the test" sitting in the data and had to reason its way past it.
+inflation: 0.03
+birthdays:
+  - name: Sam
+    born: '1985-03-10'
+accounts:
+  - name: pay
+    balance: 200
+    floor: 0
+    kind: clearing
+    rate: 0
+    offsets: null
+  - name: groceries
+    balance: 0
+    floor: 0
+    kind: expense
+    rate: 0
+    offsets: null
+  - name: bills
+    balance: 0
+    floor: 0
+    kind: expense
+    rate: 0
+    offsets: null
+  - name: holidays
+    balance: 0
+    floor: 0
+    kind: sinking
+    rate: 0
+    offsets: null
+  - name: rainy day
+    balance: 8000
+    floor: 0
+    kind: saving
+    rate: 0.01
+    offsets: null
+  - name: mortgage
+    balance: 410000
+    floor: 0
+    kind: loan
+    rate: 0.061
+    offsets: null
+  - name: super
+    balance: 180000
+    floor: 0
+    kind: investment
+    rate: 0.07
+    offsets: null
+transfers:
+  - name: salary
+    amount: 3900
+    every: fortnight
+    day: '2026-08-07'
+    into: pay
+    escalation: 0
+  - name: groceries
+    amount: 260
+    every: week
+    day: sat
+    out_of: pay
+    into: groceries
+  - name: bills
+    amount: 620
+    every: fortnight
+    day: '2026-08-07'
+    out_of: pay
+    into: bills
+  - name: mortgage repayment
+    amount: 3100
+    every: month
+    day: 5
+    out_of: pay
+    into: mortgage
+    escalation: 0
+  - name: saving for holidays
+    amount: 400
+    every: month
+    day: 5
+    out_of: pay
+    into: holidays
+  - name: rainy day saving
+    amount: 200
+    every: month
+    day: 5
+    out_of: pay
+    into: rainy day
+  - name: super contribution
+    amount: 1400
+    every: month
+    day: 15
+    into: super
+goals:
+  - name: pay off the house
+    account: mortgage
+    target: 0
+    transfers:
+      - name: mortgage repayment
+        amount: 0
+        escalation: 0
+    accounts: []
+  - name: retire at 60
+    account: rainy day
+    target: 0
+    transfers:
+      - name: salary
+        amount: 0
+        escalation: 0
+      - name: super contribution
+        amount: 0
+        escalation: 0
+      - name: super drawdown
+        amount: 1500
+        every: fortnight
+        day: '2026-08-07'
+        out_of: super
+        into: pay
+    accounts: []
+    by_age:
+      person: Sam
+      turns: 60

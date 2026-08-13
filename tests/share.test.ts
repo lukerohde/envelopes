@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { encodeShareHash, decodeShareHash } from "../src/share";
+import { gzipSync } from "node:zlib";
+import { encodeShareHash, decodeShareHash, encodeShareUrl, decodeShareUrl } from "../src/share";
 import { shareHashFor, stateFromShareHash } from "../src/ui/io";
 import { initialState, stateToYamlText } from "../src/state";
 
@@ -20,6 +21,44 @@ describe("share hash round-trip", () => {
     const big = "transfers:\n" + "  - {name: repeat, amount: 100, every: month, out_of: a, into: b}\n".repeat(50);
     const hash = await encodeShareHash(big);
     expect(hash.length).toBeLessThan(big.length);
+  });
+});
+
+// An agent is handed a whole URL, not a fragment. Making it split on "#"
+// itself is exactly the kind of small manual step that ends with someone
+// reimplementing the codec badly -- which is the failure this whole round of
+// work exists to stop.
+describe("share URL round-trip", () => {
+  const yamlText = "inflation: 0.03\naccounts:\n  - {name: pay, balance: 1000}\n";
+
+  it("decodes a whole URL back to the exact text it encoded", async () => {
+    expect(await decodeShareUrl(await encodeShareUrl(yamlText))).toBe(yamlText);
+  });
+
+  it("builds a link to the live site by default", async () => {
+    expect(await encodeShareUrl(yamlText)).toMatch(/^https:\/\/envelopes\.lukeroh\.de\/#/);
+  });
+
+  it("takes a bare fragment too, so a half-copied link still works", async () => {
+    const hash = await encodeShareHash(yamlText);
+    expect(await decodeShareUrl(hash)).toBe(yamlText);
+    expect(await decodeShareUrl(`#${hash}`)).toBe(yamlText);
+  });
+
+  it("says what's wrong when there's nothing to decode", async () => {
+    await expect(decodeShareUrl("https://envelopes.lukeroh.de/")).rejects.toThrow(/no share data/i);
+  });
+
+  // The browser encodes with CompressionStream and Node's zlib decodes it, or
+  // the other way about, depending on where the agent is standing. If those
+  // two ever disagreed, a link made in the app would die in the CLI.
+  it("reads a fragment gzipped by node's zlib rather than CompressionStream", async () => {
+    const hash = gzipSync(Buffer.from(yamlText), { level: 9 })
+      .toString("base64")
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+    expect(await decodeShareUrl(`https://envelopes.lukeroh.de/#${hash}`)).toBe(yamlText);
   });
 });
 

@@ -31,6 +31,23 @@ cli: ## Run the console tool against a YAML config: make cli FILE=path/to/config
 		-v "$$(cd "$$(dirname "$(FILE)")" && pwd):/host-config:ro" \
 		node sh -c "npm install && npm run cli -- /host-config/$$(basename "$(FILE)")"
 
+.PHONY: plan-check
+plan-check: ## Check a budget and get told what to fix first: make plan-check FILE=path/to/plan.yml
+	@test -n "$(FILE)" || { echo "❌  FILE not set -- e.g. make plan-check FILE=tests/fixtures/needs-balancing.yml"; exit 1; }
+	docker compose run --rm \
+		-v "$$(cd "$$(dirname "$(FILE)")" && pwd):/host-config:ro" \
+		node sh -c "npm install && npm run cli -- check /host-config/$$(basename "$(FILE)")"
+
+.PHONY: eval-link
+eval-link: ## Regenerate the share link for the eval plan (see evals/README.md)
+	docker compose run --rm node sh -c "npm install && npm run build:lib && node --input-type=module -e \"\
+		import { encodeShareUrl } from './dist/envelopes.mjs'; \
+		import { readFileSync, writeFileSync } from 'node:fs'; \
+		const clean = readFileSync('tests/fixtures/needs-balancing.yml','utf-8').split(String.fromCharCode(10)).filter(l => !l.startsWith('#')).join(String.fromCharCode(10)).replace(/^\n+/, ''); \
+		const url = await encodeShareUrl(clean); \
+		writeFileSync('evals/needs-balancing.link', url + '\n'); \
+		console.log('wrote evals/needs-balancing.link (' + url.length + ' chars)');\""
+
 .PHONY: set-secret
 set-secret: ## One-time: push PULUMI_ACCESS_TOKEN from .env to the GitHub repo secret
 	@test -n "$(PULUMI_ACCESS_TOKEN)" || { echo "❌  PULUMI_ACCESS_TOKEN not set -- fill in .env first"; exit 1; }

@@ -35,7 +35,7 @@ describe("simulate", () => {
   it("runs the example's goals in the order the engine does", () => {
     const names = simulate(EXAMPLE, { start: "2026-01-01" }).completed.map(([name]) => name);
     expect(names).toContain("retire at 55");
-    expect(names).toContain("Old & broke");
+    expect(names).toContain("super takes over");
   });
 });
 
@@ -45,5 +45,35 @@ describe("report", () => {
     expect(text).toContain("milestones:");
     expect(text).toContain("balances at the end of the run:");
     expect(text).toContain("retire at 55");
+  });
+});
+
+// llms.txt tells agents to call these rather than hand-roll gzip and
+// base64url, which is only true if they're actually in the bundle it tells
+// them to download. This is the assertion that keeps that promise honest.
+describe("the published surface", () => {
+  it("exposes everything llms.txt documents", async () => {
+    const bundle = await import("../src/lib");
+    for (const name of [
+      "load",
+      "run",
+      "simulate",
+      "report",
+      "formatReport",
+      "ageAt",
+      "addDays",
+      "todayISO",
+      "encodeShareUrl",
+      "decodeShareUrl",
+      "encodeShareHash",
+      "decodeShareHash",
+    ]) {
+      expect(typeof (bundle as Record<string, unknown>)[name]).toBe("function");
+    }
+  });
+
+  it("round-trips a config through the codec it publishes", async () => {
+    const { encodeShareUrl, decodeShareUrl } = await import("../src/lib");
+    expect(await decodeShareUrl(await encodeShareUrl(EXAMPLE))).toBe(EXAMPLE);
   });
 });

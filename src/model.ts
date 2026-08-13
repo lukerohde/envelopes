@@ -21,11 +21,59 @@
 import yaml from "js-yaml";
 import { year as yearOf, month as monthOf, dayOfMonth, type ISODate } from "./dates";
 
+/** What an account is *for*. Each one carries an invariant you can check a
+ * plan against, which is the whole reason there are six rather than three:
+ *
+ *   clearing    pay                 shouldn't trend -- growth is surplus
+ *                                   going nowhere in particular
+ *   expense     groceries, a card   pure pass-through; the balance is just
+ *                                   cumulative spend, not money you have
+ *   sinking     travel, a car fund  fills and empties on a cycle; flat in
+ *                                   real terms across a full one
+ *   saving      early retirement    accumulates to a target, drains once
+ *   investment  super               rate should beat inflation; never negative
+ *   loan        mortgage            pays down to zero
+ *
+ * `everyday` used to cover the first three at once, which is why nothing
+ * could tell you a pay account had quietly accumulated a year's spending.
+ */
+export const ACCOUNT_KINDS = ["clearing", "expense", "sinking", "saving", "investment", "loan"] as const;
+
+export type AccountKind = (typeof ACCOUNT_KINDS)[number];
+
+/** Share links in the wild carry the old vocabulary, and a link that stops
+ * loading is the one failure mode this rename mustn't have. `everyday`
+ * becomes `expense` because that's what most everyday accounts were; a pay
+ * account wants `clearing`, but nothing breaks if it doesn't get it -- the
+ * kind only ever narrows what a lint rule will say. */
+const KIND_ALIASES: Record<string, AccountKind> = { everyday: "expense" };
+
+/** Whether this kind of account can sit against a loan. An expense envelope
+ * has no money in it to offset with, and a loan offsetting a loan is just a
+ * smaller loan. Everything else really holds money, including a clearing
+ * account -- plenty of real offsets are the everyday transaction account. */
+export function canOffset(kind: AccountKind): boolean {
+  return kind !== "expense" && kind !== "loan";
+}
+
+/** Exported because state.ts parses YAML into UI state on its own path and
+ * has to read `kind` exactly the same way -- one implementation, or a share
+ * link would load in the app and fail in the CLI. */
+export function parseAccountKind(value: unknown): AccountKind {
+  if (value === undefined || value === null) return "expense";
+  const named = String(value);
+  const aliased = KIND_ALIASES[named] ?? named;
+  if (!(ACCOUNT_KINDS as readonly string[]).includes(aliased)) {
+    throw new Error(`unknown account kind: ${named} -- expected one of ${ACCOUNT_KINDS.join(", ")}`);
+  }
+  return aliased as AccountKind;
+}
+
 export interface Account {
   name: string;
   balance: number;
   floor: number;
-  kind: "everyday" | "saving" | "loan";
+  kind: AccountKind;
   rate: number;
   offsets: string | null;
 }
@@ -60,6 +108,15 @@ export interface Goal {
   account: string;
   target: number;
   by: ISODate | null;
+  /** Require the date *and* the balance, rather than the date alone.
+   *
+   * "The bridge fund is empty and Luke is 60" is the most important guard an
+   * early-retirement plan has, and without this it can't be written down.
+   * Opt-in rather than inferred from both fields being set, because the UI
+   * writes `account` and `target` on every goal it emits -- including
+   * date-triggered ones, where they've always been ignored. Inferring AND
+   * would change the meaning of every share link already out there. */
+  waitForBoth: boolean;
   transfers: RhythmOverride[];
   accounts: AccountOverride[];
 }
@@ -96,7 +153,7 @@ export function load(yamlText: string): Budget {
       name: item.name as string,
       balance: (item.balance as number) ?? 0,
       floor: (item.floor as number) ?? 0,
-      kind: (item.kind as Account["kind"]) ?? "everyday",
+      kind: parseAccountKind(item.kind),
       rate: (item.rate as number) ?? 0,
       offsets: (item.offsets as string) ?? null,
     });
@@ -157,6 +214,7 @@ export function load(yamlText: string): Budget {
       account: item.account as string,
       target: item.target as number,
       by,
+      waitForBoth: item.wait_for_both === true,
       transfers: transferOverrides,
       accounts: accountOverrides,
     });

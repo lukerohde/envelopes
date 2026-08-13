@@ -15,3 +15,8 @@ dist/
 .vscode/
 .idea/
 *.swp
+
+# Real household budgets — real balances, real birthdays. Never commit these.
+# The folder itself is tracked (via .keep) so it's there on a fresh clone.
+user-budgets/*
+!user-budgets/.keep

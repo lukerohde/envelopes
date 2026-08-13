@@ -14,6 +14,16 @@ Two things at once, deliberately:
   and documented openly.  Code is kept both simple, readable and brief.  Luke enforced a code budget during the CLI build. 
 - Luke's own actual retirement-planning tool — real numbers, real decisions, not a toy.
 
+## Before you change anything
+
+Ask before a change that's reasonably complex or has real impact. Don't gate trivial,
+mechanical stuff (renames, typos, formatting) — just do it.
+
+This repo works from **plans**, not ad-hoc requests. Read **`plans/readme.txt`**
+first — it describes the plan file format and the actual process (how to find the
+current plan, confirm it, work from it, and when to archive it). Don't start writing
+code before you've done that.
+
 ## Financial-planning use
 
 This app is for building and exploring a household's own budget and retirement
@@ -118,15 +128,6 @@ Either way, also change:
   account — costs real debugging time to discover, learned the hard way once already.
 - The GitHub repo owner in both workflow files' `-s lukerohde/...` stack references.
 
-## Before you change anything
-
-Ask before a change that's reasonably complex or has real impact. Don't gate trivial,
-mechanical stuff (renames, typos, formatting) — just do it.
-
-This repo works from **plans**, not ad-hoc requests. Read **`plans/readme.txt`**
-first — it describes the plan file format and the actual process (how to find the
-current plan, confirm it, work from it, and when to archive it). Don't start writing
-code before you've done that.
 
 ## Secrets
 

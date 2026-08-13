@@ -55,12 +55,19 @@ plans/archive/, and update the two lists below.
 CURRENT PLANS
 =============
 
-- ux-feedback-round-4-plan.md -- make goal overrides, account choices, the share
-  URL notice, and raw-YAML editing behave clearly and reliably.
+- agent-harness-round-2-plan.md -- turn the findings into a harness a fresh
+  agent can actually pass. Phases 1-3 and part of phase 4 landed inside round
+  1's branch; the open work starts by comparing the possible ways to detect,
+  remedy and surface excess cash before choosing which ones belong.
 
 
 ARCHIVED PLANS
 ==============
+- archive/agent-feedback-round-1-plan.md -- made the tool legible to an AI
+  agent handed a share link, then closed the engine and schema gaps that review
+  exposed. Shipped for review in PR #3.
+- archive/ux-feedback-round-4-plan.md -- clearer goal overrides, account
+  choices, share URL notice, and raw-YAML editing. Shipped, merged.
 - archive/phase-1-python-cli-plan.md -- built retirement goals into the Python
   CLI by cutting it down to what actually mattered (accounts, transfers,
   goals-with-overrides). Lives here for posterity; the actual work happened in

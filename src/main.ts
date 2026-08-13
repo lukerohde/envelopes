@@ -1,4 +1,5 @@
-import { initialState, nextName, type UIState } from "./state";
+import { initialState, nextName, stateToYamlText, type UIState } from "./state";
+import { aiPromptFor } from "./ui/ai-prompt";
 import { renderPeople } from "./ui/people";
 import { renderAccounts } from "./ui/accounts";
 import { renderHead, renderTransfers } from "./ui/transfers";
@@ -28,6 +29,7 @@ function main(state: UIState): void {
     horizonHandle: document.querySelector<HTMLElement>("#horizonHandle")!,
     balHeading: document.querySelector<HTMLElement>("#balHeading")!,
     balRows: document.querySelector<HTMLElement>("#balRows")!,
+    flowRows: document.querySelector<HTMLElement>("#flowRows")!,
     scrubReadout: document.querySelector<HTMLElement>("#scrubReadout")!,
     milestoneRows: document.querySelector<HTMLElement>("#milestoneRows")!,
     timelineTicks: document.querySelector<HTMLElement>("#timelineTicks")!,
@@ -101,7 +103,20 @@ function main(state: UIState): void {
   const aiPromptCopy = document.querySelector<HTMLButtonElement>("#aiPromptCopy")!;
   const aiPromptStatus = document.querySelector<HTMLElement>("#aiPromptStatus")!;
   const aiPromptText = document.querySelector<HTMLTextAreaElement>("#aiPromptText")!;
+
+  // Rebuilt from the address bar each time it's shown or copied, never
+  // captured once at load -- io.ts rewrites the fragment on every edit, so
+  // anything held from earlier would hand over a stale plan. Refreshing on
+  // open as well as on copy keeps what's on screen honest about what the
+  // button will put on the clipboard.
+  function refreshPrompt(): void {
+    aiPromptText.value = aiPromptFor(location.href, stateToYamlText(state));
+  }
+  aiPromptText.closest("details")!.addEventListener("toggle", refreshPrompt);
+  refreshPrompt();
+
   aiPromptCopy.addEventListener("click", () => {
+    refreshPrompt();
     navigator.clipboard.writeText(aiPromptText.value).then(
       () => { aiPromptStatus.textContent = "Copied"; setTimeout(() => { aiPromptStatus.textContent = ""; }, 3000); },
       (err) => { aiPromptStatus.textContent = `Couldn't copy: ${(err as Error).message}`; },
@@ -120,7 +135,7 @@ function main(state: UIState): void {
 
   document.querySelector("#addAccount")!.addEventListener("click", () => {
     const name = nextName("new account", state.accounts);
-    state.accounts.push({ name, balance: 0, floor: 0, kind: "everyday", rate: 0, offsets: null });
+    state.accounts.push({ name, balance: 0, floor: 0, kind: "expense", rate: 0, offsets: null });
     renderAccounts(accountRows, state, scheduleUpdate, renderAll, name);
     edited();
   });
@@ -137,7 +152,7 @@ function main(state: UIState): void {
   document.querySelector("#addGoal")!.addEventListener("click", () => {
     const name = nextName("New goal", state.goals);
     state.goals.push({
-      name, trigger: "age", account: state.accounts[0]?.name ?? "", target: 0,
+      name, trigger: "age", account: state.accounts[0]?.name ?? "", target: 0, waitForBoth: false,
       by: "", byAgePerson: state.birthdays[0]?.name ?? "", byAgeTurns: 65,
       transfers: [], accounts: [], editing: true,
     });

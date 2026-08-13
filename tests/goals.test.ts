@@ -9,7 +9,8 @@ const state: UIState = {
   transfers: [{ name: "drawdown", amount: 1200, every: "fortnight", day: "2026-08-07", out_of: "super Luke", into: null, escalates: true }],
   goals: [{
     name: "Retire", trigger: "date", account: "super Luke", target: 0, by: "2040-01-01",
-    byAgePerson: "", byAgeTurns: 65, editing: false,
+    byAgePerson: "", byAgeTurns: 65,
+    waitForBoth: false, editing: false,
     transfers: [{ name: "drawdown", out_of: "super Tennille" }], accounts: [],
   }],
 };

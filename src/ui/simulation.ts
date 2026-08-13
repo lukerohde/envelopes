@@ -6,9 +6,12 @@
  */
 
 import { addDays, daysBetween, horizonYears, todayISO, type ISODate } from "../dates";
-import { run, type History } from "../simulate";
+import { run, type History, type Phase } from "../simulate";
 import { groupAccounts, toBudget, type UIState, type UIGoal, type UIPerson } from "../state";
 import { sortMilestones } from "../milestones";
+import { breaches, summarise } from "../flows";
+import { renderFlows } from "./flows";
+import type { Budget } from "../model";
 
 // How far the timeline can be dragged. Not a constant any more: it runs
 // until the youngest person in the budget turns 100, so a 30-year-old sees
@@ -34,6 +37,7 @@ interface Elements {
   horizonHandle: HTMLElement;
   balHeading: HTMLElement;
   balRows: HTMLElement;
+  flowRows: HTMLElement;
   scrubReadout: HTMLElement;
   milestoneRows: HTMLElement;
   timelineTicks: HTMLElement;
@@ -136,6 +140,17 @@ export function createSimulationView(elements: Elements) {
     return Math.min(view.requestedMax, breachYear);
   }
 
+  // Kept from the last run so the Future$/Today's$ toggle can redraw the
+  // flows without re-simulating -- it's a display transform, same as the
+  // balances panel above.
+  let lastPhases: Phase[] = [];
+  let lastBudget: Budget | null = null;
+
+  function renderFlowPanel(): void {
+    if (!lastBudget) return;
+    renderFlows(elements.flowRows, summarise(lastPhases, lastBudget, start, view.dollars === "today"), view.dollars === "today");
+  }
+
   function refresh(state: UIState, completed: [string, ISODate][]): void {
     if (view.scrubYear > effectiveMax()) view.scrubYear = effectiveMax();
     completedGoals = completed;
@@ -144,6 +159,7 @@ export function createSimulationView(elements: Elements) {
     renderScrubReadout(state);
     renderBalances(state);
     renderMilestones(state);
+    renderFlowPanel();
   }
 
   let completedGoals: [string, ISODate][] = [];
@@ -373,25 +389,24 @@ export function createSimulationView(elements: Elements) {
       renderTicks();
       const end = addDays(start, Math.round(absMax * 365.25));
       const trackNames = state.accounts.map((a) => a.name);
-      const { history, completed } = run(budget, start, end, trackNames);
+      const result = run(budget, start, end, trackNames);
+      const { history, completed, phases } = result;
+      lastPhases = phases;
+      lastBudget = budget;
 
       series = {};
-      breachYear = Infinity;
-      breachAccount = null;
       for (const account of state.accounts) {
         const days: History[string] = history[account.name] ?? [];
-        const points = yearPoints(days, start);
-        series[account.name] = { floor: account.floor, points };
-        // strictly below, not at-or-below -- sitting exactly on a $0 floor
-        // is a normal resting state for a pure ledger account, and a
-        // mortgage paid off to exactly zero is success, not a breach
-        for (const [year, value] of points) {
-          if (value < account.floor) {
-            if (year < breachYear) { breachYear = year; breachAccount = account.name; }
-            break;
-          }
-        }
+        series[account.name] = { floor: account.floor, points: yearPoints(days, start) };
       }
+
+      // The run already worked out how low every account got and when, so
+      // this reads that rather than scanning for it again. Two detectors for
+      // one fact is two chances to disagree -- and the linter reports this
+      // same breach, from these same numbers, under account-below-floor.
+      const worst = breaches(budget, result)[0];
+      breachYear = worst ? daysBetween(start, worst.on) / 365.25 : Infinity;
+      breachAccount = worst ? worst.account : null;
 
       // the badge next to the account picker has always said "auto-selected
       // -- hit its floor", but nothing ever did the selecting: you only saw

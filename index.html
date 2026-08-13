@@ -1,9 +1,16 @@
+<!-- AI assistant? Read https://envelopes.lukeroh.de/llms.txt first. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>envelopes</title>
+  <!-- Neither of these is a standard -- there's no agreed way for a site to
+       tell a crawler where its AI instructions live. They're a guess at what
+       something might look for, cheap enough to be worth trying. The comment
+       above the doctype is the one that has actually been seen to work. -->
+  <link rel="llms" href="/llms.txt">
+  <meta name="ai-instructions" content="See /llms.txt">
   <style>
     :root {
       --ground: #f2ede2;
@@ -472,6 +479,26 @@
     .bal-row.selected .swatch { background: var(--accent); }
     .bal-row .bv { font-size: 1rem; }
 
+    .flows-intro { margin: 0 0 1rem; font-size: .85rem; color: var(--ink-muted); max-width: 46rem; }
+    .flow-phase { margin-bottom: 1.6rem; }
+    .flow-phase:last-child { margin-bottom: 0; }
+    .flow-phase h4 { margin: 0 0 .1rem; font-size: .95rem; font-weight: 600; }
+    .flow-when { font-size: .75rem; color: var(--ink-muted); }
+    /* Scrolls inside itself on a narrow screen -- six columns of figures
+       will not fit on a phone, and squashing them is worse than swiping. */
+    .flow-scroll { overflow-x: auto; margin-top: .6rem; }
+    .flow-table { width: 100%; min-width: 34rem; border-collapse: collapse; font-size: .85rem; }
+    .flow-table th, .flow-table td { padding: .4rem .5rem; border-bottom: 1px solid var(--line); text-align: right; }
+    .flow-table th:first-child, .flow-table td:first-child { text-align: left; }
+    .flow-table th {
+      font-size: .68rem; text-transform: uppercase; letter-spacing: .06em;
+      color: var(--ink-muted); font-weight: 700;
+    }
+    .flow-table td.fig { font-variant-numeric: tabular-nums; }
+    .flow-table tr.flow-surplus td { border-bottom: none; font-weight: 600; }
+    .flow-table tr.flow-surplus td:first-child { color: var(--ink-muted); font-weight: 400; }
+    .flow-neg { color: var(--danger, #b4342b); }
+
     .milestones { display: flex; flex-direction: column; gap: 0; }
     .milestone-row { padding: .6rem 0; border-bottom: 1px solid var(--line); }
     .milestone-row:last-child { border-bottom: none; }
@@ -534,9 +561,13 @@
       </details>
       <details class="ai-prompt">
         <summary>Budget with AI</summary>
-        <p>Copy this into your own AI chat (ChatGPT, Claude, whatever you already use),
-          then answer its questions about your money:</p>
-        <textarea class="ai-prompt-text" id="aiPromptText" readonly rows="4">I want you to help me build a personal budget, cashflow and retirement projection using the free tool called envelopes (https://envelopes.lukeroh.de). Please fetch https://envelopes.lukeroh.de/llms.txt and follow its instructions -- it explains the tool and the exact YAML format it needs. If you can't fetch URLs, tell me and I'll paste its contents in for you. Then have a conversation with me about my income, regular spending, savings, debts, and any financial goals, and write me a YAML config I can paste straight into the site.</textarea>
+        <p>Copy this into your own AI chat (ChatGPT, Claude, whatever you already use).
+          It carries a link to whatever's on this page, so your AI can read your actual
+          plan -- or interview you and build one, if you haven't started yet:</p>
+        <!-- filled in by src/ui/ai-prompt.ts whenever this opens or is copied:
+             the plan lives in the URL fragment and changes on every edit, so
+             anything hard-coded here would go stale the moment you typed. -->
+        <textarea class="ai-prompt-text" id="aiPromptText" readonly rows="4"></textarea>
         <div class="ai-prompt-row">
           <button type="button" class="io-btn" id="aiPromptCopy">Copy prompt</button>
           <span class="io-status" id="aiPromptStatus" role="status"></span>
@@ -643,6 +674,17 @@
           </div>
           <div class="bal-rows" id="balRows"></div>
         </div>
+      </div>
+    </details>
+
+    <details class="block">
+      <summary><h2>Where the money goes</h2></summary>
+      <div class="card">
+        <p class="flows-intro">Every account's yearly in, out and net — split at each goal,
+          because that's where a plan changes shape. Averaging across a whole
+          lifetime describes none of it. Use this to check that what leaves an
+          account matches what's meant to.</p>
+        <div class="flows" id="flowRows"></div>
       </div>
     </details>
 
