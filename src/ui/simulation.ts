@@ -425,8 +425,11 @@ export function createSimulationView(elements: Elements) {
       lastOutcome = current;
       const checked = checkPlan(budget, result, start, end);
       const firstProblem = checked.findings[0];
+      const suggestion = firstProblem?.rule === "clearing-account-accumulating"
+        ? " Suggestion: consider adding a sweep to periodically clear excess cash."
+        : "";
       elements.planStatus.textContent = firstProblem
-        ? `${firstProblem.severity.toUpperCase()}: ${firstProblem.account} — ${firstProblem.detail}`
+        ? `${firstProblem.severity.toUpperCase()}: ${firstProblem.account} — ${firstProblem.detail}.${suggestion}`
         : "PASS: no mechanical findings";
       if (showImpact && before) {
         const text = formatImpact(compareOutcomes(before, current));

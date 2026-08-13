@@ -257,4 +257,10 @@ describe("the page carries it too, not just the CLI", () => {
     const simulation = readFileSync(new URL("../src/ui/simulation.ts", import.meta.url), "utf-8");
     expect(simulation).toContain("firstProblem.account");
   });
+
+  it("suggests a periodic sweep for accumulating clearing cash", () => {
+    const simulation = readFileSync(new URL("../src/ui/simulation.ts", import.meta.url), "utf-8");
+    expect(simulation).toContain('firstProblem?.rule === "clearing-account-accumulating"');
+    expect(simulation).toContain("consider adding a sweep to periodically clear excess cash");
+  });
 });
