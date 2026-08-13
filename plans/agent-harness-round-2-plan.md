@@ -232,35 +232,34 @@ survives. The POC must include this case. It may decide that a systematic
 retirement surplus should reduce the drawdown instead, and that rebaselining is
 only for genuine residual variance or an explicitly chosen destination.
 
-**Current work:** establish the deterministic POC cases and use them to
-characterise the uncommitted analytic opportunity-cost spike in `src/flows.ts`,
-`src/lint.ts` and `src/simulate.ts`. It is evidence-gathering code, not a rule
-being implemented. The task is complete when the cases expose what it gets
-right, its false positives, and the information it cannot infer. Do not make
-the existing example test pass by accepting its new findings.
+**Current work:** compare the completed POC evidence and accept or reject the
+leading minimal combination below. The uncommitted analytic opportunity-cost
+spike in `src/flows.ts`, `src/lint.ts` and `src/simulate.ts` remains
+evidence-gathering code, not a rule being implemented. Do not make the existing
+example test pass by accepting its new findings.
 
 - [x] Record the three candidate mechanisms from review before developing the
       current `idle-cash` experiment further
-- [ ] **Current — build synthetic, deterministic POC cases** for: genuine low-yield accumulation;
+- [x] Build synthetic, deterministic POC cases for: genuine low-yield accumulation;
       a normal cycling sinking fund; an account already offsetting a loan; a
       locked or risky investment with a higher headline rate; a financially
       trivial difference; multiple simultaneous savings/debt destinations; and
       an oversized retirement drawdown swept back to its source. Record the
       analytic spike's output against each case before changing its algorithm
-- [ ] **POC 1 — clearing ceiling:** first crossing, peak excess,
+- [x] **POC 1 — clearing ceiling:** first crossing, peak excess,
       schema/UI cost, and a rule of thumb an agent can use to propose the value
       without the engine silently choosing it
-- [ ] **POC 2a — analytic opportunity cost:** average balance × the gap
+- [x] **POC 2a — analytic opportunity cost:** average balance × the gap
       to the best genuinely comparable return, expressed as dollars per year.
       Treat loan interest as a return only while debt remains and credit an
       existing offset with that effective rate
-- [ ] **POC 2b — counterfactual opportunity cost:** make one
+- [x] **POC 2b — counterfactual opportunity cost:** make one
       equivalent placement change, rerun, and measure the actual difference.
       This costs more code and runtime but naturally sees offsets, loan payoff
       dates, and goal phases that a headline-rate comparison misses. Define
       "equivalent placement" explicitly so the rerun does not quietly choose
       a risk level, lock-up or tax treatment
-- [ ] **POC 3 — annual rebaseline:** compare a balance-dependent transfer such as `sweep_above` with
+- [x] **POC 3 — annual rebaseline:** compare a balance-dependent transfer such as `sweep_above` with
       an account policy such as `rebaseline_to`, inferring the active focus,
       explicitly routing a named sweep through existing goal overrides, and
       making no engine change at all
@@ -275,6 +274,48 @@ the existing example test pass by accepting its new findings.
       severity in the shared result so CLI and browser cannot disagree
 - [ ] Record the decision and why the rejected options are unnecessary; remove
       rejected POC code rather than leaving parallel mechanisms behind
+
+#### POC evidence
+
+All four prototypes were isolated from this branch, tested against synthetic
+plans, run through the full Docker suite, and production-built.
+
+| POC | production delta | strongest result | decisive cost |
+|---|---:|---|---|
+| declared clearing `ceiling` | +133/−14 | exact first crossing, peak and excess; one structured result can serve every surface | adds config and editor/schema surface, still cannot choose a remedy; a nominal ceiling ages with inflation |
+| analytic opportunity cost | +141 | costs comparable marginal placement choices and handles existing offsets/capacity | cannot infer earmarking, access, risk, tax or phase-specific intent; not safe as a failing rule |
+| engine counterfactual | +97 | highest fidelity for an explicitly declared source, destination and amount; naturally sees offsets and goal timing | does not detect future accumulation and still needs the person to declare equivalence; roughly one full run per candidate |
+| named `sweep_above` transfer | +63/−5 | smallest credible engine remedy; reuses schedules and goal overrides to keep destination explicit by phase | optional remedy, not detector or explanation; structured editor and warning surface would add code |
+
+Test code was deliberately larger than production (115–198 lines per POC)
+because the value of the exercise was the false-positive evidence. The exact
+line counts are comparison evidence, not code-budget targets for the eventual
+implementation.
+
+**What the POCs ruled out:** inferring the active savings focus is ambiguous as
+soon as debt, ordinary savings and super are all live. An account-level
+`rebaseline_to` duplicates scheduling and goal routing already owned by
+transfers. A headline-rate winner cannot prove two placements have comparable
+risk or access. Sweeping a retirement surplus back to its source can hide an
+oversized drawdown.
+
+**Leading minimal combination — pending Luke's decision:**
+
+1. Keep the existing configuration-free `clearing-account-accumulating`
+   detector instead of adding `ceiling`; improve its next instruction and feed
+   the same finding to any browser warning. Accept that it is a rule of thumb,
+   not a user-declared constraint.
+2. If annual rebudgeting must be represented inside the projection, ship only
+   a named `sweep_above` transfer. The person declares the buffer, cadence and
+   destination; existing goal overrides change that destination by phase. Do
+   not infer financial priority.
+3. Reject both opportunity-cost implementations as automatic warnings for now.
+   Preserve their useful cases as design evidence, then delete the POC code.
+   A higher return can be mentioned as a review principle in `llms.txt`, but
+   not presented as a recommendation the model cannot justify.
+4. Surface the product principle using the real simulator: a change the person
+   makes produces exact before/after milestone movement. POC clearer copy and
+   that delta before adding a generalized sensitivity engine.
 
 ### Phase 6 — Implement only the chosen excess-cash path
 
