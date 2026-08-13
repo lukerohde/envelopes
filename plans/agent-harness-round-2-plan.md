@@ -364,6 +364,15 @@ Keep one source of deterministic feedback: `checkPlan`, exposed as human text
 and JSON. The browser consumes the same structured result; it does not grow a
 parallel warning system.
 
+Feedback has three meanings: `FAIL` for a mechanically impossible or internally
+inconsistent plan, `REVIEW` for a valid choice that depends on the person's
+preferences, and `PASS`. Fix every `FAIL` before comparing downstream outcomes;
+never silently resolve a `REVIEW`. `saving-below-inflation` becomes review, not
+failure: low return may deliberately buy access or certainty. Accumulation in
+an account declared `clearing` remains a structural failure because that kind
+says the money passes through; if holding it is intentional, give it a savings
+job and then review the yield trade-off honestly.
+
 The ordered loop is:
 
 1. Ask for intent: hard constraints, desired directions, allowed levers and
