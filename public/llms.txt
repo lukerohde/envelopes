@@ -814,7 +814,7 @@ goals:
         amount: 0
         escalation: 0
       - name: super drawdown
-        amount: 2500
+        amount: 2470
         every: fortnight
         day: '2026-08-07'
         out_of: super
@@ -884,9 +884,9 @@ piles money up in a pay account while emptying the retirement account that fed i
 **This example reaches its declared end at 86, and that is not a bug.** The terminal
 `Old & broke` goal stops the run when super reaches $1,000, so the out-of-the-box
 `check` no longer reports the negative-interest tail as a floor failure after the
-useful projection. It still reports the separate, deliberate pay-account surplus
-finding; that is the excess-cash work described above. Where the terminal boundary
-belongs is the user's decision.
+useful projection. The post-super drawdown is also matched to spending closely
+enough that the example passes every mechanical check on first load. Where the
+terminal boundary belongs is the user's decision.
 
 Inflation eats every super balance eventually. The only escape is a balance so large
 you can live on its real return, which most people don't have and can't get to by
@@ -896,9 +896,8 @@ they'd rather work two more years, save more now, or accept spending less later 
 their decision and nobody else's — and it is a much more useful conversation than a
 projection that pretends the problem isn't there.
 
-The example intentionally leaves one excess-cash finding visible, but it has none
-of the other mechanical failures, and that's the bit worth copying. Balancing it
-took real work: the salary had to escalate alongside the
+The example starts clean, and that's the bit worth copying. Balancing it took real
+work: the salary had to escalate alongside the
 spending it funds, the super drawdown had to be sized to what's actually being spent
 rather than picked, and the whole thing had to hold up over the full run rather than
 on average. Expect to iterate the same way. A plan that balances first try usually

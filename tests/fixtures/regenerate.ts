@@ -11,7 +11,7 @@ import { writeFileSync, readFileSync } from "node:fs";
 import { simulate } from "../../src/lib";
 
 const START = "2026-08-12";
-const YEARS = 40;
+const YEARS = 41;
 
 const yamlText = readFileSync(new URL("../../src/example.yaml", import.meta.url), "utf-8");
 const { completed, balances } = simulate(yamlText, { start: START, years: YEARS });

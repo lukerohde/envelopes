@@ -179,7 +179,7 @@ goals:
         amount: 0
         escalation: 0
       - name: super drawdown
-        amount: 2500
+        amount: 2470
         every: fortnight
         day: '2026-08-07'
         out_of: super

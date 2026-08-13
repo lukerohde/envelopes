@@ -583,6 +583,9 @@ pre-existing unallocated surplus.
 - [x] Exclude clearing growth consumed by a later phase, and attribute only the
       unused residual to the earliest transfer set that creates it; a chart
       peak is not sufficient evidence that cash can safely be swept
+- [x] Tune the shipped example's post-super drawdown to the narrow range that
+      preserves every daily floor without leaving unused clearing growth, so
+      the first-load plan check is all PASS
 - [x] Add an eval whose preferences genuinely conflict: earlier retirement,
       longer funded retirement, home ownership certainty, accessible savings
       and super tax treatment. Passing means the agent offers alternatives and
@@ -623,7 +626,7 @@ The accepted slice is now implemented on `agent-harness-round-2`:
 - `llms.txt` now gives the intent interview, the competing-goal loop, the
   present/future-dollar framing, severity semantics and the explicit sweep.
 
-Verification: the full Docker test suite passes (33 files, 325 tests) after
+Verification: the full Docker test suite passes (33 files, 327 tests) after
 the round-2 additions and the production build/typecheck passes. The published
 CLI bundle also has a smoke check for `check --json` and `compare --json` so an
 agent receives one JSON document rather than the duplicate output that a

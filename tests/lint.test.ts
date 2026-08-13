@@ -443,27 +443,9 @@ describe("the shipped example", () => {
     expect(ageAt(born, result.endedOn!)).toBeGreaterThanOrEqual(80);
   });
 
-  // Sinking funds that only fill, savings losing to inflation, a goal that
-  // never fires -- those are modelling mistakes and the example has none.
-  //
-  // It does still carry one `clearing-account-accumulating`, and that is
-  // recorded here rather than tuned away or quietly excluded. The pay
-  // account peaks around $80k in the years before the mortgage clears.
-  // Pushing that surplus anywhere makes something else worse: into the
-  // offset and the bridge years starve; into super and the plan lasts
-  // longer, so the retirement-side over-draw has more years to pool and the
-  // peak goes *up*. The knobs are coupled and this was tuned by hand, which
-  // is precisely the thing the repo doesn't yet give an agent a method for.
-  //
-  // Pinned to one finding on one account so it can't quietly grow.
-  it("has one known leak, and no others", () => {
+  it("has no findings on first load", () => {
     const { budget, result, start, end } = atPageHorizon();
-    const other = lint(budget, result, start, end).filter((f) => f.rule !== "account-below-floor");
-    expect(other.map((f) => `${f.rule}:${f.account}`)).toEqual(["clearing-account-accumulating:pay"]);
-    expect(other[0].detail).toContain('after "retire at 55"');
-    expect(other[0].detail).toContain("reduce that incoming transfer");
-    expect(other[0].detail).not.toContain("base Transfers");
-    expect(other[0].detail).not.toContain('under "pay off the house"');
+    expect(lint(budget, result, start, end)).toEqual([]);
   });
 
   it("proves the pre-house balance is needed by showing that sweeping it causes the later floor breach", () => {

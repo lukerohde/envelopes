@@ -101,6 +101,12 @@ describe("the advice is known-good, not just plausible", () => {
 });
 
 describe("the shipped example", () => {
+  it("passes every criterion without an out-of-box failure", () => {
+    const { check: c } = check(EXAMPLE);
+    expect(c.criteria.every((criterion) => criterion.ok === true)).toBe(true);
+    expect(c.next).toBeNull();
+  });
+
   it("passes the cashflow criterion, so the rest can be measured at all", () => {
     const { check: c } = check(EXAMPLE);
     expect(c.criteria[0].ok).toBe(true);
