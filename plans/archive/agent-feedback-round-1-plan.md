@@ -474,7 +474,7 @@ the Phase 8 flow data plus the Phase 7 invariant — no new traversal.
 - [x] `goal-never-fires` — goal not reached within the run. Cheap: `run()`
       already returns only the goals that fired, so it's a set difference
 - [x] `super-before-preservation-age` — super drawn before the person turns 60
-- [ ] ~~`unbounded-envelope` — `expense` account with no outflow path~~
+- [x] ~~`unbounded-envelope` — `expense` account with no outflow path~~
       **Dropped, and it shouldn't come back.** An expense envelope having no
       outflow is exactly what `kind: expense` *means* — the balance is
       cumulative spend, so money in and none out is the correct shape. The
@@ -560,10 +560,10 @@ than the two schema fixes this phase asked for — so I stopped. I did try:
 stopping the drawdown when super runs out just moves the hole into `pay`
 (-$1.85M), because the spending keeps going. The linter now names both, which
 at least means nobody copies it without being told.
-## Later
+## Out of scope
 
-- [ ] Solver: bisect one free variable against a constraint, e.g.
+- Solver: bisect one free variable against a constraint, e.g.
       `--vary "early retirement.target" --require "super > 0 at age 95"`
-- [ ] Publish a SHA-256 of the module in `llms.txt` so agents can verify what
+- Publish a SHA-256 of the module in `llms.txt` so agents can verify what
       they downloaded
-- [ ] stdio MCP server, if mobile or non-sandbox clients ever matter
+- stdio MCP server, if mobile or non-sandbox clients ever matter

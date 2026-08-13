@@ -2,6 +2,8 @@
 
 Implementation brief, phased. Each phase is one commit.
 
+## Objective
+
 **Context:** round 1 made the tool legible to an agent — discovery, a real
 engine to run, named findings. Then an agent (me) used that harness to
 rebalance the worked example and got it wrong seven times running. Every
@@ -14,27 +16,31 @@ already know what a good plan looks like will optimise against the checks
 rather than the plan, which is exactly what happened.
 
 **The measure of done:** hand a fresh agent a deliberately broken plan and
-`llms.txt`, and it balances it without a human catching anything. That test
-is Phase 4, and until it passes nothing else here counts.
+`llms.txt`, and it balances it without a human catching anything. The answer
+must also make excess cash visible in the right place — to the harness, and
+possibly to the person using the site — without pretending every possible
+detector, model feature and UI treatment is necessary.
 
 ---
 
-## Phase 1 — Say what good looks like
+## Tasks
+
+### Phase 1 — Say what good looks like
 
 `commit: docs: state the acceptance criteria for a plan, not just the faults`
 
 Every judgement that mattered in round 1 came out of a conversation and was
 written down nowhere. A fresh agent re-derives them and gets them wrong.
 
-- [ ] Write the objective into `llms.txt`, above the rules: a plan holds its
+- [x] Write the objective into `llms.txt`, above the rules: a plan holds its
       cashflow throughout, the account that eventually gives out is the
       retirement fund and not the everyday one, clearing accounts don't
       trend, envelopes cycle, every goal fires
-- [ ] **Aim for the eighties, not the horizon.** Inflation eats every super
+- [x] **Aim for the eighties, not the horizon.** Inflation eats every super
       balance; surviving to 101 needs either a fortune or spending nobody
       would accept. Say so, and say that where it runs out is the user's
       decision to make
-- [ ] **Spending is an input, not a tuning knob.** An agent that balances a
+- [x] **Spending is an input, not a tuning knob.** An agent that balances a
       plan by cutting someone's groceries has not balanced anything. Say it
       in those words
 - [ ] Q (resolve at review): are these criteria universal, or does a plan
@@ -43,7 +49,7 @@ written down nowhere. A fresh agent re-derives them and gets them wrong.
 
 ---
 
-## Phase 2 — Make each finding carry its next move
+### Phase 2 — Make each finding carry its next move
 
 `commit: feat: findings say what to change, not just what's wrong`
 
@@ -51,43 +57,43 @@ written down nowhere. A fresh agent re-derives them and gets them wrong.
 which knob moves it, or what that knob will break — and they are all
 coupled, which round 1 discovered by thrashing and recorded nowhere.
 
-- [ ] Add a `fix` field to `Finding`: the specific lever, the direction, and
+- [x] Add a `fix` field to `Finding`: the specific lever, the direction, and
       the finding it's likely to trigger instead
 - [ ] Document the coupling explicitly. Raising the super contribution to
       soak a surplus makes the plan last longer, which gives the
       retirement-side over-draw more years to pool, so the leak gets
       *bigger*. That is not discoverable by reasoning; it has to be written
-- [ ] **Order the findings.** A floor breach freezes every downstream
+- [x] **Order the findings.** A floor breach freezes every downstream
       number, so fixing cashflow first isn't a preference — nothing else is
       real until it holds. The list should be sorted by what to do first
 
 ---
 
-## Phase 3 — `envelopes check`
+### Phase 3 — `envelopes check`
 
 `commit: feat: a plan check that ends in a single next instruction`
 
 `lint` answers "what's wrong". The missing half is "what now".
 
-- [ ] `envelopes check plan.yml` — the acceptance criteria as a pass/fail
+- [x] `envelopes check plan.yml` — the acceptance criteria as a pass/fail
       list, then the one thing to do next
-- [ ] Runs at the same horizon as the page, always. Round 1 shipped a
+- [x] Runs at the same horizon as the page, always. Round 1 shipped a
       console tool running 40 years against a page running 55, so an agent
       and its user got different verdicts on the same plan
-- [ ] `--json` for agents, exit non-zero while anything fails
-- [ ] `make plan-check FILE=...`
-- [ ] Delete nothing from `lint`: `check` is `lint` plus ordering, criteria
+- [x] `--json` for agents, exit non-zero while anything fails
+- [x] `make plan-check FILE=...`
+- [x] Delete nothing from `lint`: `check` is `lint` plus ordering, criteria
       and a next step. One rule engine, not two
 
 ---
 
-## Phase 4 — Prove it on a plan that's actually broken
+### Phase 4 — Prove it on a plan that's actually broken
 
 `commit: test: a broken plan, and the harness that talks you through it`
 
 The only test that matters. Everything above is a guess until this passes.
 
-- [ ] `tests/fixtures/needs-balancing.yml` — one deliberately bad plan
+- [x] `tests/fixtures/needs-balancing.yml` — one deliberately bad plan
       carrying the real failures: income flat against escalating spending,
       a clearing account with no buffer, a sinking fund that only fills, a
       drawdown sized by guess, a goal that never fires
@@ -130,54 +136,113 @@ branch; the lesson is that the eval has to run the *artefact*, not the repo.
 
 ---
 
-## Phase 5 — Annual rebudget and cashflow rebaseline
+### Phase 5 — POC excess cash before choosing a mechanism
 
-`commit: feat: periodic sweep of clearing-account drift`
+`commit: test: compare ways to handle excess cash`
 
-**Luke's own practice, and the answer to the one leak round 1 couldn't tune
-away.** In real life the drift in a clearing account is handled by sitting
-down once a year, re-budgeting, and rebaselining it — reallocating whatever
-has piled up and resetting the account to its working balance. The model
-can't express that, which is why the worked example still carries a
-`clearing-account-accumulating` finding that no combination of five coupled
-knobs would remove.
+The first eval left a clearing account pooling money and the harness had no
+known-good next move. The interrupted follow-up began an `idle-cash` lint rule:
+average daily balance multiplied by the gap to the best apparently reachable
+return. That is one useful hypothesis, not yet the design. It currently has no
+tests, fails the example's existing expectation, and does not account for an
+account already offsetting a loan.
 
-The gap is that every transfer moves a *fixed* (or escalating) amount.
-Nothing can move "whatever is above the line".
+There are four separate questions hiding inside "excess cash":
 
-- [ ] **Balance-dependent transfers.** Something like:
+1. **Detection:** is a balance accumulating beyond its job, or merely cycling?
+2. **Cost:** is it giving up a meaningful, reachable return elsewhere?
+3. **Remedy:** should the plan change a rate/offset, periodically sweep the
+   excess, or only ask the person to rebudget it?
+4. **Surface:** is this a failing harness criterion, a lint finding, a user
+   insight in the flow table/UI, or some combination?
 
-```yaml
-- name: annual rebudget
-  every: year
-  day: 07-01
-  out_of: pay
-  into: early retirement
-  sweep_above: 5000     # move the excess over this, or nothing
-```
+We may not need an answer in every layer. POC the candidates, then choose the
+smallest combination that gives an agent a known-good next move and gives a
+person useful information rather than noise.
 
-- [ ] Q (resolve at review): `sweep_above` on a transfer, or a property of
-      the clearing account itself (`rebaseline_to: 5000`)? The account is
-      arguably where it belongs — it's a fact about how that account is
-      run, not about one movement — but transfers are where every other
-      movement lives, and two mechanisms for moving money is one too many
-- [ ] Q (resolve at review): what happens when the account is *below* the
-      line at sweep time? Doing nothing is the safe reading. Topping it back
-      up from the destination is the honest one, and it's what actually
-      happens in a real rebudget — but it can drain a savings account
-      silently, which is the class of bug this whole round exists to stop
-- [ ] Apply it to `src/example.yaml` and confirm the leak closes
-- [ ] `clearing-account-accumulating` should then suggest a rebaseline as
-      its fix, since that's the real-world remedy rather than a knob tweak
-- [ ] Document it in `llms.txt` — this is the piece of household budgeting
-      practice the schema is currently missing, not just a convenience
+- [ ] Record the full candidate set from review before developing the current
+      `idle-cash` experiment further
+- [ ] Build synthetic, deterministic cases for: genuine low-yield accumulation;
+      a normal cycling sinking fund; an account already offsetting a loan; a
+      locked investment with a higher headline rate; and a financially trivial
+      difference
+- [ ] POC the current opportunity-cost calculation: average balance × the gap
+      to the best reachable return, expressed as dollars per year
+- [ ] POC a counterfactual calculation through the real engine: make one
+      equivalent placement change, rerun, and measure the actual difference.
+      This costs more code and runtime but naturally sees offsets, loan payoff
+      dates, and goal phases that a headline-rate comparison misses
+- [ ] Keep annual rebaseline as a candidate remedy, not a foregone schema
+      change. Compare a balance-dependent transfer such as `sweep_above` with
+      an account policy such as `rebaseline_to`, and with making no engine
+      change at all
+- [ ] Decide whether any result belongs in `lint`, the `check` acceptance
+      criteria, `--flows`, the browser UI, or more than one of them. One shared
+      calculation must feed every chosen surface
+- [ ] Record the decision and why the rejected options are unnecessary; remove
+      rejected POC code rather than leaving parallel mechanisms behind
+
+### Phase 6 — Implement only the chosen excess-cash path
+
+`commit: feat: make excess cash actionable`
+
+- [ ] Write the failing acceptance tests first, based on the Phase 5 decision
+- [ ] Implement the chosen detector/remedy/surface without a second calculation
+      that can drift from the harness
+- [ ] Make the recommended next move clear about what it improves and what it
+      can make worse
+- [ ] Apply the chosen behaviour to `src/example.yaml` only if the decision
+      requires it, and deliberately regenerate the snapshot if numbers move
+- [ ] Document only the shipped mechanism in `llms.txt`
+
+### Phase 7 — Catch the opposite of overspending
+
+`commit: feat: flag a plan that saves past its purpose`
+
+- [ ] Decide whether the upper bound is universal or declared by the plan
+- [ ] POC the measurable candidate from the first eval: a retirement fund
+      still growing in real terms at 90, rather than merely surviving to the
+      chart horizon
+- [ ] Add a deterministic fixture that starves the present to leave excessive
+      money late, without changing the person's declared spending
+- [ ] Give the harness a next move that cannot silently turn spending into a
+      tuning knob
+
+### Phase 8 — Re-run the real eval
+
+`commit: test: repeat the cold-agent harness eval`
+
+- [ ] Run the published artefact from cold several times, not the source tree
+- [ ] Score excess cash and over-saving explicitly, alongside the existing
+      criteria
+- [ ] Record enough evidence to reproduce the verdict without treating one
+      transcript as a deterministic unit test
+- [ ] The round is done only when the remaining failure is a person's stated
+      trade-off, not something Luke catches by eye
+
+---
+
+## Decisions
+
+- Phases 1–3 and the first Phase 4 eval landed on round 1's branch because the
+  eval immediately exercised the harness it was reviewing. Round 2 starts from
+  that commit rather than rewriting history to manufacture a clean boundary.
+- The interrupted `idle-cash` implementation is retained as a POC on the round-2
+  feature branch. It is not an accepted rule and must not be made green by
+  merely updating the example's expected findings.
+- Excess-cash detection, a model remedy, a harness criterion and a browser
+  presentation are separate choices. Phase 5 decides which are actually
+  needed before Phase 6 implements any of them.
+- The eval always tests the built downloadable artefact. Source-only success
+  does not count.
 
 ---
 
 ## Out of scope
 
-- The solver from round 1's "Later" list. A rebaseline sweep may remove the
-  need for it: much of what a solver would search for is the drift a yearly
-  rebudget handles directly.
+- A general solver that tunes arbitrary variables against arbitrary
+  constraints. The POC compares bounded, explainable alternatives only.
+- Publishing a bundle SHA-256 or adding an MCP server; both were deferred from
+  round 1 and do not answer the harness failures.
 - Anything about the deploy, the share codec, or discovery. Round 1 covered
   those and nothing here touches them.
