@@ -157,7 +157,7 @@ function main(state: UIState): void {
     state.goals.push({
       name, trigger: "age", account: state.accounts[0]?.name ?? "", target: 0, waitForBoth: false,
       by: "", byAgePerson: state.birthdays[0]?.name ?? "", byAgeTurns: 65,
-      transfers: [], accounts: [], editing: true,
+      transfers: [], accounts: [], exit: false, editing: true,
     });
     renderGoals(goalRows, state, scheduleUpdate, undefined, name);
     edited();

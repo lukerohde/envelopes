@@ -329,10 +329,11 @@ goals: []
 
 // The worked example is what an agent copies when it builds someone a plan,
 // so what it demonstrates matters. It should hold together through the
-// working years and the bridge, and then run out somewhere in the eighties
-// -- because inflation eats every super balance eventually, and pretending
-// otherwise would need either a fortune or unrealistic spending. Where it
-// runs out is the interesting question, and it's left to the reader.
+// working years and the bridge, and then reach its explicit terminal boundary
+// somewhere in the eighties -- because inflation eats every super balance
+// eventually, and pretending otherwise would need either a fortune or
+// unrealistic spending. Where it ends is the interesting question, and it's
+// left to the reader.
 describe("the shipped example", () => {
   const EXAMPLE = readFileSync(new URL("../src/example.yaml", import.meta.url), "utf-8");
 
@@ -355,22 +356,22 @@ describe("the shipped example", () => {
     expect(superOn > retire).toBe(true);
   });
 
-  // It should be super that finally gives out, not the pay account. A pay
-  // account hitting the floor means the cashflow never worked; super hitting
-  // it means the money lasted as long as it lasted, which is the honest
-  // answer to the question the tool is asked.
-  it("ends because super runs dry, not because the cashflow failed", () => {
+  // The example declares the end of its useful projection explicitly. A pay
+  // account hitting the floor means the cashflow never worked; super reaching
+  // this terminal balance is the honest answer to the question the tool is
+  // asked, without turning the example into an out-of-box failure.
+  it("ends at the declared super terminal balance, not a floor breach", () => {
     const { budget, result } = atPageHorizon();
-    const out = breaches(budget, result);
-    expect(out.map((b) => b.account)).toEqual(["super"]);
+    expect(result.endedOn).not.toBeNull();
+    expect(result.balances.super).toBe(1000);
+    expect(breaches(budget, result)).toEqual([]);
   });
 
   it("holds together until well into the eighties", () => {
     const { budget, result } = atPageHorizon();
     const born = budget.birthdays[0].born;
-    const out = breaches(budget, result);
-    expect(out).toHaveLength(1);
-    expect(ageAt(born, out[0].on)).toBeGreaterThanOrEqual(80);
+    expect(result.endedOn).not.toBeNull();
+    expect(ageAt(born, result.endedOn!)).toBeGreaterThanOrEqual(80);
   });
 
   // Sinking funds that only fill, savings losing to inflation, a goal that

@@ -61,6 +61,8 @@ export interface UIGoal {
    * Carried through the UI even though nothing on the page sets it yet, so
    * loading a plan that uses it and re-sharing can't silently drop it. */
   waitForBoth: boolean;
+  /** Carried through the editor for an explicit terminal boundary. */
+  exit: boolean;
   transfers: UITransferOverride[];
   accounts: UIAccountOverride[];
   editing: boolean;
@@ -201,6 +203,7 @@ export function parseYamlIntoState(yamlText: string): UIState {
       byAgePerson,
       byAgeTurns,
       waitForBoth: item.wait_for_both === true,
+      exit: item.exit === true,
       transfers: overrides,
       accounts: accountOverrides,
       editing: false,
@@ -421,5 +424,6 @@ function goalToRaw(g: UIGoal): Record<string, unknown> {
   // account and a target, so an unconditional `wait_for_both: false` would
   // be noise on every goal in the file.
   if (g.waitForBoth) raw.wait_for_both = true;
+  if (g.exit) raw.exit = true;
   return raw;
 }

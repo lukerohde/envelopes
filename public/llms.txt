@@ -535,6 +535,11 @@ interest rates once it fires.
   accounts:
     - {name: super alex, rate: 0.06}   # optionally also change an account's interest
                                          # rate once this goal fires
+
+  # An intentional terminal boundary. The run stops on the day this goal
+  # completes, rather than continuing into a negative retirement balance.
+  # Omit for ordinary milestones.
+  # exit: true
 ```
 
 A goal's `account`/`target` fields are only read for a balance trigger — if you use
@@ -565,12 +570,16 @@ Two things to know:
   overshoot from checking once a day. With `wait_for_both` that only happens if the
   balance crossed on the same day the goal fired — if it crossed years ago and the
   goal was waiting on a birthday, the balance is left alone rather than rewritten.
+- Set `exit: true` only for an intentional end-of-life boundary, such as the worked
+  example's `Old & broke` goal at super $1,000. The simulator stops on that day,
+  reports the terminal goal as completed, and does not turn the remaining projection
+  into a floor failure.
 
 ## Worked example
 
 One person aiming to retire at 55 — illustrative, not anyone's real numbers, but a
 genuine example of everything above working together: an income, an offset mortgage,
-week-to-week envelopes, super, and four goals that hand off to each other in
+week-to-week envelopes, super, and five goals that hand off to each other in
 sequence.
 
 The income is a $180k package: about $4,924 a fortnight after tax and Medicare, and
@@ -827,6 +836,12 @@ goals:
     by_age:
       person: Alex
       turns: 60
+  - name: Old & broke
+    account: super
+    target: 1000
+    exit: true
+    transfers: []
+    accounts: []
 ```
 
 Notice "super takes over" uses `wait_for_both`. It watches the bridge fund, not
@@ -855,9 +870,12 @@ And check the size of each drawdown against what's actually being spent. A drawd
 larger than the spending it funds doesn't look wrong on a chart — it just quietly
 piles money up in a pay account while emptying the retirement account that fed it.
 
-**This example runs out at 85, and that is not a bug.** `lint` reports one finding
-against it — `account-below-floor` on the pay account in 2065 — and that finding is
-the answer, not an error: the money lasts to 85 and no longer.
+**This example reaches its declared end at 86, and that is not a bug.** The terminal
+`Old & broke` goal stops the run when super reaches $1,000, so the out-of-the-box
+`check` no longer reports the negative-interest tail as a floor failure after the
+useful projection. It still reports the separate, deliberate pay-account surplus
+finding; that is the excess-cash work described above. Where the terminal boundary
+belongs is the user's decision.
 
 Inflation eats every super balance eventually. The only escape is a balance so large
 you can live on its real return, which most people don't have and can't get to by
@@ -867,8 +885,9 @@ they'd rather work two more years, save more now, or accept spending less later 
 their decision and nobody else's — and it is a much more useful conversation than a
 projection that pretends the problem isn't there.
 
-What the example *doesn't* have is any of the other findings, and that's the bit
-worth copying. Balancing it took real work: the salary had to escalate alongside the
+The example intentionally leaves one excess-cash finding visible, but it has none
+of the other mechanical failures, and that's the bit worth copying. Balancing it
+took real work: the salary had to escalate alongside the
 spending it funds, the super drawdown had to be sized to what's actually being spent
 rather than picked, and the whole thing had to hold up over the full run rather than
 on average. Expect to iterate the same way. A plan that balances first try usually

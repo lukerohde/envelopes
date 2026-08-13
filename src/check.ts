@@ -87,6 +87,7 @@ export function checkPlan(budget: Budget, result: RunResult, start: ISODate, end
   const cashflowBreaks = out.filter((b) => !isNestEgg(budget, b.account));
   const nestEggEmpties = out.filter((b) => isNestEgg(budget, b.account));
   const has = (rule: Rule): Finding | undefined => findings.find((f) => f.rule === rule);
+  const terminalGoal = budget.goals.find((goal) => goal.exit && result.completed.some(([name]) => name === goal.name));
 
   const criteria: Criterion[] = [];
 
@@ -117,12 +118,18 @@ export function checkPlan(budget: Budget, result: RunResult, start: ISODate, end
     blind ? notYet : finding ? finding.detail : whenClean;
 
   const endsAt = nestEggEmpties[0];
-  const endAge = endsAt ? oldest(budget, endsAt.on) : oldest(budget, end);
+  const terminalAt = result.endedOn;
+  const terminalAge = terminalAt ? oldest(budget, terminalAt) : null;
+  const endAge = endsAt ? oldest(budget, endsAt.on) : terminalAge ?? oldest(budget, end);
   criteria.push(
     blind
       ? { name: "the money lasts", ok: null, status: "unknown", detail: notYet }
       : !endsAt
-        ? { name: "the money lasts", ok: true, status: "pass", detail: `nothing runs out before age ${endAge}` }
+        ? terminalAt
+          ? endAge >= OLD_ENOUGH
+            ? { name: "the money lasts", ok: true, status: "pass", detail: `${terminalGoal?.name ?? "the terminal goal"} ends the run at age ${endAge}` }
+            : { name: "the money lasts", ok: false, status: "fail", detail: `${terminalGoal?.name ?? "the terminal goal"} ends the run at age ${endAge}, short of ${OLD_ENOUGH}` }
+          : { name: "the money lasts", ok: true, status: "pass", detail: `nothing runs out before age ${endAge}` }
         : endAge >= OLD_ENOUGH
           ? { name: "the money lasts", ok: true, status: "pass", detail: `${endsAt.account} runs out at age ${endAge}` }
           : {
@@ -173,7 +180,7 @@ export function checkPlan(budget: Budget, result: RunResult, start: ISODate, end
     detail: say(early, "nothing draws super early"),
   });
 
-  return { start, end, criteria, findings, reviews: findings.filter((f) => f.severity === "review"), next: nextStep(criteria, endsAt ? endAge : null) };
+  return { start, end, criteria, findings, reviews: findings.filter((f) => f.severity === "review"), next: nextStep(criteria, endsAt || terminalAt ? endAge : null) };
 }
 
 function nextStep(criteria: Criterion[], endAge: number | null): string | null {

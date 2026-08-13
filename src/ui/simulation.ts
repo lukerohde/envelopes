@@ -122,6 +122,7 @@ export function createSimulationView(elements: Elements) {
   let series: Record<string, { floor: number; points: [number, number][] }> = {};
   let breachYear = Infinity;
   let breachAccount: string | null = null;
+  let terminalYear = Infinity;
   // Until you choose an account yourself, the chart shows whichever one
   // breaks first -- the thing actually worth looking at. Once you've picked
   // one, it stays picked; having the selection yanked away on every
@@ -143,7 +144,7 @@ export function createSimulationView(elements: Elements) {
   }
 
   function effectiveMax(): number {
-    return Math.min(view.requestedMax, breachYear);
+    return Math.min(view.requestedMax, breachYear, terminalYear);
   }
 
   // Kept from the last run so the Future$/Today's$ toggle can redraw the
@@ -181,11 +182,12 @@ export function createSimulationView(elements: Elements) {
     const data = series[account];
     if (!data) return;
     const max = effectiveMax();
-    const stopped = max === breachYear && breachYear !== Infinity;
+    const stoppedAtBreach = max === breachYear && breachYear !== Infinity;
+    const stoppedAtExit = max === terminalYear && terminalYear !== Infinity;
     // only claim "auto-selected" when it actually was -- picking the
     // breaching account yourself shouldn't be described back to you as
     // something the page did
-    const autoShown = !pickedByHand && account === breachAccount && stopped;
+    const autoShown = !pickedByHand && account === breachAccount && stoppedAtBreach;
     elements.autoBadge.style.display = autoShown ? "" : "none";
 
     const knots = data.points.filter((p) => p[0] <= max);
@@ -217,16 +219,21 @@ export function createSimulationView(elements: Elements) {
     if (view.requestedMax > max) {
       const zx0 = x(max), zx1 = x(view.requestedMax);
       parts.push(`<rect class="never-zone" x="${zx0}" y="${MARGIN.top}" width="${zx1 - zx0}" height="${PLOT_H}"/>`);
-      parts.push(`<text class="never-label" x="${(zx0 + zx1) / 2}" y="${MARGIN.top + PLOT_H / 2}" text-anchor="middle">never reached</text>`);
+      const label = stoppedAtExit ? "simulation ends" : "never reached";
+      parts.push(`<text class="never-label" x="${(zx0 + zx1) / 2}" y="${MARGIN.top + PLOT_H / 2}" text-anchor="middle">${label}</text>`);
     }
     const linePts = knots.map((p) => `${x(p[0])},${y(p[1])}`).join(" ");
     parts.push(`<polyline class="bal-line" points="${linePts}"/>`);
     const lastKnot = knots[knots.length - 1];
-    if (stopped) {
+    if (stoppedAtBreach) {
       parts.push(`<circle class="breach-dot" cx="${x(lastKnot[0])}" cy="${y(lastKnot[1])}" r="5"/>`);
       const label = account === breachAccount ? `⚠ ${account} hit its floor here` : `⚠ run stopped — ${breachAccount} hit its floor`;
       const lx = Math.min(x(lastKnot[0]) + 8, W - MARGIN.right - 150);
       parts.push(`<text class="breach-label" x="${lx}" y="${y(lastKnot[1]) - 10}">${label}</text>`);
+    } else if (stoppedAtExit) {
+      parts.push(`<circle class="end-dot" cx="${x(lastKnot[0])}" cy="${y(lastKnot[1])}" r="4"/>`);
+      const lx = Math.min(x(lastKnot[0]) + 8, W - MARGIN.right - 150);
+      parts.push(`<text class="end-label" x="${lx}" y="${y(lastKnot[1]) - 10}">✓ simulation ends here</text>`);
     } else {
       parts.push(`<circle class="end-dot" cx="${x(lastKnot[0])}" cy="${y(lastKnot[1])}" r="4"/>`);
     }
@@ -254,7 +261,7 @@ export function createSimulationView(elements: Elements) {
     }
 
     elements.chartSvg.innerHTML = parts.join("");
-    elements.simHeading.innerHTML = simulationHorizonLabel(state.birthdays, start, view.requestedMax);
+    elements.simHeading.innerHTML = simulationHorizonLabel(state.birthdays, start, max);
     elements.balHeading.textContent = `Accounts at ${yearToLabel(sYear)}`;
   }
 
@@ -403,7 +410,8 @@ export function createSimulationView(elements: Elements) {
       const end = addDays(start, Math.round(absMax * 365.25));
       const trackNames = state.accounts.map((a) => a.name);
       const result = run(budget, start, end, trackNames);
-      const { history, completed, phases } = result;
+      const { history, completed, phases, endedOn } = result;
+      terminalYear = endedOn ? daysBetween(start, endedOn) / 365.25 : Infinity;
       lastPhases = phases;
       lastBudget = budget;
       const current: PlanOutcome = { budget, result, start, end };

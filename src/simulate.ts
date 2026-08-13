@@ -12,6 +12,8 @@
  *
  * Goals are independent events, each checked every day -- ported straight
  * from fridge/simulate.py, see that file's own docstring for the reasoning.
+ * An explicit `exit` goal is the one exception to the ordinary walk: it marks
+ * an intentional terminal boundary and stops on the day it completes.
  */
 
 import type { Budget, Goal, Transfer } from "./model";
@@ -92,6 +94,8 @@ export interface RunResult {
    * day it described something real. Null when nothing ever breached, in
    * which case the horizon is the end. Judge a plan on these. */
   balancesAtEnd: Balances | null;
+  /** The day an explicit terminal goal completed, if the run stopped there. */
+  endedOn: ISODate | null;
 }
 
 /** `track` names which accounts to record a daily history for -- pass none
@@ -122,6 +126,7 @@ export function run(budget: Budget, start: ISODate, end: ISODate, track: string[
   for (const account of budget.accounts) floors[account.name] = account.floor;
   const ledger = new Ledger(start, balances, debts, floors);
   let balancesAtEnd: Balances | null = null;
+  let endedOn: ISODate | null = null;
 
   let when = start;
   while (when < end) {
@@ -129,12 +134,18 @@ export function run(budget: Budget, start: ISODate, end: ISODate, track: string[
     applyTransfers(active, balances, debts, loans, stopped, when, start, ledger);
     if (pending.length > 0) {
       const before = completed.length;
-      pending = checkGoals(budget, balances, rates, pending, completed, active, stopped, when, alreadyAtTarget);
+      const checked = checkGoals(budget, balances, rates, pending, completed, active, stopped, when, alreadyAtTarget);
+      pending = checked.pending;
       // A goal firing is what ends a phase. Several can land on the same
       // day, so this closes once and names them together rather than
       // leaving a run of zero-length phases in the table.
       if (completed.length > before) {
-        ledger.closePhase(when, completed.slice(before).map(([name]) => name), balances);
+        ledger.closePhase(when, completed.slice(before).map(([name]) => name), balances, checked.exit);
+      }
+      if (checked.exit) {
+        endedOn = when;
+        for (const name of track) history[name].push([when, balances[name]]);
+        break;
       }
     }
     // The walk carries on past a floor breach, because the chart draws that
@@ -159,7 +170,7 @@ export function run(budget: Budget, start: ISODate, end: ISODate, track: string[
     when = addDays(when, 1);
   }
 
-  return { balances, completed, history, phases: ledger.finish(end, balances), balancesAtEnd };
+  return { balances, completed, history, phases: ledger.finish(endedOn ?? end, balances), balancesAtEnd, endedOn };
 }
 
 /** Accumulates the in/out/interest totals as the run walks, one bucket per
@@ -225,9 +236,17 @@ class Ledger {
     this.seal(when, balances);
   }
 
-  closePhase(when: ISODate, goalNames: string[], balances: Balances): void {
+  closePhase(when: ISODate, goalNames: string[], balances: Balances, terminal = false): void {
     if (this.stopped) return;
+    // A terminal goal has no next phase to receive today's low/high sample.
+    // Record it before sealing so the final flow table describes the actual
+    // terminal balance as well as its closing figure.
+    if (terminal) this.recordLows(balances, when);
     this.seal(when, balances);
+    if (terminal) {
+      this.stopped = true;
+      return;
+    }
     this.current = openPhase(`after ${goalNames.join(" + ")}`, when, balances, this.debts);
   }
 
@@ -385,8 +404,9 @@ function checkGoals(
   stopped: Set<Transfer>,
   when: ISODate,
   alreadyAtTarget: Set<Goal>,
-): Goal[] {
+): { pending: Goal[]; exit: boolean } {
   const stillPending: Goal[] = [];
+  let exit = false;
   for (const goal of pending) {
     // Worked out before the goal fires, because firing consumes it.
     const atTarget = balanceReached(budget, balances, goal);
@@ -404,11 +424,12 @@ function checkGoals(
       completed.push([goal.name, when]);
       applyOverrides(goal, budget.inflation, active, stopped, when);
       applyRateOverrides(goal, rates);
+      if (goal.exit) exit = true;
     } else {
       stillPending.push(goal);
     }
   }
-  return stillPending;
+  return { pending: stillPending, exit };
 }
 
 /** By date, or by amount, or -- with `wait_for_both` -- the later of the

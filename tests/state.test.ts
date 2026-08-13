@@ -335,6 +335,19 @@ describe("the shipped example survives the round-trip the UI actually uses", () 
   });
 });
 
+describe("terminal goals survive the UI round-trip", () => {
+  it("keeps exit: true in the budget", () => {
+    const state = parseYamlIntoState(`
+accounts:
+  - {name: super, balance: 5000, kind: investment}
+goals:
+  - {name: old and broke, account: super, target: 1000, exit: true}
+`);
+    expect(state.goals[0].exit).toBe(true);
+    expect(toBudget(state).goals[0].exit).toBe(true);
+  });
+});
+
 // An override that only says `amount: 0` says nothing about inflation, so it
 // has to inherit whatever the transfer it overrides already does. Reading a
 // missing `escalation` key as "escalates" made every stop-this-transfer

@@ -109,7 +109,9 @@ describe("the shipped example", () => {
 
   it("lasts well into the eighties", () => {
     const { check: c } = check(EXAMPLE);
-    expect(c.criteria.find((x) => x.name === "the money lasts")!.ok).toBe(true);
+    const lasts = c.criteria.find((x) => x.name === "the money lasts")!;
+    expect(lasts.ok).toBe(true);
+    expect(lasts.detail).toContain("Old & broke");
   });
 });
 

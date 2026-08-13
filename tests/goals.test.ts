@@ -10,7 +10,7 @@ const state: UIState = {
   goals: [{
     name: "Retire", trigger: "date", account: "super Luke", target: 0, by: "2040-01-01",
     byAgePerson: "", byAgeTurns: 65,
-    waitForBoth: false, editing: false,
+    waitForBoth: false, exit: false, editing: false,
     transfers: [{ name: "drawdown", out_of: "super Tennille" }], accounts: [],
   }],
 };

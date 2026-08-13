@@ -247,7 +247,7 @@ goals:
     expect(balances.pot).toBeCloseTo(0, 6);
   });
 
-  it("reaching a goal doesn't stop the walk -- there's no way for a goal to do that anymore", () => {
+  it("an ordinary goal doesn't stop the walk", () => {
     const b = budget(`
 accounts:
   - {name: pot, balance: 0, kind: saving}
@@ -259,6 +259,25 @@ goals:
     // three fortnightly firings land within [start, end): 01-01, 01-15, 01-29
     const got = run(b, START, "2026-02-01").balances;
     expect(got.pot).toBe(300);
+  });
+
+  it("an exit goal stops on its target and records the terminal day", () => {
+    const b = budget(`
+accounts:
+  - {name: pot, balance: 300, kind: investment}
+  - {name: pay, balance: 0, kind: clearing}
+transfers:
+  - {name: draw, amount: 100, every: month, day: 1, out_of: pot, into: pay}
+goals:
+  - {name: old and broke, account: pot, target: 100, exit: true}
+`);
+    const got = run(b, START, "2027-01-01", ["pot"]);
+    expect(got.balances.pot).toBe(100);
+    expect(got.balances.pay).toBe(200);
+    expect(got.completed).toEqual([["old and broke", "2026-02-01"]]);
+    expect(got.endedOn).toBe("2026-02-01");
+    expect(got.history.pot.at(-1)).toEqual(["2026-02-01", 100]);
+    expect(got.phases.at(-1)?.end).toBe("2026-02-01");
   });
 });
 

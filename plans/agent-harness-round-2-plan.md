@@ -625,6 +625,9 @@ session; it is intentionally not hidden as a deterministic unit test.
       alongside the existing criteria
 - [x] Record enough evidence to reproduce the verdict without treating one
       transcript as a deterministic unit test
+- [x] Mark the example's declared end of life with a terminal `Old & broke`
+      goal at super $1,000, so intentional retirement exhaustion is not an
+      out-of-box floor failure
 - [ ] Run the external cold-agent preference-conflict eval. It requires a
       separate model/session; the code and instructions are ready for it.
 

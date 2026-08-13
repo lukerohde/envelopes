@@ -9,9 +9,9 @@
  * the now-deleted closed-form solve.py). Dropped rather than carried forward
  * as dead config surface. `who` and `sources` went the same way later --
  * `who` because an account's own name already says whose it is ("sam pay",
- * "super alex"), `sources` because nothing ever read it. `exit` went too --
- * it existed only so a goal could end the simulation, but that's what an
- * account's own floor is for; a goal doesn't need a second way to say it.
+ * "super alex"), `sources` because nothing ever read it. `exit` is kept as
+ * an explicit end-of-life marker: a plan can intentionally stop at a declared
+ * terminal boundary rather than treating the account reaching it as a fault.
  *
  * `by_age` is sugar, not a real field: "alex turns 60" is just a date once
  * you know alex's birthday, so load() resolves it straight into `by` and
@@ -122,6 +122,9 @@ export interface Goal {
    * date-triggered ones, where they've always been ignored. Inferring AND
    * would change the meaning of every share link already out there. */
   waitForBoth: boolean;
+  /** Stop the simulation on the day this goal completes. This is for an
+   * intentional terminal boundary, not for ordinary milestones. */
+  exit: boolean;
   transfers: RhythmOverride[];
   accounts: AccountOverride[];
 }
@@ -222,6 +225,7 @@ export function load(yamlText: string): Budget {
       target: item.target as number,
       by,
       waitForBoth: item.wait_for_both === true,
+      exit: item.exit === true,
       transfers: transferOverrides,
       accounts: accountOverrides,
     });

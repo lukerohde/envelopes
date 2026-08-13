@@ -91,6 +91,16 @@ goals:
     const budget = load(text);
     expect(budget.goals[0].by).toBe("2044-03-14");
   });
+
+  it("parses an explicit terminal goal", () => {
+    const budget = load(`
+accounts:
+  - {name: super, balance: 5000, kind: investment}
+goals:
+  - {name: old and broke, account: super, target: 1000, exit: true}
+`);
+    expect(budget.goals[0].exit).toBe(true);
+  });
 });
 
 describe("load -- inflation default escalation", () => {

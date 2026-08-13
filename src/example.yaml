@@ -212,3 +212,9 @@ goals:
     by_age:
       person: Alex
       turns: 60
+  - name: Old & broke
+    account: super
+    target: 1000
+    exit: true
+    transfers: []
+    accounts: []
