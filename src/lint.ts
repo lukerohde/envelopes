@@ -82,6 +82,17 @@ function money(value: number): string {
   return `$${Math.round(value).toLocaleString()}`;
 }
 
+/** Names the goal-delimited regime containing an account's peak. At a goal
+ * boundary both adjacent phases share the date; the later match is the one
+ * whose transfer overrides are now active, which is the useful place to edit. */
+function phaseNameAt(result: RunResult, when: ISODate): string {
+  let name = "from the start";
+  for (const phase of result.phases) {
+    if (when >= phase.start && when <= phase.end) name = phase.name;
+  }
+  return name;
+}
+
 export function lint(budget: Budget, result: RunResult, start: ISODate, end: ISODate): Finding[] {
   const findings: Finding[] = [];
   const years = yearsIn(start, end);
@@ -122,6 +133,10 @@ export function lint(budget: Budget, result: RunResult, start: ISODate, end: ISO
       const grew = peak ? annualise(peak.high - buffer, toPeak) : 0;
       const material = Math.max(SURPLUS_FLOOR_PER_YEAR, throughput * SURPLUS_SHARE_OF_INCOME);
       if (peak && grew > material) {
+        const phase = phaseNameAt(result, peak.on);
+        const editHint = phase === "from the start"
+          ? " — review the matching transfer in the base Transfers section"
+          : ` — review the transfer overrides under "${phase.replace(/^after /, "")}" in Goals`;
         findings.push({
           rule: "clearing-account-accumulating",
           severity: "fail",
@@ -129,7 +144,7 @@ export function lint(budget: Budget, result: RunResult, start: ISODate, end: ISO
           detail:
             `builds to ${money(peak.high)} by ${peak.on}, ${money(grew)}/yr — ` +
             `${((grew / throughput) * 100).toFixed(1)}% of what passes through it, claimed by no envelope. ` +
-            `It earns no interest sitting there`,
+            `It earns no interest sitting there${editHint}`,
           fix:
             `Give it a job: raise an envelope to what they really spend, or move more into savings. ` +
             `Careful -- pushing it into a fund they can't reach until 60 makes the plan last longer, ` +

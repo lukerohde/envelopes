@@ -105,6 +105,24 @@ goals: []
     expect(findings(plan)).toContain("clearing-account-accumulating");
   });
 
+  it("points to the goal transfer overrides when the peak is in a later phase", () => {
+    const budget = load(`
+inflation: 0
+birthdays: []
+accounts:
+  - {name: pay, balance: 0, kind: clearing}
+  - {name: groceries, balance: 0, kind: expense}
+transfers:
+  - {name: salary, amount: 2000, every: fortnight, day: 2026-01-02, into: pay, escalation: 0}
+  - {name: shopping, amount: 100, every: fortnight, day: 2026-01-02, out_of: pay, into: groceries, escalation: 0}
+goals:
+  - {name: retire at 55, account: pay, target: 0, by: 2027-01-01, transfers: []}
+`);
+    const result = run(budget, "2026-01-01", "2028-01-01");
+    const finding = lint(budget, result, "2026-01-01", "2028-01-01").find((f) => f.rule === "clearing-account-accumulating")!;
+    expect(finding.detail).toContain('transfer overrides under "retire at 55" in Goals');
+  });
+
   // A clearing account is meant to hold a buffer; only a *trend* is wrong.
   it("leaves a clearing account that merely holds a float alone", () => {
     expect(findings(clean())).not.toContain("clearing-account-accumulating");
