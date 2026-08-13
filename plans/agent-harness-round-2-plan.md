@@ -334,6 +334,35 @@ oversized drawdown.
 
 `commit: feat: show spending in future freedom`
 
+**Desired interaction:** Luke changes a spending number, the existing debounced
+simulation reruns, and a transient message says `Early retirement delayed 47
+days`. This is not a separate forecast: compare the previous valid run's
+completed-goal dates with the new run, matched by the goal's own name. That name
+supplies "retirement" where the plan means retirement, so the schema does not
+need another classification.
+
+The interaction depends on deliberate routing at each transition. If reducing
+spending merely adds to a clearing-account balance, no goal moves and the page
+hides the future value of the change. The accumulation detector and optional
+named sweep are therefore not tidiness features: they make marginal changes
+flow into the currently declared goal, which makes their time consequence
+observable.
+
+Candidate messages, all derived from exact run results:
+
+- `Early retirement delayed 47 days`
+- `Mortgage paid off 12 days earlier`
+- `Super access is no longer reached`
+- `No milestone moved — the extra cash is accumulating in pay`
+
+Never compare or quote a milestone after the first floor breach. That date is
+fictional even though the engine continues drawing the chart. If either the old
+or new plan breaks before the affected transition, explain that the comparison
+cannot be made until cashflow holds. A date- or age-triggered retirement goal is
+fixed by definition and may not move when spending changes; report the exact
+milestone or plan-end consequence that did move rather than forcing the word
+"retirement" into the message.
+
 - [ ] Decide whether the upper bound is universal or declared by the plan
 - [ ] POC the measurable candidate from the first eval: a retirement fund
       still growing in real terms at 90, rather than merely surviving to the
@@ -346,6 +375,17 @@ oversized drawdown.
       around the existing live edit/resimulate loop; before/after milestone
       deltas for a change the person actually made; and a marginal sensitivity
       such as "$100/month changes milestone X by Y"
+- [ ] POC the immediate previous-run delta first: stable goal-name matching,
+      exact calendar-day difference, earlier/later wording, newly reached/no
+      longer reached, and no toast on initial load
+- [ ] Decide which edits establish a new baseline without producing a message
+      (loading YAML/share links and structural renames are the obvious cases),
+      so a half-typed number or renamed goal does not generate nonsense
+- [ ] When no valid milestone moves, distinguish genuinely no measured effect
+      from money diverted into an accumulating clearing account. Reuse the
+      shared finding; do not infer this separately in the UI
+- [ ] Suppress downstream deltas when either run breaches a floor before that
+      milestone, using the same breach result as `check`
 - [ ] Do not invent a universal "financial independence" date. If a config has
       no declared goal that means retirement, report exact milestone changes
       rather than guessing which one is independence
