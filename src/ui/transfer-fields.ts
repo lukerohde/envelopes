@@ -262,5 +262,10 @@ export function wireTransferFieldRow(
       onAnyChange();
       if (key === "every") onEveryChange();
     });
+    // A source account determines whether Sweep above is legal. The combo
+    // emits change only when an option is chosen (not on every search
+    // keystroke), so a newly selected clearing account enables the mode
+    // immediately without interrupting account-name entry.
+    if (key === "from") input.addEventListener("change", onEveryChange);
   });
 }

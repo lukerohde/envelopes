@@ -114,5 +114,19 @@ export function renderTransfers(container: HTMLElement, state: UIState, onChange
     });
   }
 
-  initCombos(container, state.accounts.map((a) => a.name));
+  initCombos(container, state.accounts.map((a) => a.name), (name, field) => {
+    if (state.accounts.some((account) => account.name === name)) return;
+    state.accounts.push({
+      name,
+      balance: 0,
+      floor: 0,
+      // A newly created From account is the household's pay/clearing account;
+      // a newly created To account is an envelope until the user changes it.
+      kind: field === "from" ? "clearing" : "expense",
+      rate: 0,
+      offsets: null,
+    });
+    redrawAll();
+    onChange();
+  });
 }

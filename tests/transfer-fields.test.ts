@@ -75,4 +75,9 @@ describe("mobile transfer rows", () => {
     expect(mobileTransferSummary({ ...fields, mode: "sweep", amount: 1000 })).toBe("above 1,000 · fortnight");
     expect(html).toContain('value="sweep" selected');
   });
+
+  it("keeps sweep visible but disabled until the source is a clearing account", () => {
+    const html = transferFieldsHTML({ ...fields, sweepAllowed: false });
+    expect(html).toContain('value="sweep" disabled');
+  });
 });
