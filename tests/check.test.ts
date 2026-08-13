@@ -104,6 +104,24 @@ describe("the shipped example", () => {
   });
 });
 
+describe("review findings are advisory", () => {
+  it("do not turn an intentional low-yield choice into a failing check", () => {
+    const { check: c } = check(`
+inflation: 0.03
+accounts:
+  - {name: pay, balance: 100000, kind: clearing}
+  - {name: accessible, balance: 50000, kind: saving, rate: 0.01}
+transfers: []
+goals: []
+`);
+    const criterion = c.criteria.find((item) => item.name === "savings beat inflation")!;
+    expect(criterion.status).toBe("review");
+    expect(criterion.ok).toBe(true);
+    expect(c.next).toBeNull();
+    expect(c.reviews[0].severity).toBe("review");
+  });
+});
+
 describe("the printed report", () => {
   it("states the horizon and everyone's age at it, so nobody guesses", () => {
     const { budget, check: c } = check(EXAMPLE);

@@ -93,6 +93,8 @@ Zero dependencies, Node ≥18. `envelopes.mjs` exports:
 | `deflate(amount, inflation, years)` | a future amount in today's dollars |
 | `lintPlan(yamlText, opts)` | named findings — what's wrong with this plan |
 | `checkPlan(budget, result, start, end)` | criteria, ordered findings, and the one next step |
+| `compareOutcomes(before, after)` | exact neutral differences between two real runs |
+| `formatImpact(comparison)` | short neutral edit feedback for a person |
 | `summarise(phases, budget, start, real)` | annual in/out/net per account, per phase |
 | `load(yamlText)` | parse and validate, without running |
 | `run(budget, start, end, track)` | the raw engine, if you already have a `Budget` |
@@ -182,13 +184,40 @@ problem somewhere they'll notice later. Ask them before you change what they
 told you they spend. Income, savings rates, retirement dates and drawdown
 sizes are yours to tune; their life is not.
 
+### The short intent interview
+
+Before changing an existing plan, ask and then restate:
+
+- Which outcomes are hard constraints (for example, no cashflow floor breach,
+  super inaccessible before 60, a paid-off home, or a minimum retirement age)?
+- Which outcomes should move earlier or later if there is a trade-off: retirement,
+  home ownership, accessible savings, or how long the money is funded?
+- Which levers may change (contributions, retirement date, drawdown, rates,
+  retained cash) and which are off limits? Spending is not a tuning knob unless
+  the person explicitly offers it.
+- Which uncertainties deserve certainty: market risk, access or lock-up, tax,
+  or the possibility of policy changes to super?
+
+Do not demand numerical weights. A partial ordering and a few minimums or
+maximums are enough. Early retirement and a longer-funded retirement can point
+in opposite directions; an age-60 access goal is a fixed transition, not a
+lever. The engine reports dates and balances, while the person decides which
+trade-off expresses their will. Never choose the highest rate or a single
+"best" plan without asking.
+
+The product framing is simple: a dollar spent today is a dollar that cannot buy
+future freedom. The old family shorthand was "$1 today is $10 tomorrow", but
+that multiplier is not universal. Run the real engine and show the actual days
+or dates changed by a choice; do not shame a purchase or hard-code a multiplier.
+
 `lint` gives the same findings without the goal-setting, if that's all you
 want:
 
     node envelopes-cli.mjs lint plan.yml
     node envelopes-cli.mjs lint --json plan.yml
 
-Named findings, and it exits non-zero when there are any. Each one reads the
+Named findings carry `FAIL` or `REVIEW`. It exits non-zero for `FAIL` only;
+`REVIEW` is a valid choice that depends on access, risk, tax or certainty. Each one reads the
 same per-phase flows `--flows` prints, so you can always check a finding
 against the row it came from rather than taking it on faith. The rules:
 
@@ -196,7 +225,7 @@ against the row it came from rather than taking it on faith. The rules:
 |---|---|
 | `account-below-floor` | the balance drops under the floor the account declares — the money isn't there on the day it's needed |
 | `clearing-account-accumulating` | income no envelope ever claimed, piling up |
-| `saving-below-inflation` | grows in dollars, shrinks in what it buys |
+| `saving-below-inflation` | `REVIEW`: grows in dollars, shrinks in what it buys; low yield may be intentional |
 | `sinking-fund-trending` | money in, none out, forever — the spending it saved for isn't modelled |
 | `goal-never-fires` | never reached, so everything downstream of it never happens |
 | `super-before-preservation-age` | super drawn before 60 |
@@ -291,6 +320,36 @@ dates, not an opinion.
 milestone deltas, sort by effect size. A few dozen runs, still under a
 second, and it tells you which knobs actually matter before you start
 suggesting changes.
+
+The bundle also exposes the neutral comparator. With two files, the CLI runs
+the same real horizon and reports exact differences without naming a winner:
+
+    node envelopes-cli.mjs compare --json before.yml after.yml
+
+`compareOutcomes` reports named milestone movement, fixed date/age transitions,
+the first floor breach, retirement-fund exhaustion, the lowest clearing margin,
+and unallocated surplus by phase. Never compare a milestone after either run's
+first floor breach: downstream numbers are not real. If no named transition
+moves, check whether the change merely increased unallocated clearing cash.
+
+If a household really re-budgets periodically, a named transfer can retain a
+clearing balance and move only the surplus:
+
+```yaml
+- name: annual rebudget to bridge
+  sweep_above: 8000
+  every: year
+  day: 07-01
+  out_of: pay
+  into: bridge fund
+```
+
+The source must be `kind: clearing`, the destination is explicit, and
+`sweep_above` is mutually exclusive with `amount`. It does nothing below the
+retained balance, caps a loan destination at its remaining principal, and can
+be redirected by an existing goal override. Do not infer the destination, and
+never sweep a systematic retirement surplus back into the investment funding
+that drawdown: reduce the drawdown first.
 
 ## Starting from nothing
 
@@ -422,6 +481,11 @@ Move a fixed or escalating amount between two accounts on a schedule.
                                            # amount that never grows (a mortgage
                                            # repayment set by the loan contract, say)
 ```
+
+For explicit periodic re-budgeting, use `sweep_above` instead of `amount`:
+`max(0, balance(out_of) - retained)` moves on each firing. It is only valid
+from a `clearing` account, never tops the source up, and leaves the destination
+choice to the person. A loan destination is capped at its remaining principal.
 
 `day`'s meaning depends on `every` — this trips people up, get it right:
 - `every: once` → `day` is the date it happens (`2030-03-14`), and it happens on that

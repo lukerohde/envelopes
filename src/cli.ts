@@ -107,6 +107,10 @@ function formatComparison(comparison: OutcomeComparison): string {
 
 // Only run when invoked directly (`npx tsx src/cli.ts ...`), not when
 // something in here is imported for testing.
-if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) {
+// The library bundle imports this module from `cli-bundle.ts`; in a bundled
+// file `import.meta.url` is the same for both modules, so the usual URL guard
+// would execute the command twice. Only the source entrypoint owns the direct
+// invocation.
+if (process.argv[1] && (process.argv[1].endsWith("/src/cli.ts") || process.argv[1].endsWith("\\src\\cli.ts"))) {
   runCli(process.argv.slice(2));
 }

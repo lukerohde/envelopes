@@ -18,7 +18,6 @@ import { load, type Budget } from "./model";
 import { run, type History, type Phase } from "./simulate";
 import { formatReport, reportJson as asJson, type JsonReport } from "./report";
 import { lint, type Finding } from "./lint";
-import { compareOutcomes, type OutcomeComparison, type PlanOutcome } from "./compare";
 
 export { load } from "./model";
 export { run } from "./simulate";

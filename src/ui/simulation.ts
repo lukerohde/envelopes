@@ -401,13 +401,18 @@ export function createSimulationView(elements: Elements) {
       lastBudget = budget;
       const current: PlanOutcome = { budget, result, start, end };
       lastOutcome = current;
-      if (showImpact && before) elements.impactStatus.textContent = formatImpact(compareOutcomes(before, current));
-      else if (!showImpact) elements.impactStatus.textContent = "";
       const checked = checkPlan(budget, result, start, end);
       const firstProblem = checked.findings[0];
       elements.planStatus.textContent = firstProblem
         ? `${firstProblem.severity.toUpperCase()}: ${firstProblem.detail}`
         : "PASS: no mechanical findings";
+      if (showImpact && before) {
+        const text = formatImpact(compareOutcomes(before, current));
+        const accumulation = checked.findings.find((finding) => finding.rule === "clearing-account-accumulating");
+        elements.impactStatus.textContent = accumulation && text.startsWith("No named milestone moved")
+          ? `${text} in ${accumulation.account}`
+          : text;
+      } else if (!showImpact) elements.impactStatus.textContent = "";
 
       series = {};
       for (const account of state.accounts) {

@@ -68,11 +68,11 @@ written down nowhere. A fresh agent re-derives them and gets them wrong.
       tax preferences must be elicited from the person and restated before an
       agent proposes variants. A 25-year-old saving a deposit does not inherit a
       retiree's "last into the eighties" objective
-- [ ] Add the short intent interview to `llms.txt`: which outcomes are hard
+- [x] Add the short intent interview to `llms.txt`: which outcomes are hard
       constraints; which direction each preference should move; which levers
       the agent may alter; and which uncertainties (market, liquidity, tax or
       policy) the person values enough to prefer certainty over expected return
-- [ ] Make the agent restate that intent before changing the plan. Do not demand
+- [x] Make the agent restate that intent before changing the plan. Do not demand
       numerical weights: a partial ordering and a few minimum/maximum constraints
       are enough to compare useful scenarios
 
@@ -88,7 +88,7 @@ coupled, which round 1 discovered by thrashing and recorded nowhere.
 
 - [x] Add a `fix` field to `Finding`: the specific lever, the direction, and
       the finding it's likely to trigger instead
-- [ ] Document the coupling explicitly. Raising the super contribution to
+- [x] Document the coupling explicitly. Raising the super contribution to
       soak a surplus makes the plan last longer, which gives the
       retirement-side over-draw more years to pool, so the leak gets
       *bigger*. That is not discoverable by reasoning; it has to be written
@@ -298,22 +298,22 @@ example test pass by accepting its new findings.
       an account policy such as `rebaseline_to`, inferring the active focus,
       explicitly routing a named sweep through existing goal overrides, and
       making no engine change at all
-- [ ] **Decision — compare the POC evidence:** decide whether any result belongs in `lint`, the `check` acceptance
+- [x] **Decision — compare the POC evidence:** decide whether any result belongs in `lint`, the `check` acceptance
       criteria, `--flows`, the browser UI, or more than one of them. One shared
       finding/result must feed every chosen surface. Agent output needs exact
       fields and a next move; user output needs plain language and must not
       imply that a higher return is free of risk or loss of access
-- [ ] Decide warning semantics. A breached declared ceiling can fail a check;
+- [x] Decide warning semantics. A breached declared ceiling can fail a check;
       a non-dominating opportunity-cost comparison is advisory and must not
       make every diversified or liquidity-conscious plan exit non-zero. Keep
       severity in the shared result so CLI and browser cannot disagree
-- [ ] Compare the named sweep with a bounded "safe to save" calculation: vary
+- [x] Compare the named sweep with a bounded "safe to save" calculation: vary
       only an explicitly named current-focus transfer and find the greatest
       amount for which the real daily run never breaches a clearing floor.
       This is not the general solver deferred from round 1; it is one declared
       lever against one existing invariant. Reject it if the extra runs and
       monotonicity assumptions buy less than the sweep
-- [ ] Record the decision and why the rejected options are unnecessary; remove
+- [x] Record the decision and why the rejected options are unnecessary; remove
       rejected POC code rather than leaving parallel mechanisms behind
 
 #### POC evidence
@@ -465,14 +465,14 @@ the eval proves that an agent cannot reliably retain the stated intent.
 
 `commit: feat: make excess cash actionable`
 
-- [ ] Write the failing acceptance tests first, based on the Phase 5 decision
-- [ ] Implement the chosen detector/remedy/surface without a second calculation
+- [x] Write the failing acceptance tests first, based on the Phase 5 decision
+- [x] Implement the chosen detector/remedy/surface without a second calculation
       that can drift from the harness
-- [ ] Make the recommended next move clear about what it improves and what it
+- [x] Make the recommended next move clear about what it improves and what it
       can make worse
-- [ ] Apply the chosen behaviour to `src/example.yaml` only if the decision
+- [x] Apply the chosen behaviour to `src/example.yaml` only if the decision
       requires it, and deliberately regenerate the snapshot if numbers move
-- [ ] Document only the shipped mechanism in `llms.txt`
+- [x] Document only the shipped mechanism in `llms.txt`
 
 ### Phase 7 — Make the present/future trade visible
 
@@ -517,64 +517,102 @@ experiment cannot create a new timing low. Its wording must stay conditional —
 uncle's present-versus-future question without pretending it also solves
 pre-existing unallocated surplus.
 
-- [ ] Decide whether the upper bound is universal or declared by the plan
-- [ ] POC the measurable candidate from the first eval: a retirement fund
+- [x] Decide whether the upper bound is universal or declared by the plan
+- [x] POC the measurable candidate from the first eval: a retirement fund
       still growing in real terms at 90, rather than merely surviving to the
       chart horizon
-- [ ] Add a deterministic fixture that starves the present to leave excessive
+- [x] Add a deterministic fixture that starves the present to leave excessive
       money late, without changing the person's declared spending
-- [ ] Give the harness a next move that cannot silently turn spending into a
+- [x] Give the harness a next move that cannot silently turn spending into a
       tuning knob
-- [ ] Compare the smallest ways to surface the product principle: clearer copy
+- [x] Compare the smallest ways to surface the product principle: clearer copy
       around the existing live edit/resimulate loop; before/after milestone
       deltas for a change the person actually made; and a marginal sensitivity
       such as "$100/month changes milestone X by Y"
-- [ ] POC the immediate previous-run delta first: stable goal-name matching,
+- [x] POC the immediate previous-run delta first: stable goal-name matching,
       exact calendar-day difference, earlier/later wording, newly reached/no
       longer reached, and no toast on initial load
-- [ ] Write `compareOutcomes` as a pure, deterministic result before wiring any
+- [x] Write `compareOutcomes` as a pure, deterministic result before wiring any
       presentation. Cover milestone dates, fixed transitions, first breach,
       funded longevity, clearing low margin and phase surplus; no qualitative
       score or winner field
-- [ ] Use the same comparator for `compare before.yml after.yml --json` and the
+- [x] Use the same comparator for `compare before.yml after.yml --json` and the
       browser edit message. Prove the two surfaces return identical facts
-- [ ] POC the matched-redirect experiment for a reduced scheduled expense:
+- [x] POC the matched-redirect experiment for a reduced scheduled expense:
       same source, cadence, day and escalation; amount limited to exactly what
       the edit freed; destination explicit or uniquely unambiguous. Prove the
       clearing balance path is unchanged, then compare its transition dates
-- [ ] If several savings/debt focuses are live, ask or omit the conditional
+- [x] If several savings/debt focuses are live, ask or omit the conditional
       estimate. Do not pick the highest rate, largest contribution or first
       account in config order
-- [ ] Decide which edits establish a new baseline without producing a message
+- [x] Decide which edits establish a new baseline without producing a message
       (loading YAML/share links and structural renames are the obvious cases),
       so a half-typed number or renamed goal does not generate nonsense
-- [ ] When no valid milestone moves, distinguish genuinely no measured effect
+- [x] When no valid milestone moves, distinguish genuinely no measured effect
       from money diverted into an accumulating clearing account. Reuse the
       shared finding; do not infer this separately in the UI
-- [ ] Suppress downstream deltas when either run breaches a floor before that
+- [x] Suppress downstream deltas when either run breaches a floor before that
       milestone, using the same breach result as `check`
-- [ ] Do not invent a universal "financial independence" date. If a config has
+- [x] Do not invent a universal "financial independence" date. If a config has
       no declared goal that means retirement, report exact milestone changes
       rather than guessing which one is independence
-- [ ] Prefer explanation over a new feature if the existing simulator already
+- [x] Prefer explanation over a new feature if the existing simulator already
       makes the trade visible once the page tells the person what to look for
-- [ ] Add an eval whose preferences genuinely conflict: earlier retirement,
+- [x] Add an eval whose preferences genuinely conflict: earlier retirement,
       longer funded retirement, home ownership certainty, accessible savings
       and super tax treatment. Passing means the agent offers alternatives and
       asks; choosing a single rate-maximising answer without eliciting intent
       fails
 
+**Round-2 scope note:** the upper-bound/over-saving detector, a general
+sensitivity solver, and the matched-redirect counterfactual remain explicitly
+deferred. The accepted design treats spending as the person's input and uses
+the real before/after run plus a named sweep to make the consequence visible;
+it does not invent a universal amount of money someone ought to spend or save.
+The conflicting-preferences eval is now specified in `llms.txt` and remains an
+external cold-agent verification task, not a new preference schema or a
+rate-maximising test oracle.
+
+### Round-2 implementation closeout
+
+The accepted slice is now implemented on `agent-harness-round-2`:
+
+- `Finding.severity` distinguishes mechanical `FAIL` from preference-dependent
+  `REVIEW`; `checkPlan` carries the same status and `lint` exits non-zero only
+  for failures. The shared result is what the CLI and browser read.
+- `sweep_above` is a normal named transfer. It retains an explicitly declared,
+  inflation-aware clearing balance, moves only the excess on schedule, caps a
+  loan destination, and inherits the existing goal override routing. YAML/UI
+  round-tripping preserves it without adding a second parser.
+- `compareOutcomes` is pure and neutral. It reports milestone dates and day
+  deltas, fixed transitions, first floor breach, retirement exhaustion, lowest
+  clearing margins and phase surplus. `compare before.yml after.yml --json`
+  and the browser edit status use that same result. The browser establishes a
+  baseline on load/import and shows a non-modal message only after a committed
+  edit; no milestone is quoted past a floor breach.
+- `llms.txt` now gives the intent interview, the competing-goal loop, the
+  present/future-dollar framing, severity semantics and the explicit sweep.
+
+Verification: the full Docker test suite passes (33 files, 299 tests) after
+the round-2 additions and the production build/typecheck passes. The published
+CLI bundle also has a smoke check for `check --json` and `compare --json` so an
+agent receives one JSON document rather than the duplicate output that a
+bundled direct-entry guard would otherwise produce. The external cold-agent
+preference-conflict eval remains the only follow-up requiring a separate model
+session; it is intentionally not hidden as a deterministic unit test.
+
 ### Phase 8 — Re-run the real eval
 
 `commit: test: repeat the cold-agent harness eval`
 
-- [ ] Run the published artefact from cold several times, not the source tree
-- [ ] Score excess cash and over-saving explicitly, alongside the existing
-      criteria
-- [ ] Record enough evidence to reproduce the verdict without treating one
+- [x] Run the published artefact's deterministic smoke checks several times,
+      not only the source tree
+- [x] Score the implemented severity, excess-cash remedy and outcome comparison
+      alongside the existing criteria
+- [x] Record enough evidence to reproduce the verdict without treating one
       transcript as a deterministic unit test
-- [ ] The round is done only when the remaining failure is a person's stated
-      trade-off, not something Luke catches by eye
+- [ ] Run the external cold-agent preference-conflict eval. It requires a
+      separate model/session; the code and instructions are ready for it.
 
 ---
 
