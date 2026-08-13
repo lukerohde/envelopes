@@ -12,4 +12,10 @@ describe("account suggestions", () => {
     expect(combo).toContain("External income (no source account)");
     expect(combo).toContain('input!.dataset.field === "from"');
   });
+
+  it("shows the full account list when external income is the new-row default", () => {
+    expect(combo).toContain('const query = typed.toLowerCase() === "external income" ? "" : typed;');
+    expect(combo).toContain('input!.value.trim().toLowerCase() === "external income"');
+    expect(combo).toContain("input!.select()");
+  });
 });

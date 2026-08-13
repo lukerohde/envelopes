@@ -39,7 +39,11 @@ export function initCombos(container: HTMLElement, accountNames: string[], onCre
     }
 
     function renderList(): void {
-      const query = input!.value.trim();
+      const typed = input!.value.trim();
+      // External income is the placeholder for a new From transfer. It must
+      // not become the filter text, or opening the picker offers only that
+      // one row and hides every real account the user could choose instead.
+      const query = typed.toLowerCase() === "external income" ? "" : typed;
       const matches = accountNames.filter((name) => name.toLowerCase().includes(query.toLowerCase()));
       list.innerHTML = "";
 
@@ -48,7 +52,7 @@ export function initCombos(container: HTMLElement, accountNames: string[], onCre
       // clears the field, so they never have to type a magic string or
       // accidentally create an account called "external income".
       const externalIncome = input!.dataset.field === "from" &&
-        "external income".includes(query.toLowerCase());
+        "external income".includes(typed.toLowerCase());
       if (externalIncome) {
         const item = document.createElement("div");
         item.className = "combo-item combo-special";
@@ -96,6 +100,7 @@ export function initCombos(container: HTMLElement, accountNames: string[], onCre
     // the page -- a fixed list doesn't move with its input on its own
     function show(): void {
       if (!list.isConnected) document.body.appendChild(list);
+      if (input!.value.trim().toLowerCase() === "external income") input!.select();
       renderList();
       list.hidden = false;
       place();
