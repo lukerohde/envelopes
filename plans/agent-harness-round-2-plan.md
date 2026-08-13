@@ -340,7 +340,7 @@ transfers. A headline-rate winner cannot prove two placements have comparable
 risk or access. Sweeping a retirement surplus back to its source can hide an
 oversized drawdown.
 
-**Recommended decision — pending Luke's acceptance:**
+**Accepted decision:**
 
 1. Keep the existing configuration-free `clearing-account-accumulating`
    detector instead of adding `ceiling`; improve its next instruction and feed
@@ -595,9 +595,8 @@ pre-existing unallocated surplus.
 - Phases 1–3 and the first Phase 4 eval landed on round 1's branch because the
   eval immediately exercised the harness it was reviewing. Round 2 starts from
   that commit rather than rewriting history to manufacture a clean boundary.
-- The interrupted `idle-cash` implementation is retained as a POC on the round-2
-  feature branch. It is not an accepted rule and must not be made green by
-  merely updating the example's expected findings.
+- The interrupted `idle-cash` implementation was rejected and removed. It was
+  not made green by merely updating the example's expected findings.
 - Excess-cash detection, a model remedy, a harness criterion and a browser
   presentation are separate choices. Phase 5 decides which are actually
   needed before Phase 6 implements any of them.
