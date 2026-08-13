@@ -25,8 +25,13 @@ export type Rule =
   | "goal-never-fires"
   | "super-before-preservation-age";
 
+export type FindingSeverity = "fail" | "review";
+
 export interface Finding {
   rule: Rule;
+  /** `fail` is a mechanical constraint; `review` is a valid choice whose
+   * desirability depends on the person's access, risk or tax preferences. */
+  severity: FindingSeverity;
   /** The account or goal the finding is about, so a caller can point at it. */
   account: string;
   /** One line a person can act on. Numbers, not adjectives. */
@@ -119,6 +124,7 @@ export function lint(budget: Budget, result: RunResult, start: ISODate, end: ISO
       if (peak && grew > material) {
         findings.push({
           rule: "clearing-account-accumulating",
+          severity: "fail",
           account: account.name,
           detail:
             `builds to ${money(peak.high)} by ${peak.on}, ${money(grew)}/yr — ` +
@@ -128,7 +134,9 @@ export function lint(budget: Budget, result: RunResult, start: ISODate, end: ISO
             `Give it a job: raise an envelope to what they really spend, or move more into savings. ` +
             `Careful -- pushing it into a fund they can't reach until 60 makes the plan last longer, ` +
             `which gives any over-sized drawdown more years to pool, and the surplus grows instead. ` +
-            `The real-world answer is an annual rebudget, which the schema can't express yet.`,
+            `If the residual is real rather than an oversized retirement drawdown, add a named ` +
+            `sweep_above transfer with an explicit retained balance and destination; goal overrides ` +
+            `can redirect it when the household's focus changes.`,
         });
       }
     }
@@ -136,6 +144,7 @@ export function lint(budget: Budget, result: RunResult, start: ISODate, end: ISO
     if (account.kind === "saving" && account.rate < budget.inflation && balance > account.balance) {
       findings.push({
         rule: "saving-below-inflation",
+        severity: "review",
         account: account.name,
         detail:
           `earns ${(account.rate * 100).toFixed(1)}% against ${(budget.inflation * 100).toFixed(1)}% inflation` +
@@ -155,6 +164,7 @@ export function lint(budget: Budget, result: RunResult, start: ISODate, end: ISO
       if (totals.out === 0 && trend > NOISE_PER_YEAR) {
         findings.push({
           rule: "sinking-fund-trending",
+          severity: "fail",
           account: account.name,
           detail:
             `takes ${money(annualise(totals.in, years))}/yr in and pays nothing out, ever` +
@@ -173,6 +183,7 @@ export function lint(budget: Budget, result: RunResult, start: ISODate, end: ISO
       if (drawnAt && owner && ageAt(owner.born, drawnAt) < PRESERVATION_AGE) {
         findings.push({
           rule: "super-before-preservation-age",
+          severity: "fail",
           account: account.name,
           detail:
             `first drawn ${drawnAt}, when ${owner.name} is ${ageAt(owner.born, drawnAt)}` +
@@ -197,6 +208,7 @@ export function lint(budget: Budget, result: RunResult, start: ISODate, end: ISO
     const recovered = result.balances[breach.account] >= breach.floor;
     findings.push({
       rule: "account-below-floor",
+      severity: "fail",
       account: breach.account,
       detail:
         `falls under its floor of ${money(breach.floor)} on ${breach.on}` +
@@ -216,6 +228,7 @@ export function lint(budget: Budget, result: RunResult, start: ISODate, end: ISO
     if (fired.has(goal.name)) continue;
     findings.push({
       rule: "goal-never-fires",
+      severity: "fail",
       account: goal.name,
       detail: `never reached by ${end} — everything it was going to change never happens`,
       fix:
@@ -271,8 +284,9 @@ export function formatFindings(findings: Finding[]): string {
   const lines: string[] = [`${findings.length} finding${findings.length === 1 ? "" : "s"}:`];
   for (const finding of findings) {
     lines.push("");
-    lines.push(`  ${finding.rule}  (${finding.account})`);
+    lines.push(`  ${finding.severity.toUpperCase()}  ${finding.rule}  (${finding.account})`);
     lines.push(`    ${finding.detail}`);
+    lines.push(`    fix: ${finding.fix}`);
   }
   return lines.join("\n");
 }

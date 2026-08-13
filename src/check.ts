@@ -23,6 +23,8 @@ import { ageAt, type ISODate } from "./dates";
 import { breaches } from "./flows";
 import { lint, type Finding, type Rule } from "./lint";
 
+export type CriterionStatus = "pass" | "fail" | "review" | "unknown";
+
 /** Old enough that the plan did its job. Not the end of the chart: the
  * chart runs to 100 because that's the outer bound of a human life, not a
  * target. Inflation eats every retirement balance eventually and surviving
@@ -41,6 +43,9 @@ export interface Criterion {
    * ticks and one red -- and an agent reads five out of six as nearly
    * right, when in truth only one of them was measured at all. */
   ok: boolean | null;
+  /** The explicit state for agents; `ok` remains for backwards-compatible
+   * callers that only need to know whether a mechanical check failed. */
+  status: CriterionStatus;
   detail: string;
   /** The finding behind a failure, so the next step is the fix for the
    * thing that actually failed. Taking the first finding off the list
@@ -57,6 +62,7 @@ export interface PlanCheck {
   criteria: Criterion[];
   /** Ordered by what to fix first. */
   findings: Finding[];
+  reviews: Finding[];
   /** The single next thing to do, or null when it all passes. */
   next: string | null;
 }
@@ -87,10 +93,11 @@ export function checkPlan(budget: Budget, result: RunResult, start: ISODate, end
   // First, because nothing measured after a breach is real.
   criteria.push(
     cashflowBreaks.length === 0
-      ? { name: "the cashflow holds", ok: true, detail: "every everyday account stays above its floor" }
+      ? { name: "the cashflow holds", ok: true, status: "pass", detail: "every everyday account stays above its floor" }
       : {
           name: "the cashflow holds",
           ok: false,
+          status: "fail",
           detail:
             `${cashflowBreaks[0].account} runs dry ${cashflowBreaks[0].on}` +
             ` (age ${oldest(budget, cashflowBreaks[0].on)}) — the plan stops describing anything real there`,
@@ -102,23 +109,26 @@ export function checkPlan(budget: Budget, result: RunResult, start: ISODate, end
   // broke, so while that's failing these answers aren't answers.
   const blind = cashflowBreaks.length > 0;
   const notYet = "not assessed — fix the cashflow first";
-  const settle = (finding: Finding | undefined, whenClean: string): boolean | null =>
-    finding ? false : blind ? null : true;
+  const settle = (finding: Finding | undefined, whenClean: string): { ok: boolean | null; status: CriterionStatus } =>
+    blind ? { ok: null, status: "unknown" } :
+      finding ? { ok: finding.severity === "review", status: finding.severity === "review" ? "review" : "fail" } :
+      { ok: true, status: "pass" };
   const say = (finding: Finding | undefined, whenClean: string): string =>
-    finding ? finding.detail : blind ? notYet : whenClean;
+    blind ? notYet : finding ? finding.detail : whenClean;
 
   const endsAt = nestEggEmpties[0];
   const endAge = endsAt ? oldest(budget, endsAt.on) : oldest(budget, end);
   criteria.push(
     blind
-      ? { name: "the money lasts", ok: null, detail: notYet }
+      ? { name: "the money lasts", ok: null, status: "unknown", detail: notYet }
       : !endsAt
-        ? { name: "the money lasts", ok: true, detail: `nothing runs out before age ${endAge}` }
+        ? { name: "the money lasts", ok: true, status: "pass", detail: `nothing runs out before age ${endAge}` }
         : endAge >= OLD_ENOUGH
-          ? { name: "the money lasts", ok: true, detail: `${endsAt.account} runs out at age ${endAge}` }
+          ? { name: "the money lasts", ok: true, status: "pass", detail: `${endsAt.account} runs out at age ${endAge}` }
           : {
               name: "the money lasts",
               ok: false,
+              status: "fail",
               detail: `${endsAt.account} runs out at age ${endAge}, short of ${OLD_ENOUGH}`,
             },
   );
@@ -126,7 +136,7 @@ export function checkPlan(budget: Budget, result: RunResult, start: ISODate, end
   const pooling = has("clearing-account-accumulating");
   criteria.push({
     name: "nothing pools unspent",
-    ok: settle(pooling, ""),
+    ...settle(pooling, ""),
     finding: pooling,
     detail: say(pooling, "clearing accounts stay flat"),
   });
@@ -134,7 +144,7 @@ export function checkPlan(budget: Budget, result: RunResult, start: ISODate, end
   const trending = has("sinking-fund-trending");
   criteria.push({
     name: "sinking funds cycle",
-    ok: settle(trending, ""),
+    ...settle(trending, ""),
     finding: trending,
     detail: say(trending, "what fills up also empties"),
   });
@@ -142,7 +152,7 @@ export function checkPlan(budget: Budget, result: RunResult, start: ISODate, end
   const losing = has("saving-below-inflation");
   criteria.push({
     name: "savings beat inflation",
-    ok: settle(losing, ""),
+    ...settle(losing, ""),
     finding: losing,
     detail: say(losing, "no account grows in dollars and shrinks in what it buys"),
   });
@@ -150,7 +160,7 @@ export function checkPlan(budget: Budget, result: RunResult, start: ISODate, end
   const unfired = has("goal-never-fires");
   criteria.push({
     name: "every goal fires",
-    ok: settle(unfired, ""),
+    ...settle(unfired, ""),
     finding: unfired,
     detail: say(unfired, "every goal is reached inside the run"),
   });
@@ -158,16 +168,16 @@ export function checkPlan(budget: Budget, result: RunResult, start: ISODate, end
   const early = has("super-before-preservation-age");
   criteria.push({
     name: "super stays preserved",
-    ok: settle(early, ""),
+    ...settle(early, ""),
     finding: early,
     detail: say(early, "nothing draws super early"),
   });
 
-  return { start, end, criteria, findings, next: nextStep(criteria, endsAt ? endAge : null) };
+  return { start, end, criteria, findings, reviews: findings.filter((f) => f.severity === "review"), next: nextStep(criteria, endsAt ? endAge : null) };
 }
 
 function nextStep(criteria: Criterion[], endAge: number | null): string | null {
-  const failed = criteria.find((c) => c.ok === false);
+  const failed = criteria.find((c) => c.status === "fail");
   if (!failed) return criteria.some((c) => c.ok === null) ? "something above could not be assessed" : null;
 
   if (failed.name === "the money lasts") {
@@ -189,7 +199,7 @@ export function formatCheck(check: PlanCheck, budget: Budget): string {
   lines.push(`plan check — to ${check.end}${ages ? ` (${ages})` : ""}`);
   lines.push("");
   for (const c of check.criteria) {
-    const mark = c.ok === null ? "  ??" : c.ok ? "PASS" : "FAIL";
+    const mark = c.status === "unknown" ? "  ??" : c.status.toUpperCase();
     lines.push(`  ${mark}  ${c.name.padEnd(24)} ${c.detail}`);
   }
   lines.push("");

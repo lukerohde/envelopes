@@ -26,6 +26,7 @@ import { formatReport, parseArgs, reportJson, yearsBetween } from "./report";
 import { formatFlows, summarise } from "./flows";
 import { formatFindings, lint } from "./lint";
 import { checkPlan, formatCheck } from "./check";
+import { compareOutcomes, type OutcomeComparison } from "./compare";
 
 /** The whole console tool, exported so the bundled build is the *same* tool
  * rather than a second one.
@@ -53,6 +54,16 @@ export function runCli(argv: string[]): void {
   // an agent sees would not be the one its user sees. A plan that survives
   // 40 years and dies in year 44 was reported as fine.
   const end = addDays(start, Math.round(365.25 * horizonYears(budget.birthdays, start)));
+
+  if (args.compare) {
+    const afterPath = args.path2!;
+    const afterBudget = load(readFileSync(afterPath, "utf-8"));
+    const before = { budget, result: run(budget, start, end), start, end };
+    const after = { budget: afterBudget, result: run(afterBudget, start, end), start, end };
+    const comparison = compareOutcomes(before, after);
+    console.log(args.json ? JSON.stringify(comparison, null, 2) : formatComparison(comparison));
+    return;
+  }
   const result = run(budget, start, end);
   const { balances, completed, phases } = result;
 
@@ -66,7 +77,7 @@ export function runCli(argv: string[]): void {
   if (args.lint) {
     const findings = lint(budget, result, start, end);
     console.log(args.json ? JSON.stringify(findings, null, 2) : formatFindings(findings));
-    if (findings.length > 0) process.exitCode = 1;
+    if (findings.some((finding) => finding.severity === "fail")) process.exitCode = 1;
     return;
   }
 
@@ -81,6 +92,17 @@ export function runCli(argv: string[]): void {
     console.log("");
     console.log(formatFlows(summarise(phases, budget, start, args.real), args.real));
   }
+}
+
+function formatComparison(comparison: OutcomeComparison): string {
+  const lines = ["before / after — exact differences, no winner:"];
+  for (const milestone of comparison.milestones) {
+    const dates = `${milestone.before ?? "not reached"} → ${milestone.after ?? "not reached"}`;
+    lines.push(`  ${milestone.name}: ${dates}${milestone.days === null ? "" : ` (${milestone.days} days)`}`);
+  }
+  lines.push(`  first floor breach: ${comparison.firstFloorBreach.before ?? "none"} → ${comparison.firstFloorBreach.after ?? "none"}`);
+  lines.push(`  retirement exhaustion: ${comparison.retirementExhaustion.before ?? "none"} → ${comparison.retirementExhaustion.after ?? "none"}`);
+  return lines.join("\n");
 }
 
 // Only run when invoked directly (`npx tsx src/cli.ts ...`), not when

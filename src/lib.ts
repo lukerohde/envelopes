@@ -18,6 +18,7 @@ import { load, type Budget } from "./model";
 import { run, type History, type Phase } from "./simulate";
 import { formatReport, reportJson as asJson, type JsonReport } from "./report";
 import { lint, type Finding } from "./lint";
+import { compareOutcomes, type OutcomeComparison, type PlanOutcome } from "./compare";
 
 export { load } from "./model";
 export { run } from "./simulate";
@@ -39,8 +40,10 @@ export { encodeShareUrl, decodeShareUrl, encodeShareHash, decodeShareHash } from
 export { summarise, formatFlows, annualise, coverYears } from "./flows";
 export { formatFindings } from "./lint";
 export { checkPlan, formatCheck } from "./check";
-export type { PlanCheck, Criterion } from "./check";
-export type { Finding, Rule } from "./lint";
+export type { PlanCheck, Criterion, CriterionStatus } from "./check";
+export type { Finding, Rule, FindingSeverity } from "./lint";
+export { compareOutcomes, formatImpact } from "./compare";
+export type { OutcomeComparison, PlanOutcome } from "./compare";
 export type { Phase, AccountFlow } from "./simulate";
 export type { PhaseSummary, FlowRow } from "./flows";
 
