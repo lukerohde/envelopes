@@ -52,6 +52,19 @@ describe("parseYamlIntoState", () => {
     expect(retire.byAgePerson).toBe("alex");
     expect(retire.byAgeTurns).toBe(55);
   });
+
+  it("preserves a sweep_above transfer through the UI state round-trip", () => {
+    const state = parseYamlIntoState(`
+accounts:
+  - {name: pay, balance: 1000, kind: clearing}
+  - {name: reserve, balance: 0, kind: saving}
+transfers:
+  - {name: sweep, sweep_above: 1000, every: month, day: 5, out_of: pay, into: reserve}
+goals: []
+`);
+    expect(state.transfers[0].sweep_above).toBe(1000);
+    expect(toBudget(state).transfers[0].sweepAbove).toBe(1000);
+  });
 });
 
 describe("toBudget", () => {

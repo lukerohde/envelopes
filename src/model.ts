@@ -86,6 +86,10 @@ export interface Transfer {
   outOf: string | null;
   into: string | null;
   escalation: number;
+  /** A named rebudget transfer retains this amount in a clearing account and
+   * moves only the excess when it fires. It is optional so old configs and
+   * the structured editor keep their fixed-amount shape. */
+  sweepAbove?: number;
 }
 
 export interface RhythmOverride {
@@ -96,6 +100,7 @@ export interface RhythmOverride {
   outOf?: string | null;
   into?: string | null;
   escalation?: number;
+  sweepAbove?: number;
 }
 
 export interface AccountOverride {
@@ -167,12 +172,13 @@ export function load(yamlText: string): Budget {
   for (const item of transferItems) {
     transfers.push({
       name: item.name as string,
-      amount: item.amount as number,
+      amount: (item.amount as number) ?? 0,
       every: item.every as string,
       day: normalizeDay(item.day),
       outOf: (item.out_of as string) ?? null,
       into: (item.into as string) ?? null,
       escalation: item.escalation === undefined ? inflation : (item.escalation as number),
+      sweepAbove: item.sweep_above === undefined ? undefined : (item.sweep_above as number),
     });
   }
 
@@ -195,6 +201,7 @@ export function load(yamlText: string): Budget {
       if (r.out_of !== undefined) override.outOf = r.out_of as string | null;
       if (r.into !== undefined) override.into = r.into as string | null;
       if (r.escalation !== undefined) override.escalation = r.escalation as number;
+      if (r.sweep_above !== undefined) override.sweepAbove = r.sweep_above as number;
       transferOverrides.push(override);
     }
 
@@ -232,6 +239,16 @@ function check(budget: Budget): void {
     }
     if (transfer.outOf) budget.account(transfer.outOf);
     if (transfer.into) budget.account(transfer.into);
+    if (transfer.sweepAbove !== undefined) {
+      if (!Number.isFinite(transfer.sweepAbove) || transfer.sweepAbove < 0) {
+        throw new Error(`transfer '${transfer.name}' has an invalid sweep_above`);
+      }
+      if (transfer.amount !== 0) throw new Error(`transfer '${transfer.name}' cannot combine amount and sweep_above`);
+      if (!transfer.outOf || budget.account(transfer.outOf).kind !== "clearing") {
+        throw new Error(`transfer '${transfer.name}' sweep_above source must be clearing`);
+      }
+      if (transfer.outOf === transfer.into) throw new Error(`transfer '${transfer.name}' sweeps into its source`);
+    }
   }
   for (const goal of budget.goals) {
     budget.account(goal.account);

@@ -107,6 +107,7 @@ export function run(budget: Budget, start: ISODate, end: ISODate, track: string[
   const offsetBy = offsettersOf(budget);
 
   const debts = debtAccounts(budget);
+  const loans = new Set(budget.accounts.filter((account) => account.kind === "loan").map((account) => account.name));
   const stopped = new Set<Transfer>();
   const active = [...budget.transfers];
   let pending = [...budget.goals];
@@ -125,7 +126,7 @@ export function run(budget: Budget, start: ISODate, end: ISODate, track: string[
   let when = start;
   while (when < end) {
     grow(balances, rates, offsetBy, ledger);
-    applyTransfers(active, balances, debts, stopped, when, start, ledger);
+    applyTransfers(active, balances, debts, loans, stopped, when, start, ledger);
     if (pending.length > 0) {
       const before = completed.length;
       pending = checkGoals(budget, balances, rates, pending, completed, active, stopped, when, alreadyAtTarget);
@@ -306,6 +307,7 @@ function applyTransfers(
   active: Transfer[],
   balances: Balances,
   debts: Set<string>,
+  loans: Set<string>,
   stopped: Set<Transfer>,
   when: ISODate,
   start: ISODate,
@@ -314,14 +316,16 @@ function applyTransfers(
   for (const transfer of active) {
     if (stopped.has(transfer)) continue;
     if (!fires(transfer.every, transfer.day as string | number, when)) continue;
-    const amount = escalated(transfer, when, start);
+    const amount = transfer.sweepAbove === undefined
+      ? escalated(transfer, when, start)
+      : sweptAmount(transfer, balances, loans, when, start);
     if (transfer.outOf) {
       balances[transfer.outOf] -= amount;
       ledger.record(transfer.outOf, "out", amount);
       if (transfer.into) ledger.record(transfer.outOf, "drawn", amount);
     }
     if (transfer.into) {
-      balances[transfer.into] += arrivingAmount(transfer.into, amount, debts);
+      balances[transfer.into] += arrivingAmount(transfer.into, amount, debts, loans);
       // The gross amount, not the signed one. A $500 mortgage payment is
       // $500 of cashflow arriving at the loan; that it shrinks the balance
       // rather than growing it is the debt convention, not the flow.
@@ -339,8 +343,21 @@ function escalated(transfer: Transfer, when: ISODate, start: ISODate): number {
   return transfer.amount * (1 + transfer.escalation) ** years;
 }
 
-function arrivingAmount(accountName: string, amount: number, debts: Set<string>): number {
-  return debts.has(accountName) ? -amount : amount;
+/** A sweep is deliberately just another scheduled transfer. Its retained
+ * balance follows the same nominal escalation as a fixed amount; it never
+ * tops the source up and never chooses a destination. */
+function sweptAmount(transfer: Transfer, balances: Balances, loans: Set<string>, when: ISODate, start: ISODate): number {
+  if (!transfer.outOf || transfer.sweepAbove === undefined) return 0;
+  const retained = transfer.escalation === 0
+    ? transfer.sweepAbove
+    : transfer.sweepAbove * (1 + transfer.escalation) ** (daysBetween(start, when) / 365.25);
+  const excess = Math.max(0, balances[transfer.outOf] - retained);
+  if (!transfer.into || !loans.has(transfer.into)) return excess;
+  return Math.min(excess, Math.max(0, balances[transfer.into]));
+}
+
+function arrivingAmount(accountName: string, amount: number, debts: Set<string>, loans: Set<string>): number {
+  return debts.has(accountName) || loans.has(accountName) ? -amount : amount;
 }
 
 function checkGoals(
@@ -408,7 +425,13 @@ function applyOverrides(
       const { name, ...fields } = override;
       for (const existing of matches) {
         stopped.add(existing);
-        active.push({ ...existing, ...fields } as Transfer);
+        const replacement = { ...existing, ...fields } as Transfer;
+        // `amount: 0` is the established way to stop a named transfer. A
+        // sweep has no useful fixed amount, so make the two forms mutually
+        // exclusive when an override changes one into the other.
+        if (override.amount !== undefined && override.sweepAbove === undefined) replacement.sweepAbove = undefined;
+        if (override.sweepAbove !== undefined) replacement.amount = 0;
+        active.push(replacement);
       }
     } else {
       const every = override.every ?? "fortnight";
@@ -420,6 +443,7 @@ function applyOverrides(
         outOf: override.outOf ?? null,
         into: override.into ?? null,
         escalation: override.escalation ?? inflation,
+        sweepAbove: override.sweepAbove,
       });
     }
   }
