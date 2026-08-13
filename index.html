@@ -103,6 +103,7 @@
     }
     .notice-dock p { margin: 0; line-height: 1.3; }
     .notice-dock .impact-status { color: var(--ink); font-size: .82rem; }
+    .notice-dock .terminal-status { color: var(--accent); font-size: .82rem; font-weight: 600; }
     .notice-dock .plan-status { color: var(--ink-muted); font-size: .74rem; }
     .notice-dock p:empty { display: none; }
 
@@ -737,6 +738,7 @@
   </div>
 
   <div class="notice-dock" aria-label="Plan notices" aria-live="polite">
+    <p class="terminal-status" id="terminalStatus"></p>
     <p class="impact-status" id="impactStatus"></p>
     <p class="plan-status" id="planStatus"></p>
   </div>

@@ -33,6 +33,7 @@ function main(state: UIState): void {
     scrubReadout: document.querySelector<HTMLElement>("#scrubReadout")!,
     milestoneRows: document.querySelector<HTMLElement>("#milestoneRows")!,
     timelineTicks: document.querySelector<HTMLElement>("#timelineTicks")!,
+    terminalStatus: document.querySelector<HTMLElement>("#terminalStatus")!,
     impactStatus: document.querySelector<HTMLElement>("#impactStatus")!,
     planStatus: document.querySelector<HTMLElement>("#planStatus")!,
     dollarButtons: document.querySelectorAll<HTMLButtonElement>(".dt-btn"),

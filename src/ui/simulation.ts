@@ -43,6 +43,7 @@ interface Elements {
   scrubReadout: HTMLElement;
   milestoneRows: HTMLElement;
   timelineTicks: HTMLElement;
+  terminalStatus: HTMLElement;
   impactStatus: HTMLElement;
   planStatus: HTMLElement;
   dollarButtons: NodeListOf<HTMLButtonElement>;
@@ -412,6 +413,12 @@ export function createSimulationView(elements: Elements) {
       const result = run(budget, start, end, trackNames);
       const { history, completed, phases, endedOn } = result;
       terminalYear = endedOn ? daysBetween(start, endedOn) / 365.25 : Infinity;
+      const terminalGoal = endedOn
+        ? budget.goals.find((goal) => goal.exit && completed.some(([name, when]) => name === goal.name && when === endedOn))
+        : undefined;
+      elements.terminalStatus.textContent = terminalGoal && endedOn
+        ? `Simulation ended: ${terminalGoal.name} reached ${money(terminalGoal.target)} on ${formatDateLong(endedOn)}`
+        : "";
       lastPhases = phases;
       lastBudget = budget;
       const current: PlanOutcome = { budget, result, start, end };
