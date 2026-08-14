@@ -70,7 +70,7 @@ ARCHIVED PLANS
   `check`, `sweep_above` and `compareOutcomes`. Shipped, merged as PR #4. A
   fresh agent then used it to build a real budget end to end -- and what it
   hit on the way is what round 3 is made of. Two eval runs stay open and are
-  carried into round 3's phase 8.
+  carried into round 3's phase 11.
 - archive/agent-feedback-round-1-plan.md -- made the tool legible to an AI
   agent handed a share link, then closed the engine and schema gaps that review
   exposed. Shipped for review in PR #3.
