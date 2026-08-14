@@ -454,7 +454,9 @@ export function createSimulationView(elements: Elements) {
       elements.terminalStatus.textContent = floorStopped
         ? `Simulation stopped: ${worst.account} fell under its floor of ${money(worst.floor)} on ${formatDateLong(worst.on)}`
         : terminalGoal && endedOn
-          ? `Simulation ended: ${terminalGoal.name} reached ${money(terminalGoal.target)} on ${formatDateLong(endedOn)}`
+          ? `Simulation ended: ${terminalGoal.name}` +
+            (terminalGoal.target !== null ? ` reached ${money(terminalGoal.target)}` : "") +
+            ` on ${formatDateLong(endedOn)}`
           : "";
       lastPhases = phases;
       lastBudget = budget;

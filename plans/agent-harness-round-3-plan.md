@@ -232,23 +232,23 @@ The second half is worse than the first: `no such account: undefined` names
 neither the goal nor the field. Every reference error in `check()` should name
 the thing that holds the bad reference.
 
-- [ ] Failing tests first: a goal with only `by:` loads and fires; a goal with
+- [x] Failing tests first: a goal with only `by:` loads and fires; a goal with
       only `by_age:` loads and fires; a goal with a misspelled `account` throws
       an error naming *that goal*; a transfer with a bad `out_of`/`into` names
       *that transfer*; an account with a bad `offsets` names *that account*
-- [ ] Failing test: a goal with neither `by`/`by_age` nor `account`+`target`
+- [x] Failing test: a goal with neither `by`/`by_age` nor `account`+`target`
       throws — it has no trigger at all, and today it silently never fires
-- [ ] Failing test: `wait_for_both: true` without an account throws, naming
+- [x] Failing test: `wait_for_both: true` without an account throws, naming
       the goal — it asks to wait for a balance that isn't there
-- [ ] `Goal.account: string | null` and `Goal.target: number | null`, null when
+- [x] `Goal.account: string | null` and `Goal.target: number | null`, null when
       the YAML omits them
-- [ ] Add `Budget.has(name)` and use it throughout `check()` so every message
+- [x] Add `Budget.has(name)` and use it throughout `check()` so every message
       is `<kind> '<name>' refers to no such account: <bad>` rather than the
       bare lookup failure
-- [ ] `simulate.ts`: `debtAccounts` skips a goal with no account;
+- [x] `simulate.ts`: `debtAccounts` skips a goal with no account;
       `balanceReached` returns false when either field is null; the target-snap
       moves into a small guarded helper so `checkGoals` stays readable
-- [ ] `llms.txt`: change "they're ignored" to "you can leave them out", and
+- [x] `llms.txt`: change "they're ignored" to "you can leave them out", and
       show a date-only goal in the Goals block
 
 ### Phase 7 — A transfer that never fires is a finding

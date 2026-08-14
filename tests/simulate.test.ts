@@ -125,6 +125,36 @@ goals:
 });
 
 describe("run -- goals", () => {
+  it("a goal with only a date fires with no account of its own", () => {
+    const b = budget(`
+accounts:
+  - {name: pot, balance: 0}
+transfers:
+  - {name: seed, amount: 100, every: fortnight, day: 2026-01-01, into: pot}
+goals:
+  - name: switch
+    by: 2026-01-15
+    transfers:
+      - {name: seed, amount: 0}
+`);
+    const { completed } = run(b, START, "2026-02-01");
+    expect(completed).toEqual([["switch", "2026-01-15"]]);
+  });
+
+  it("a goal with only an age fires with no account of its own", () => {
+    const b = budget(`
+accounts:
+  - {name: pot, balance: 0}
+birthdays:
+  - {name: alex, born: 1990-01-15}
+goals:
+  - name: sixtieth
+    by_age: {person: alex, turns: 36}
+`);
+    const { completed } = run(b, START, "2026-02-01");
+    expect(completed).toEqual([["sixtieth", "2026-01-15"]]);
+  });
+
   it("a date-triggered goal fires on its date, regardless of balance", () => {
     const b = budget(`
 accounts:

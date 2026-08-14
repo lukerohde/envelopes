@@ -554,7 +554,15 @@ interest rates once it fires.
 ```
 
 A goal's `account`/`target` fields are only read for a balance trigger — if you use
-`by` or `by_age` instead, they're ignored, unless you ask for both:
+`by` or `by_age` instead, you can leave them out entirely:
+
+```yaml
+- name: super access
+  by_age: {person: alex, turns: 60}
+```
+
+Ask for both — the date *and* the balance — with `wait_for_both`, and now `account`
+and `target` are required, because there's a balance to watch:
 
 ```yaml
 - name: super access

@@ -299,7 +299,7 @@ function addDays(d: ISODate, n: number): ISODate {
 function debtAccounts(budget: Budget): Set<string> {
   const names = new Set<string>();
   for (const goal of budget.goals) {
-    if (budget.account(goal.account).kind === "loan") names.add(goal.account);
+    if (goal.account !== null && budget.account(goal.account).kind === "loan") names.add(goal.account);
   }
   return names;
 }
@@ -420,7 +420,7 @@ function checkGoals(
       // balance actually crossed. A conjunctive goal that spent five years
       // waiting on a birthday crossed long ago, and rewriting the balance
       // then would invent or destroy real money.
-      if (crossedToday) balances[goal.account] = goal.target;
+      if (crossedToday) snapToTarget(goal, balances);
       completed.push([goal.name, when]);
       applyOverrides(goal, budget.inflation, active, stopped, when);
       applyRateOverrides(goal, rates);
@@ -443,9 +443,21 @@ function reached(budget: Budget, balances: Balances, goal: Goal, when: ISODate):
 }
 
 function balanceReached(budget: Budget, balances: Balances, goal: Goal): boolean {
+  // checkGoals calls this for every pending goal every day, including a
+  // pure date/age goal that never named an account -- it has no balance to
+  // be "at", so it's never at it.
+  if (goal.account === null || goal.target === null) return false;
   const startingBalance = budget.account(goal.account).balance;
   if (goal.target >= startingBalance) return balances[goal.account] >= goal.target;
   return balances[goal.account] <= goal.target;
+}
+
+/** Snaps a goal's account to exactly its target on the day the balance
+ * crosses -- see the crossedToday comment above. Guarded because a date-only
+ * goal has no account to snap. */
+function snapToTarget(goal: Goal, balances: Balances): void {
+  if (goal.account === null || goal.target === null) return;
+  balances[goal.account] = goal.target;
 }
 
 function applyOverrides(
