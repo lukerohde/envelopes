@@ -13,9 +13,9 @@
  */
 
 import type { Budget } from "./model";
-import type { RunResult } from "./simulate";
+import type { AccountFlow, RunResult } from "./simulate";
 import { ageAt, type ISODate } from "./dates";
-import { annualise, breaches, yearsIn } from "./flows";
+import { annualise, breaches, phaseWindow, yearsIn } from "./flows";
 
 export type Rule =
   | "account-below-floor"
@@ -106,6 +106,20 @@ interface UnusedGrowth {
   phase: RunResult["phases"][number];
   perYear: number;
   throughput: number;
+  /** The actual dollars behind `perYear`, and the phase length behind the
+   * annualisation -- so a short phase can be reported honestly instead of
+   * as a bare per-year rate. */
+  amount: number;
+  years: number;
+}
+
+/** One month of what actually passes through an account, in real dollars --
+ * the size ordinary operating swing lives inside, whichever direction it's
+ * used in: seeding the final phase's future-use allowance below, or gating
+ * accumulation in absolute dollars so a short phase can't turn that same
+ * swing into an alarm just by annualising it. */
+function monthOfThroughput(flow: AccountFlow, years: number): number {
+  return annualise(flow.in, years) / 12;
 }
 
 /** Match positive clearing growth against later phases that draw it back
@@ -119,7 +133,7 @@ function firstUnusedGrowth(result: RunResult, account: string): UnusedGrowth | n
   const finalYears = finalPhase ? yearsIn(finalPhase.start, finalPhase.end) : 0;
   // One month's incoming cash is normal operating swing, not accumulation.
   // Treat it like future use before matching the larger inter-phase draws.
-  let futureUse = finalFlow ? annualise(finalFlow.in, finalYears) / 12 : 0;
+  let futureUse = finalFlow ? monthOfThroughput(finalFlow, finalYears) : 0;
   const unused: UnusedGrowth[] = [];
   for (let i = result.phases.length - 1; i >= 0; i--) {
     const phase = result.phases[i];
@@ -136,7 +150,16 @@ function firstUnusedGrowth(result: RunResult, account: string): UnusedGrowth | n
     const perYear = annualise(amount, phaseYears);
     const throughput = annualise(flow.in, phaseYears);
     const material = Math.max(SURPLUS_FLOOR_PER_YEAR, throughput * SURPLUS_SHARE_OF_INCOME);
-    if (perYear > material) unused.push({ phase, perYear, throughput });
+    // The rate gate alone is scale-free: dividing by phase length and then
+    // comparing to a per-year floor is the same test at any phase length,
+    // which is how a 24-day phase turned $600 of ordinary timing swing into
+    // "$5,981/yr" and failed the check. A second gate in real dollars, sized
+    // to a genuine month of this account's own throughput, only lets through
+    // the amounts that were never just annualisation doing the multiplying.
+    const materialDollars = Math.max(SURPLUS_FLOOR_PER_YEAR, monthOfThroughput(flow, phaseYears));
+    if (perYear > material && amount > materialDollars) {
+      unused.push({ phase, perYear, throughput, amount, years: phaseYears });
+    }
   }
   return unused.at(-1) ?? null;
 }
@@ -184,8 +207,8 @@ export function lint(budget: Budget, result: RunResult, start: ISODate, end: ISO
           severity: "fail",
           account: account.name,
           detail:
-            `keeps ${money(unused.perYear)}/yr that no later phase uses${share}, ` +
-            `leaving ${money(balance)} in the account when the plan ends. ${editHint}`,
+            `keeps ${money(unused.perYear)}/yr (${money(unused.amount)} over ${phaseWindow(unused.years)}) that no ` +
+            `later phase uses${share}, leaving ${money(balance)} in the account when the plan ends. ${editHint}`,
           fix: phaseName === "from the start"
             ? `Give the genuine residual a job in base Transfers. A named sweep_above is safe only after ` +
               `retaining enough for every later low point and choosing an explicit destination; rerun the ` +

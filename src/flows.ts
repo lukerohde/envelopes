@@ -21,6 +21,18 @@ export function yearsIn(start: ISODate, end: ISODate): number {
   return (Date.parse(end) - Date.parse(start)) / (365.25 * 24 * 60 * 60 * 1000);
 }
 
+/** How to describe a phase's length next to its annualised rates. "12.4
+ * years" is fine on its own, but a phase under a year needs to say so
+ * plainly: a rate annualised from three weeks is scaled up by roughly
+ * seventeen times, and nothing about "$248,202/yr" tells you that on its
+ * own. One name, so the CLI table, the browser table and a finding that
+ * quotes a rate can't describe a short phase differently from one another. */
+export function phaseWindow(years: number): string {
+  if (years >= 1) return `${years.toFixed(1)} years`;
+  const days = Math.round(years * 365.25);
+  return `${days} days — the /yr rates here are scaled up from this short window`;
+}
+
 /** A phase total as a per-year rate. A phase with no length has no rate --
  * zero rather than an Infinity that would poison every table it touched. */
 export function annualise(total: number, years: number): number {
@@ -219,7 +231,7 @@ export function formatFlows(summaries: PhaseSummary[], real: boolean): string {
 
   for (const phase of summaries) {
     lines.push("");
-    lines.push(`  ${phase.name}  (${phase.start} to ${phase.end}, ${phase.years.toFixed(1)}y)`);
+    lines.push(`  ${phase.name}  (${phase.start} to ${phase.end}, ${phaseWindow(phase.years)})`);
     lines.push(
       `    ${"account".padEnd(22)}${"in/yr".padStart(11)}${"out/yr".padStart(11)}` +
         `${"interest/yr".padStart(13)}${"net/yr".padStart(11)}${"closing".padStart(14)}${"  cover"}`,

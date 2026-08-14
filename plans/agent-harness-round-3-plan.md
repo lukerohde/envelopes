@@ -317,21 +317,21 @@ materiality floor and give the idea a name.
 window with a straight face. It doesn't need restructuring; it needs to say
 what window the rate came from.
 
-- [ ] Failing test: a plan whose milestones land ~3 weeks apart, with ordinary
+- [x] Failing test: a plan whose milestones land ~3 weeks apart, with ordinary
       swing in the clearing account across that gap, produces *no*
       `clearing-account-accumulating` finding
-- [ ] Failing test: a genuine long-phase leak is still reported — the new gate
+- [x] Failing test: a genuine long-phase leak is still reported — the new gate
       must not be a mute button
-- [ ] Extract `monthOfThroughput(flow, years)` and use it both at line 118 and
+- [x] Extract `monthOfThroughput(flow, years)` and use it both at line 118 and
       as the new absolute gate: accumulation counts only when it beats *both*
       its per-year materiality threshold and `max($500, one month of what
       passes through the account)` in real dollars
-- [ ] `phaseWindow(years)` in `flows.ts`: `"12.4 years"`, or under a year,
+- [x] `phaseWindow(years)` in `flows.ts`: `"12.4 years"`, or under a year,
       `"24 days"` plus the plain warning that the /yr rates are scaled up from
       that window. One function, used by `formatFlows`, the browser flow table
       and the accumulation finding — so the CLI, the page and the agent cannot
       word it differently
-- [ ] The `clearing-account-accumulating` detail carries the absolute dollars
+- [x] The `clearing-account-accumulating` detail carries the absolute dollars
       and the window alongside the rate, so a short phase can't be read as a
       per-year leak
 
