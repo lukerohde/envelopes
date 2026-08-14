@@ -52,13 +52,21 @@ nobody goes looking.
   highest-value fix in the round: everything else cost the agent time, this one
   costs the person a plan aimed at the wrong thing.
 - **It produced a broken share link twice.** The YAML it handed over was good
-  both times; the link wasn't. We don't know which link failure it was, and
-  guessing is how you fix the wrong one — so this starts by reproducing it. But
-  either way the shape of the answer is the same: handing back a link is
-  currently the one step in the whole procedure with no way to check its own
-  work. Everything else in this tool can be run and verified. A link is written
-  by hand in a snippet, printed, and pasted, and nothing ever decodes it again
-  to see whether it survived.
+  both times; the link wasn't. Asked about it, the agent traced both failures
+  precisely, and **the codec was never wrong** — it was how the string was
+  presented. First attempt: it wrapped the URL as
+  `[truncated-text-with-…](full-url)`. The href was correct, so clicking it
+  worked; copying the visible text gave 120 characters that fail `atob`. Second
+  attempt: it tried to paste 1,309 characters inline in prose and generated
+  literal garbage. What fixed it was a bare URL, on its own line, in a fenced
+  code block, with nothing else on it.
+
+  **And the reason it couldn't tell it had failed: the page fails silently.**
+  `stateFromShareHash` catches every decode error and returns null, and boot
+  loads `example.yaml` instead. So a truncated link doesn't error — it shows
+  somebody else's budget. Luke saw the sample plan and assumed the agent had
+  handed over the wrong thing. In the agent's own words, making that failure
+  loud "would have saved this whole exchange."
 
 **Alongside the fixes: a reduction pass.** Nobody has said "keep it short,
 simple, obvious" to this codebase in a while, and it's grown a lint rule, a
@@ -104,49 +112,114 @@ working through a list works through the list.
       only at the very end, on an all-pass run, which is far too late to change
       what the agent does. One line, every run, or noise?
 
-### Phase 2 — A link you can trust
+### Phase 2 — Make a broken link impossible to miss
 
-`commit: feat: envelopes link, so a share link is checked before it is handed over`
+`commit: fix: say when a share link is broken instead of loading the sample`
 
-The agent handed Luke a broken link twice and good YAML both times. Encoding a
-link is the only step in the procedure the tool doesn't do for you: `llms.txt`
-prints a four-line JS snippet and wishes you luck. Then a 3,000-character URL
-crosses a chat window, and nobody ever decodes it to see whether what arrived
-is what left.
+The loudest bit first, because it's four lines and it's the thing that cost
+Luke and the agent an entire exchange. A hash that's present but doesn't
+decode is not "no hash" — it's a broken link, and the page currently treats
+the two the same and quietly boots the worked example.
 
-**Reproduce before fixing.** There are at least four candidates and they have
-different answers: a hand-rolled codec despite the warning; the snippet run
-against a stale or partial YAML file; `CompressionStream` behaving differently
-in the agent's Node than in the browser; or the URL simply being mangled by the
-chat client that carried it. Find out which before writing code for it.
+- [ ] Failing test: a hash that's present and undecodable produces a visible
+      error, not a silent fall back to `example.yaml`. An absent hash still
+      loads the example with nothing said
+- [ ] `stateFromShareHash` stops swallowing the failure. Distinguish "no hash"
+      from "hash that won't decode" and let boot say which
+- [ ] The message names the likely cause, because there's only really one:
+      "that share link is truncated or corrupt — it's probably been cut short
+      somewhere between there and here. Ask for it again as plain text, or
+      paste the YAML into Edit as YAML"
+- [ ] Leave the broken hash in the URL rather than rewriting it away, so the
+      person can still hand it back to whoever sent it
 
-- [ ] Reproduce it first. Run the published bundle's `encodeShareUrl` under
-      Node 18/20/22 against `src/example.yaml` and a long real plan, decode
-      each result back, and diff. Record what you find in this plan's
-      Decisions — including "couldn't reproduce", which is itself the answer
-      that says the failure is in the handover, not the codec
-- [ ] Failing test: `link` round-trips a config — encode, decode, and the YAML
-      that comes back `load()`s to the same budget as the YAML that went in
-- [ ] Failing test: `link --check <url>` prints the YAML inside a link, and
-      fails loudly on a truncated or mangled one rather than printing rubbish
+### Phase 3 — A link the CLI can make and check
+
+`commit: feat: envelopes link and decode`
+
+The agent had to write a three-line script importing `encodeShareUrl` from the
+library, because **there is no way to produce a share URL from the CLI at
+all**. Every other step in `llms.txt` is a CLI command; this one drops you into
+writing JavaScript against the bundle. Its own words: "the docs push you to the
+CLI for everything else, so the gap is surprising."
+
+- [ ] Failing test: `link plan.yml` prints a bare URL and nothing else on the
+      line, and the URL decodes back to a YAML that `load()`s to the same
+      budget that went in
+- [ ] Failing test: `decode <url>` prints the YAML inside a link, and fails
+      loudly on a truncated or mangled one rather than printing rubbish
 - [ ] `node envelopes-cli.mjs link plan.yml` — prints the share URL, having
       first decoded its own output and compared it to the input. It refuses to
-      print a link that doesn't round-trip. An agent cannot hand over a broken
-      link by accident, which is the entire point
-- [ ] It also prints the character count, and warns above ~2,000 that the URL
-      is long enough for a chat client to break, so hand back the YAML as well
+      print a link that doesn't round-trip
+- [ ] `node envelopes-cli.mjs decode <url>` — the other direction, so an agent
+      can self-verify a link it was given or one it just made
+- [ ] The bare URL goes to stdout on its own; the character count and any
+      length warning go to stderr, so `link plan.yml > link.txt` gives a clean
+      link and a piped agent can't accidentally paste the commentary
 - [ ] `runCli` becomes `async` — the share codec is promise-based and there's
       no honest way round it. One keyword, plus `await` at the call sites and
       in the CLI tests
-- [ ] `llms.txt`: replace the encode snippet with `link`. And change "give them
-      the YAML instead *if* the URL is too long" to **always hand back both** —
-      the YAML is the artefact that survives, the link is the convenience
-- [ ] `llms.txt`: never hand over a link you haven't decoded and read back.
-      `link` does it for you; if you built one another way, check it yourself
-- [ ] Bundle smoke check covers `link` and `link --check`, since this is a
-      failure that only ever happens to people running the downloaded file
+- [ ] Bundle smoke check covers `link` and `decode`, since this is a failure
+      that only ever happens to people running the downloaded file
 
-### Phase 3 — A goal that only needs a date should only need a date
+### Phase 4 — Say how to hand a link over
+
+`commit: docs: how to present a share link so it survives the trip`
+
+The codec was fine both times. What broke was markdown: a URL used as link
+*text* with an ellipsis in it, and 1,309 characters generated inline in a
+sentence. `llms.txt` says "hand back a new link" and "if it's too long to paste
+comfortably, give them the YAML" — neither of which warns against what actually
+went wrong, twice.
+
+- [ ] Add the presentation rule, in those words: emit the URL **bare, on its
+      own line, in a fenced code block**. Never as markdown link text, never
+      abbreviated with an ellipsis, never inline in a sentence
+- [ ] Say why it matters that hard: a truncated share link is worse than no
+      link. Once phase 2 lands the app says so; until then it silently shows
+      the sample plan, and either way the person can't tell what they're
+      looking at
+- [ ] Change "give them the YAML instead *if* the URL is too long" to **always
+      hand back both**. The YAML survived both times the link didn't; making
+      the robust artefact conditional on the convenient one failing is
+      backwards
+- [ ] Replace the `encodeShareUrl` snippet with `link`, and add `decode` as the
+      way to check any link before handing it over
+- [ ] Test in `tests/llms-txt.test.ts` that the presentation rule is present —
+      it's the sort of paragraph that gets tidied away later by someone who
+      doesn't know what it cost
+
+### Phase 5 — Shorter links survive more transports
+
+`commit: fix: stop writing schema defaults into shared plans`
+
+The agent's plan was full of `rate: 0`, `floor: 0`, `accounts: []` — values the
+schema already defaults. So is every link the *app* makes: `stateToYamlText`
+dumps `state.accounts` whole and `goalToRaw` always writes `transfers:` and
+`accounts:` keys even when empty. That's payload for nothing, and shorter links
+survive more transports.
+
+This is the app's own emitter only. Do **not** strip defaults inside the share
+codec: it gzips the YAML text verbatim, comments and all, and re-serialising
+someone's hand-written file to save bytes would throw their comments away.
+
+- [ ] Failing test: a plan whose accounts and goals are all at their defaults
+      round-trips through `stateToYamlText` → `parseYamlIntoState` unchanged,
+      and its YAML contains no `rate: 0`, `floor: 0` or empty override lists
+- [ ] Failing test: the same plan's share link is measurably shorter, and
+      `load()` gives the identical budget
+- [ ] An `accountToRaw` beside the existing `transferToRaw`/`goalToRaw`,
+      dropping anything equal to its schema default. Drop `transfers: []` and
+      `accounts: []` from `goalToRaw` too
+- [ ] Every default dropped on the way out must be restored on the way in by
+      `parseYamlIntoState`. That's the only correctness risk here, so the
+      round-trip test is the one that matters
+- [ ] Q (resolve at review): `AGENT_HEADER` is ~350 characters of comment in
+      every single link. It gzips well and it's the thing that stops the next
+      agent reimplementing the engine, so it probably earns its place — but
+      confirm rather than assume
+
+### Phase 6 — A goal that only needs a date should only need a date
 
 `commit: fix: let a date-triggered goal omit its account, and name the goal when one is wrong`
 
@@ -178,7 +251,7 @@ the thing that holds the bad reference.
 - [ ] `llms.txt`: change "they're ignored" to "you can leave them out", and
       show a date-only goal in the Goals block
 
-### Phase 4 — A transfer that never fires is a finding
+### Phase 7 — A transfer that never fires is a finding
 
 `commit: feat: report transfers that never fire`
 
@@ -220,7 +293,7 @@ that never comes round.
       transfer would be reported, since the run stops that day. Real enough to
       special-case, or leave it — who starts a transfer at end of life?
 
-### Phase 5 — Don't let a three-week window shout
+### Phase 8 — Don't let a three-week window shout
 
 `commit: fix: stop short phases annualising ordinary swing into an alarm`
 
@@ -262,7 +335,7 @@ what window the rate came from.
       and the window alongside the rate, so a short phase can't be read as a
       per-year leak
 
-### Phase 6 — `--help`, `--start`, and one horizon
+### Phase 9 — `--help`, `--start`, and one horizon
 
 `commit: feat: cli --help and --start, sharing the library's window`
 
@@ -292,7 +365,7 @@ otherwise. One helper, used by both.
 - [ ] `llms.txt`: `--help` and `--start` in the command block, and say that the
       run ends when the youngest person turns 100 — not at 40 years
 
-### Phase 7 — Reduction pass
+### Phase 10 — Reduction pass
 
 `commit: refactor: merge duplicated helpers and flatten the check criteria`
 
@@ -314,15 +387,17 @@ above, not here.
       "—"). Genuinely two presentations, or should the page say what the CLI
       says?
 
-### Phase 8 — Prove it end to end
+### Phase 11 — Prove it end to end
 
 `commit: test: the round-3 fixes against the published artefact`
 
 - [ ] Full suite green in Docker (`make test`), production build green
       (`make build`)
-- [ ] The published bundle smoke check covers `--help`, `--start` and `link`,
-      because round 2 learned the hard way that the source tree passing proves
-      nothing about the file people actually download
+- [ ] The published bundle smoke check covers `--help`, `--start`, `link` and
+      `decode`, because round 2 learned the hard way that the source tree
+      passing proves nothing about the file people actually download
+- [ ] Hand a deliberately truncated link to the built site and confirm it says
+      so rather than showing the sample plan
 - [ ] Re-run the deterministic eval fixtures and regenerate the share link if
       the plan's numbers moved
 - [ ] Carried over from round 2, still open: run the external cold-agent
@@ -339,13 +414,22 @@ above, not here.
   intent questions are good. They sit after the step that tells the agent to
   start fixing things, so they get walked past. Moving them is the whole fix;
   rewriting them is not.
-- **Reproduce the broken link before designing for it.** Four plausible causes
-  with four different answers. The round-trip-checked `link` verb is worth
-  having regardless — it turns the one unverifiable step into a verifiable one
-  — but which *other* fix ships depends on what the reproduction shows.
+- **The share codec is not the bug and doesn't change.** Both broken links were
+  presentation failures in the handover — a URL used as markdown link text with
+  an ellipsis in it, then 1,309 characters generated inline in a sentence. The
+  agent diagnosed both itself. `share.ts` stays exactly as it is.
+- **Silent fallback is the defect that hid the other two.** A hash that won't
+  decode is a broken link, not an absent one, and showing the sample plan
+  instead of saying so is why nobody could tell what had gone wrong. Four lines
+  in `stateFromShareHash`, and the single highest-value change in this round
+  after the interview.
 - **Hand back both the YAML and the link, always.** The YAML survived twice
   when the link didn't. Making the robust artefact conditional on the
   convenient one failing is backwards.
+- **Shrink the payload in the app's emitter, never in the codec.** The codec
+  gzips YAML text verbatim, comments and all. Re-serialising a hand-written
+  file to save bytes would silently throw away its comments, which is a worse
+  failure than a long URL.
 - **The engine's transfer-before-goal ordering stays.** A day's transfers fire,
   then that day's goals are checked — which is why `onceDay()` dates an undated
   `once` override to *tomorrow*. Changing it would move the numbers in every
@@ -383,5 +467,5 @@ above, not here.
 - Re-opening the deferred round-2 non-goals: the over-saving upper bound, a
   sensitivity solver, the matched-redirect counterfactual, opportunity-cost
   warnings.
-- Deploy, share codec internals, infra. `link` uses `share.ts` exactly as it
-  stands unless the reproduction in Phase 2 proves otherwise.
+- Deploy, share codec internals, infra. `link` and `decode` use `share.ts`
+  exactly as it stands — the codec was never the problem.

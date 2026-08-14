@@ -56,8 +56,9 @@ CURRENT PLANS
 =============
 
 - agent-harness-round-3-plan.md -- the friction a *passing* agent still hit:
-  put the intent interview where it can't be walked past, make a share link
-  check its own work, stop a date-triggered goal demanding an account, report
+  put the intent interview where it can't be walked past, stop the page
+  silently loading the sample when a share link is broken, give the CLI `link`
+  and `decode`, stop a date-triggered goal demanding an account, report
   transfers that never fire, stop short phases annualising ordinary swing into
   an alarm, give the CLI --help and --start, and pay back some duplication.
 
