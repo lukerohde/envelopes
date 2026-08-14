@@ -95,4 +95,10 @@ describe("llms.txt", () => {
     expect(LLMS).toContain("passes every mechanical check on first load");
     expect(LLMS).not.toContain("intentionally leaves one excess-cash finding");
   });
+
+  it("explains how the example routes its surplus by phase", () => {
+    expect(LLMS).toContain("starts by sweeping monthly surplus");
+    expect(LLMS).toContain("redirects that same named sweep");
+    expect(LLMS).toContain("retirement stops it");
+  });
 });

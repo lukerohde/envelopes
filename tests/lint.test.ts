@@ -448,17 +448,24 @@ describe("the shipped example", () => {
     expect(lint(budget, result, start, end)).toEqual([]);
   });
 
-  it("proves the pre-house balance is needed by showing that sweeping it causes the later floor breach", () => {
-    const { budget, start, end } = atPageHorizon();
-    budget.transfers.push({
-      name: "clear excess pay", amount: 0, sweepAbove: 10000,
-      every: "year", day: "08-14", outOf: "pay", into: "early retirement",
+  it("routes surplus to the current focus without guessing it", () => {
+    const { budget } = atPageHorizon();
+    const sweep = budget.transfers.find((transfer) => transfer.name === "send surplus to current focus");
+    expect(sweep).toMatchObject({
+      sweepAbove: 12000,
+      every: "month",
+      day: 20,
+      outOf: "pay",
+      into: "mortgage",
       escalation: budget.inflation,
     });
-    budget.goals.find((goal) => goal.name === "pay off the house")!.transfers.push({
-      name: "clear excess pay", amount: 0,
+
+    const house = budget.goals.find((goal) => goal.name === "pay off the house")!;
+    expect(house.transfers.find((transfer) => transfer.name === sweep!.name)).toMatchObject({
+      into: "early retirement",
     });
-    const result = run(budget, start, end);
-    expect(breaches(budget, result)[0]).toMatchObject({ account: "pay", on: "2033-03-05" });
+
+    const retire = budget.goals.find((goal) => goal.name === "retire at 55")!;
+    expect(retire.transfers.find((transfer) => transfer.name === sweep!.name)).toMatchObject({ amount: 0 });
   });
 });

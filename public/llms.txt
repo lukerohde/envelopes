@@ -601,7 +601,7 @@ money never arrives anywhere.
 It works because the pieces are sequenced. The house is paid off at 52 while still
 earning; the repayment then becomes retirement saving; that builds a bridge fund
 which carries the years between retiring at 55 and super unlocking; super then runs
-to 83. Take any one of those away and the plan doesn't reach.
+to 86. Take any one of those away and the plan doesn't reach.
 
 Three things in it are worth copying into whatever you write for someone else.
 
@@ -735,6 +735,12 @@ transfers:
     day: 20
     out_of: pay
     into: early retirement
+  - name: send surplus to current focus
+    sweep_above: 12000
+    every: month
+    day: 20
+    out_of: pay
+    into: mortgage
   - name: saving for a holiday
     amount: 500
     every: month
@@ -761,13 +767,8 @@ goals:
       - name: mortgage repayment
         amount: 0
         escalation: 0
-      - name: mortgage freed-up saving
-        amount: 10000
-        every: month
-        day: 5
-        out_of: pay
+      - name: send surplus to current focus
         into: early retirement
-        escalation: 0
       - name: into the offset
         amount: 1200
         every: month
@@ -782,9 +783,8 @@ goals:
       - name: salary
         amount: 0
         escalation: 0
-      - name: mortgage freed-up saving
+      - name: send surplus to current focus
         amount: 0
-        escalation: 0
       - name: into the offset
         amount: 0
       - name: super contribution
@@ -871,11 +871,12 @@ overrides, not in the top-level `transfers:` list at all. "super takes over" the
 references that same name again to stop it. That's the override-cascading pattern
 described above, working in a real example.
 
-Notice too that "retire at 55" explicitly zeroes "mortgage freed-up saving". Every
-transfer a goal starts keeps running until something stops it, so when you write a
-plan, walk it forward and ask of each transfer: what is still paying for this, and is
-that thing still there? A saving transfer funded by a salary that has stopped will
-happily drain a retirement account for forty years.
+Notice "send surplus to current focus". It starts by sweeping monthly surplus to the
+mortgage while retaining $12,000 in `pay`; that retained amount grows with inflation.
+Paying off the house redirects that same named sweep to early-retirement savings, and
+retirement stops it. The app does not infer those priorities: the goal overrides state
+them explicitly. Every transfer a goal starts keeps running until something stops it,
+so walk the plan forward and ask what is still paying for each one.
 
 And check the size of each drawdown against what's actually being spent. A drawdown
 larger than the spending it funds doesn't look wrong on a chart — it just quietly

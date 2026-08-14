@@ -586,6 +586,9 @@ pre-existing unallocated surplus.
 - [x] Tune the shipped example's post-super drawdown to the narrow range that
       preserves every daily floor without leaving unused clearing growth, so
       the first-load plan check is all PASS
+- [x] Replace the example's brittle fixed post-mortgage allocation with one
+      inflation-linked named sweep: retain $12,000 in `pay`, target the mortgage
+      first, redirect to the bridge fund after payoff, and stop at retirement
 - [x] Add an eval whose preferences genuinely conflict: earlier retirement,
       longer funded retirement, home ownership certainty, accessible savings
       and super tax treatment. Passing means the agent offers alternatives and
@@ -626,7 +629,7 @@ The accepted slice is now implemented on `agent-harness-round-2`:
 - `llms.txt` now gives the intent interview, the competing-goal loop, the
   present/future-dollar framing, severity semantics and the explicit sweep.
 
-Verification: the full Docker test suite passes (33 files, 327 tests) after
+Verification: the full Docker test suite passes (33 files, 328 tests) after
 the round-2 additions and the production build/typecheck passes. The published
 CLI bundle also has a smoke check for `check --json` and `compare --json` so an
 agent receives one JSON document rather than the duplicate output that a
