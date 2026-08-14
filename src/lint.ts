@@ -330,13 +330,13 @@ export function lint(budget: Budget, result: RunResult, start: ISODate, end: ISO
       rule: "transfer-never-fires",
       severity: "fail",
       account: name,
-      detail: `'${name}' never fires in this run — nothing it was set up to move ever moved`,
+      detail: `never fires — nothing it was set up to move ever moved`,
       fix:
-        `run() applies a day's transfers before it checks that day's goals, so a goal override's ` +
-        `date lands after the day it names has already gone. A once override dated on or before its ` +
-        `own goal's firing day is already in the past the moment it's created. Leave day off and ` +
-        `onceDay() dates it to the day after the goal instead, which is what "when this goal happens" ` +
-        `means. If this is a plain top-level transfer, check its own day sits inside the run.`,
+        `Check its \`day\`. A day's transfers all run before that day's goals are checked, so a goal's ` +
+        `overrides only ever land on a day that has already gone — an \`every: once\` override dated on ` +
+        `or before its own goal's firing day is in the past the moment it exists. Leave \`day\` off and ` +
+        `it fires the day after the goal, which is what "when this goal happens" means. On a plain ` +
+        `top-level transfer, check the day sits inside the run at all.`,
     });
   }
 
