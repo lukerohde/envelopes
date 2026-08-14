@@ -1,5 +1,28 @@
 import { describe, expect, it } from "vitest";
-import { dayForInput, dayFromInput, mobileTransferSummary, transferFieldsHTML } from "../src/ui/transfer-fields";
+import { dayForEvery, dayForInput, dayFromInput, mobileTransferSummary, transferFieldsHTML } from "../src/ui/transfer-fields";
+
+describe("changing transfer frequency", () => {
+  it("replaces an incompatible hidden day with what the new control displays", () => {
+    expect(dayForEvery("month", "2026-08-14", "2026-08-14")).toBe(1);
+    expect(dayForEvery("week", "2026-08-14", "2026-08-14")).toBe("mon");
+    expect(dayForEvery("year", "2026-08-14", "2026-08-14")).toBe("08-14");
+    expect(dayForEvery("fortnight", 5, "2026-08-14")).toBe("2026-08-14");
+  });
+
+  it("keeps a day already valid for the new frequency", () => {
+    expect(dayForEvery("month", 20, "2026-08-14")).toBe(20);
+    expect(dayForEvery("week", "sat", "2026-08-14")).toBe("sat");
+    expect(dayForEvery("year", "12-25", "2026-08-14")).toBe("12-25");
+  });
+
+  it("does not show a false day for an already-loaded incompatible schedule", () => {
+    const html = transferFieldsHTML({
+      name: "sweep", from: "pay", to: "reserve", mode: "sweep", amount: 1000,
+      every: "month", day: "2026-08-14", escalates: true,
+    });
+    expect(html).toContain('<option value="" selected>pick a day</option>');
+  });
+});
 
 // A yearly transfer's `day` is "MM-DD" in the config -- the engine matches on
 // month and day and never looks at a year. The On column is a date picker,

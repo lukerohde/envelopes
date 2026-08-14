@@ -4,7 +4,7 @@
  * other.
  */
 
-import { EARLIEST_PLAN_DATE, LATEST_PLAN_DATE } from "../dates";
+import { EARLIEST_PLAN_DATE, LATEST_PLAN_DATE, todayISO } from "../dates";
 import { wireDateClamp } from "./date-input";
 
 /** Lowercase value, capitalised label. The engine matches weekday names in
@@ -103,6 +103,31 @@ export function dayFromInput(every: string, value: string): string {
   return value;
 }
 
+/** Changing Every also changes what On means. A select whose state contains
+ * an incompatible old value still displays its first option, which is much
+ * worse than a blank: it looks configured while the schedule never fires.
+ * Keep compatible values and otherwise store the same sensible default the
+ * newly rendered control will show. */
+export function dayForEvery(every: string, day: string | number, today = todayISO()): string | number {
+  const value = String(day).toLowerCase();
+  if (every === "week") return WEEKDAYS.some(([name]) => name === value) ? value : "mon";
+  if (every === "month") {
+    const numbered = Number(value);
+    return Number.isInteger(numbered) && numbered >= 1 && numbered <= 31 ? numbered : 1;
+  }
+  if (every === "year") {
+    const monthDay = value.match(/^(\d{2})-(\d{2})$/);
+    if (monthDay && Number(monthDay[1]) >= 1 && Number(monthDay[1]) <= 12 && Number(monthDay[2]) >= 1 && Number(monthDay[2]) <= 31) {
+      return value;
+    }
+    return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value.slice(5) : today.slice(5);
+  }
+  if (every === "once" || every === "fortnight") {
+    return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : today;
+  }
+  return day;
+}
+
 /** week names a weekday -- every week has exactly one. Fortnight is the
  * same weekday, but a weekday alone doesn't say which of the two
  * alternating weeks -- it needs one real anchor date to count from, same
@@ -116,16 +141,22 @@ function onFieldHTML(every: string, day: string | number, disabled: boolean, inh
     const selected = String(day).toLowerCase();
     let html = `<select class="field-input" data-field="day"${dis}>`;
     html += inheritedOption;
+    if (!inherited && !WEEKDAYS.some(([value]) => value === selected)) {
+      html += '<option value="" selected>pick a day</option>';
+    }
     for (const [value, label] of WEEKDAYS) {
       html += `<option value="${value}"${!inherited && value === selected ? " selected" : ""}>${label}</option>`;
     }
     return html + "</select>";
   }
   if (every === "month") {
+    const selected = Number(day);
+    const valid = Number.isInteger(selected) && selected >= 1 && selected <= 31;
     let html = `<select class="field-input t-on" data-field="day"${dis}>`;
     html += inheritedOption;
+    if (!inherited && !valid) html += '<option value="" selected>pick a day</option>';
     for (const dayOfMonth of DAYS_OF_MONTH) {
-      html += `<option${!inherited && dayOfMonth === String(day) ? " selected" : ""}>${dayOfMonth}</option>`;
+      html += `<option${!inherited && valid && dayOfMonth === String(selected) ? " selected" : ""}>${dayOfMonth}</option>`;
     }
     return html + "</select>";
   }

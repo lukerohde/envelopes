@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseYamlIntoState, toBudget, removeAccount, renameAccount, renameTransfer, nextName, stateToYamlText, groupAccounts } from "../src/state";
+import { setTransferField } from "../src/ui/transfers";
 import { load } from "../src/model";
 import { initialState } from "../src/state";
 import exampleYaml from "../src/example.yaml?raw";
@@ -64,6 +65,23 @@ goals: []
 `);
     expect(state.transfers[0].sweep_above).toBe(1000);
     expect(toBudget(state).transfers[0].sweepAbove).toBe(1000);
+  });
+
+  it("makes a newly monthly sweep fire on the day the editor displays", () => {
+    const state = parseYamlIntoState(`
+inflation: 0
+accounts:
+  - {name: pay, balance: 1500, kind: clearing}
+  - {name: reserve, balance: 0, kind: saving}
+transfers:
+  - {name: sweep, sweep_above: 1000, every: fortnight, day: 2026-08-14, out_of: pay, into: reserve}
+goals: []
+`);
+    const sweep = state.transfers[0];
+    setTransferField(sweep, "every", "month", state);
+
+    expect(sweep.day).toBe(1);
+    expect(run(toBudget(state), "2026-01-01", "2026-01-02").balances).toMatchObject({ pay: 1000, reserve: 500 });
   });
 });
 

@@ -1,5 +1,5 @@
 import { nextName, renameTransfer, type TriggerType, type UIAccountOverride, type UIGoal, type UIState, type UITransfer, type UITransferOverride } from "../state";
-import { transferFieldsHTML, transferHeadHTML, wireTransferFieldRow, type RowFields } from "./transfer-fields";
+import { dayForEvery, transferFieldsHTML, transferHeadHTML, wireTransferFieldRow, type RowFields } from "./transfer-fields";
 import { initCombos } from "./combo";
 import { confirmRemove, removeButtonHTML } from "./remove-button";
 import { wireDateClamp } from "./date-input";
@@ -122,6 +122,7 @@ function setOverrideField(
   value: string | boolean,
   inheritedAmount: number | string,
   inheritedMode: RowFields["mode"],
+  inheritedDay: string | number,
 ): void {
   if (key === "from") {
     value ? override.out_of = value === "external income" ? null : String(value) : delete override.out_of;
@@ -142,7 +143,15 @@ function setOverrideField(
     }
   }
   else if (key === "amount") setOverrideAmount(override, String(value), inheritedMode);
-  else if (key === "every") value ? override.every = String(value) : delete override.every;
+  else if (key === "every") {
+    if (value) {
+      override.every = String(value);
+      override.day = dayForEvery(override.every, inheritedDay);
+    } else {
+      delete override.every;
+      delete override.day;
+    }
+  }
   else if (key === "day") value ? override.day = String(value) : delete override.day;
   else if (key === "escalates") override.escalates = value as boolean;
 }
@@ -471,7 +480,7 @@ function wireGoalRow(container: HTMLElement, row: HTMLElement, state: UIState, g
       transferRow,
       (key, value) => {
         const override = findOverride(goal, name);
-        if (override) setOverrideField(state, override, key, value, fields.amount, fields.mode);
+        if (override) setOverrideField(state, override, key, value, fields.amount, fields.mode, fields.day);
       },
       () => renderGoals(container, state, onChange),
       onChange,

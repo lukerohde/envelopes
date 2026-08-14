@@ -1,5 +1,5 @@
 import { renameTransfer, type UIState, type UITransfer } from "../state";
-import { transferFieldsHTML, transferHeadHTML, wireTransferFieldRow, type RowFields } from "./transfer-fields";
+import { dayForEvery, transferFieldsHTML, transferHeadHTML, wireTransferFieldRow, type RowFields } from "./transfer-fields";
 import { initCombos } from "./combo";
 import { confirmRemove, removeButtonHTML } from "./remove-button";
 
@@ -21,7 +21,7 @@ function toRowFields(transfer: UITransfer, state: UIState): RowFields {
  * the row doesn't know about out_of/into, only "from" and "to". The name is
  * not here: renaming cascades into goal overrides, so it's wired separately
  * below. */
-function setTransferField(transfer: UITransfer, key: string, value: string | boolean, state: UIState): void {
+export function setTransferField(transfer: UITransfer, key: string, value: string | boolean, state: UIState): void {
   if (key === "from") {
     transfer.out_of = value === "external income" ? null : (value as string);
     if (transfer.sweep_above !== undefined && !state.accounts.some((account) => account.name === transfer.out_of && account.kind === "clearing")) {
@@ -45,7 +45,10 @@ function setTransferField(transfer: UITransfer, key: string, value: string | boo
     if (transfer.sweep_above === undefined) transfer.amount = amount;
     else transfer.sweep_above = amount;
   }
-  else if (key === "every") transfer.every = value as string;
+  else if (key === "every") {
+    transfer.every = value as string;
+    transfer.day = dayForEvery(transfer.every, transfer.day);
+  }
   else if (key === "day") transfer.day = value as string;
   else if (key === "escalates") transfer.escalates = value as boolean;
 }
