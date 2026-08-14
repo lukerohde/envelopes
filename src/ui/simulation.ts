@@ -9,9 +9,11 @@ import { addDays, daysBetween, horizonYears, todayISO, type ISODate } from "../d
 import { run, type History, type Phase } from "../simulate";
 import { groupAccounts, toBudget, type UIState, type UIGoal, type UIPerson } from "../state";
 import { sortMilestones } from "../milestones";
-import { breaches, summarise } from "../flows";
+import { breaches, summarise, type FlowCadence } from "../flows";
 import { renderFlows } from "./flows";
 import type { Budget } from "../model";
+import { compareOutcomes, formatImpact, type PlanOutcome } from "../compare";
+import { checkPlan } from "../check";
 
 // How far the timeline can be dragged. Not a constant any more: it runs
 // until the youngest person in the budget turns 100, so a 30-year-old sees
@@ -41,7 +43,11 @@ interface Elements {
   scrubReadout: HTMLElement;
   milestoneRows: HTMLElement;
   timelineTicks: HTMLElement;
+  terminalStatus: HTMLElement;
+  impactStatus: HTMLElement;
+  planStatus: HTMLElement;
   dollarButtons: NodeListOf<HTMLButtonElement>;
+  cadenceButtons: NodeListOf<HTMLButtonElement>;
 }
 
 function money(n: number): string {
@@ -90,6 +96,29 @@ export function defaultScrubYear(completed: [string, ISODate][], start: ISODate,
   return Math.min(latest, breachYear);
 }
 
+/** A goal reached after a floor breach is beyond the point where the plan
+ * describes a real life. Keep it in the raw run for diagnostics, but don't
+ * present it as a reached milestone in the page. */
+export function completedThrough(completed: [string, ISODate][], stopOn: ISODate | null): [string, ISODate][] {
+  return stopOn ? completed.filter(([, when]) => when <= stopOn) : completed;
+}
+
+/** Pick the account that explains why this run stops. A failed plan takes
+ * precedence over its later intended ending; a person's own choice takes
+ * precedence over both. */
+export function autoSelectedAccount(
+  pickedByHand: boolean,
+  accountNames: string[],
+  breachAccount: string | null,
+  terminalAccount: string | null,
+): string | null {
+  if (pickedByHand) return null;
+  for (const candidate of [breachAccount, terminalAccount]) {
+    if (candidate && accountNames.includes(candidate)) return candidate;
+  }
+  return null;
+}
+
 function ageAtISO(born: ISODate, when: ISODate): number {
   const b = new Date(born), w = new Date(when);
   let years = w.getUTCFullYear() - b.getUTCFullYear();
@@ -111,15 +140,18 @@ export function createSimulationView(elements: Elements) {
     requestedMax: absMax,
     scrubYear: 0,
     dollars: "future" as "future" | "today",
+    cadence: "year" as FlowCadence,
   };
   let start = todayISO();
   let series: Record<string, { floor: number; points: [number, number][] }> = {};
   let breachYear = Infinity;
   let breachAccount: string | null = null;
-  // Until you choose an account yourself, the chart shows whichever one
-  // breaks first -- the thing actually worth looking at. Once you've picked
-  // one, it stays picked; having the selection yanked away on every
-  // recompute while you're editing would be maddening.
+  let terminalYear = Infinity;
+  let terminalAccount: string | null = null;
+  // Until you choose an account yourself, the chart shows why the run ended:
+  // a floor failure, otherwise the explicit terminal goal. Once you've picked
+  // one, it stays picked; having the selection yanked away on every recompute
+  // while you're editing would be maddening.
   let pickedByHand = false;
 
   function inflationRate(): number {
@@ -137,7 +169,7 @@ export function createSimulationView(elements: Elements) {
   }
 
   function effectiveMax(): number {
-    return Math.min(view.requestedMax, breachYear);
+    return Math.min(view.requestedMax, breachYear, terminalYear);
   }
 
   // Kept from the last run so the Future$/Today's$ toggle can redraw the
@@ -145,10 +177,16 @@ export function createSimulationView(elements: Elements) {
   // balances panel above.
   let lastPhases: Phase[] = [];
   let lastBudget: Budget | null = null;
+  let lastOutcome: PlanOutcome | null = null;
 
   function renderFlowPanel(): void {
     if (!lastBudget) return;
-    renderFlows(elements.flowRows, summarise(lastPhases, lastBudget, start, view.dollars === "today"), view.dollars === "today");
+    renderFlows(
+      elements.flowRows,
+      summarise(lastPhases, lastBudget, start, view.dollars === "today"),
+      view.dollars === "today",
+      view.cadence,
+    );
   }
 
   function refresh(state: UIState, completed: [string, ISODate][]): void {
@@ -169,12 +207,19 @@ export function createSimulationView(elements: Elements) {
     const data = series[account];
     if (!data) return;
     const max = effectiveMax();
-    const stopped = max === breachYear && breachYear !== Infinity;
+    const stoppedAtBreach = max === breachYear && breachYear !== Infinity;
+    const stoppedAtExit = max === terminalYear && terminalYear !== Infinity;
     // only claim "auto-selected" when it actually was -- picking the
     // breaching account yourself shouldn't be described back to you as
     // something the page did
-    const autoShown = !pickedByHand && account === breachAccount && stopped;
+    const autoFloor = !pickedByHand && account === breachAccount && stoppedAtBreach;
+    const autoTerminal = !pickedByHand && account === terminalAccount && stoppedAtExit;
+    const autoShown = autoFloor || autoTerminal;
     elements.autoBadge.style.display = autoShown ? "" : "none";
+    elements.autoBadge.classList.toggle("terminal", autoTerminal);
+    elements.autoBadge.textContent = autoTerminal
+      ? "✓ auto-selected — ends simulation"
+      : "⚠ auto-selected — hit its floor";
 
     const knots = data.points.filter((p) => p[0] <= max);
     if (knots.length === 0 || knots[knots.length - 1][0] < max) knots.push([max, interpAt(data.points, max)]);
@@ -205,16 +250,21 @@ export function createSimulationView(elements: Elements) {
     if (view.requestedMax > max) {
       const zx0 = x(max), zx1 = x(view.requestedMax);
       parts.push(`<rect class="never-zone" x="${zx0}" y="${MARGIN.top}" width="${zx1 - zx0}" height="${PLOT_H}"/>`);
-      parts.push(`<text class="never-label" x="${(zx0 + zx1) / 2}" y="${MARGIN.top + PLOT_H / 2}" text-anchor="middle">never reached</text>`);
+      const label = stoppedAtExit ? "simulation ends" : "never reached";
+      parts.push(`<text class="never-label" x="${(zx0 + zx1) / 2}" y="${MARGIN.top + PLOT_H / 2}" text-anchor="middle">${label}</text>`);
     }
     const linePts = knots.map((p) => `${x(p[0])},${y(p[1])}`).join(" ");
     parts.push(`<polyline class="bal-line" points="${linePts}"/>`);
     const lastKnot = knots[knots.length - 1];
-    if (stopped) {
+    if (stoppedAtBreach) {
       parts.push(`<circle class="breach-dot" cx="${x(lastKnot[0])}" cy="${y(lastKnot[1])}" r="5"/>`);
       const label = account === breachAccount ? `⚠ ${account} hit its floor here` : `⚠ run stopped — ${breachAccount} hit its floor`;
       const lx = Math.min(x(lastKnot[0]) + 8, W - MARGIN.right - 150);
       parts.push(`<text class="breach-label" x="${lx}" y="${y(lastKnot[1]) - 10}">${label}</text>`);
+    } else if (stoppedAtExit) {
+      parts.push(`<circle class="end-dot" cx="${x(lastKnot[0])}" cy="${y(lastKnot[1])}" r="4"/>`);
+      const lx = Math.min(x(lastKnot[0]) + 8, W - MARGIN.right - 150);
+      parts.push(`<text class="end-label" x="${lx}" y="${y(lastKnot[1]) - 10}">✓ simulation ends here</text>`);
     } else {
       parts.push(`<circle class="end-dot" cx="${x(lastKnot[0])}" cy="${y(lastKnot[1])}" r="4"/>`);
     }
@@ -242,7 +292,7 @@ export function createSimulationView(elements: Elements) {
     }
 
     elements.chartSvg.innerHTML = parts.join("");
-    elements.simHeading.innerHTML = simulationHorizonLabel(state.birthdays, start, view.requestedMax);
+    elements.simHeading.innerHTML = simulationHorizonLabel(state.birthdays, start, max);
     elements.balHeading.textContent = `Accounts at ${yearToLabel(sYear)}`;
   }
 
@@ -377,7 +427,8 @@ export function createSimulationView(elements: Elements) {
   return {
     /** Runs the real simulator against the current state and redraws
      * everything -- called whenever anything in the page changes. */
-    recompute(state: UIState): void {
+    recompute(state: UIState, showImpact = false): void {
+      const before = lastOutcome;
       const budget = toBudget(state);
       start = todayISO();
       // editing a birthday moves the far end of the timeline, so this is
@@ -390,9 +441,42 @@ export function createSimulationView(elements: Elements) {
       const end = addDays(start, Math.round(absMax * 365.25));
       const trackNames = state.accounts.map((a) => a.name);
       const result = run(budget, start, end, trackNames);
-      const { history, completed, phases } = result;
+      const { history, completed, phases, endedOn } = result;
+      const worst = breaches(budget, result)[0];
+      const floorStopped = worst !== undefined && (endedOn === null || worst.on < endedOn);
+      const visibleCompleted = completedThrough(completed, floorStopped ? worst.on : null);
+      terminalYear = floorStopped || !endedOn ? Infinity : daysBetween(start, endedOn) / 365.25;
+      const terminalGoal = !floorStopped && endedOn
+          ? budget.goals.find((goal) => goal.exit && completed.some(([name, when]) => name === goal.name && when === endedOn))
+          : undefined;
+      terminalAccount = terminalGoal?.account ?? null;
+      elements.terminalStatus.classList.toggle("floor-stop", floorStopped);
+      elements.terminalStatus.textContent = floorStopped
+        ? `Simulation stopped: ${worst.account} fell under its floor of ${money(worst.floor)} on ${formatDateLong(worst.on)}`
+        : terminalGoal && endedOn
+          ? `Simulation ended: ${terminalGoal.name} reached ${money(terminalGoal.target)} on ${formatDateLong(endedOn)}`
+          : "";
       lastPhases = phases;
       lastBudget = budget;
+      const current: PlanOutcome = { budget, result, start, end };
+      lastOutcome = current;
+      const checked = checkPlan(budget, result, start, end);
+      const firstProblem = checked.findings[0];
+      elements.planStatus.textContent = firstProblem
+        ? `${firstProblem.severity.toUpperCase()}: ${firstProblem.account} — ${firstProblem.detail}.`
+        : "PASS: no mechanical findings";
+      if (showImpact && before) {
+        if (firstProblem?.rule === "account-below-floor") {
+          elements.impactStatus.textContent =
+            `Cashflow failure: ${firstProblem.account} — ${firstProblem.detail}. Later milestones are not assessed.`;
+        } else {
+          const text = formatImpact(compareOutcomes(before, current));
+          const accumulation = checked.findings.find((finding) => finding.rule === "clearing-account-accumulating");
+          elements.impactStatus.textContent = accumulation && text.startsWith("No named milestone moved")
+            ? `${text} in ${accumulation.account}`
+            : text;
+        }
+      } else if (!showImpact) elements.impactStatus.textContent = "";
 
       series = {};
       for (const account of state.accounts) {
@@ -404,17 +488,14 @@ export function createSimulationView(elements: Elements) {
       // this reads that rather than scanning for it again. Two detectors for
       // one fact is two chances to disagree -- and the linter reports this
       // same breach, from these same numbers, under account-below-floor.
-      const worst = breaches(budget, result)[0];
-      breachYear = worst ? daysBetween(start, worst.on) / 365.25 : Infinity;
-      breachAccount = worst ? worst.account : null;
+      breachYear = floorStopped && worst ? daysBetween(start, worst.on) / 365.25 : Infinity;
+      breachAccount = floorStopped && worst ? worst.account : null;
 
-      // the badge next to the account picker has always said "auto-selected
-      // -- hit its floor", but nothing ever did the selecting: you only saw
-      // it if you happened to pick the breaching account yourself
-      if (!pickedByHand && breachAccount) elements.acctSelect.value = breachAccount;
+      const selected = autoSelectedAccount(pickedByHand, trackNames, breachAccount, terminalAccount);
+      if (selected) elements.acctSelect.value = selected;
 
-      moveScrubTo(defaultScrubYear(completed, start, breachYear));
-      refresh(state, completed);
+      moveScrubTo(defaultScrubYear(visibleCompleted, start, breachYear));
+      refresh(state, visibleCompleted);
     },
 
     bindControls(state: UIState, onChange: () => void): void {
@@ -465,8 +546,18 @@ export function createSimulationView(elements: Elements) {
       elements.dollarButtons.forEach((btn) => {
         btn.addEventListener("click", () => {
           view.dollars = btn.dataset.mode as "future" | "today";
-          elements.dollarButtons.forEach((b) => b.classList.toggle("active", b === btn));
+          // The selector appears beside both the flow table and account
+          // snapshot. They share one display mode, so keep both pairs in
+          // sync rather than leaving the other control stale.
+          elements.dollarButtons.forEach((b) => b.classList.toggle("active", b.dataset.mode === view.dollars));
           refresh(state, completedGoals);
+        });
+      });
+      elements.cadenceButtons.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          view.cadence = btn.dataset.cadence as FlowCadence;
+          elements.cadenceButtons.forEach((b) => b.classList.toggle("active", b === btn));
+          renderFlowPanel();
         });
       });
     },

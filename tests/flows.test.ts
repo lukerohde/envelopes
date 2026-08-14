@@ -13,7 +13,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { load } from "../src/model";
 import { run } from "../src/simulate";
-import { annualise, coverYears, expectedClosing, formatFlows, summarise, surplusOf } from "../src/flows";
+import { annualise, breaches, cadenceFactor, coverYears, expectedClosing, formatFlows, summarise, surplusOf } from "../src/flows";
 
 const PLAN = `
 inflation: 0
@@ -97,6 +97,27 @@ describe("goal-delimited phases", () => {
   });
 });
 
+describe("phase measurement after a floor breach", () => {
+  it("ends the flow phase on the first breach instead of accruing negative interest to the horizon", () => {
+    const budget = load(`
+inflation: 0
+accounts:
+  - {name: pay, balance: 0, kind: clearing}
+  - {name: super, balance: 100, kind: investment, rate: 0.1}
+transfers:
+  - {name: super drawdown, amount: 100, every: month, day: 1, out_of: super, into: pay, escalation: 0}
+goals:
+  - {name: super takes over, account: pay, target: 0, by: 2026-01-02, transfers: []}
+`);
+    const result = run(budget, "2026-01-01", "2028-01-01");
+    const breach = breaches(budget, result).find((item) => item.account === "super")!;
+    const phase = result.phases.find((item) => item.name === "after super takes over")!;
+    expect(phase.end).toBe(breach.on);
+    expect(phase.accounts.super.closing).toBeCloseTo(result.balancesAtEnd!.super);
+    expect(phase.accounts.super.interest).toBeGreaterThan(-1);
+  });
+});
+
 describe("annualise", () => {
   it("makes weekly, monthly and yearly directly comparable", () => {
     expect(annualise(5200, 1)).toBeCloseTo(5200, 6);
@@ -106,6 +127,15 @@ describe("annualise", () => {
 
   it("doesn't divide by zero on a phase with no length", () => {
     expect(annualise(100, 0)).toBe(0);
+  });
+});
+
+describe("display cadence", () => {
+  it("scales annual rates to the four everyday cadences", () => {
+    expect(cadenceFactor("year")).toBe(1);
+    expect(cadenceFactor("week")).toBeCloseTo(7 / 365.25, 10);
+    expect(cadenceFactor("fortnight")).toBeCloseTo(14 / 365.25, 10);
+    expect(cadenceFactor("month")).toBeCloseTo(1 / 12, 10);
   });
 });
 
@@ -204,5 +234,54 @@ describe("the page carries it too, not just the CLI", () => {
 
   it("lets a wide table scroll inside itself rather than breaking the page", () => {
     expect(HTML).toContain(".flow-scroll { overflow-x: auto");
+  });
+
+  it("stacks the flow explanation and controls after the desktop rules on a phone", () => {
+    const desktop = HTML.indexOf(".flow-head { display: flex");
+    const mobile = HTML.lastIndexOf("@media (max-width: 699px)");
+    const mobileCSS = HTML.slice(mobile, HTML.indexOf("</style>", mobile));
+    expect(mobile).toBeGreaterThan(desktop);
+    expect(mobileCSS).toContain(".flow-head { display: block;");
+    expect(mobileCSS).toContain(".flow-controls { flex-direction: column;");
+    expect(mobileCSS).toContain(".flow-control .cadence-toggle { width: 100%;");
+  });
+
+  it("offers dollar basis and an everyday display cadence in the flow section", () => {
+    expect(HTML).toContain('class="dt-btn active" data-mode="future"');
+    expect(HTML).toContain('class="dt-btn" data-mode="today"');
+    expect(HTML).toContain('aria-label="Show account values in"');
+    expect(HTML).toContain('class="cadence-btn" data-cadence="week"');
+    expect(HTML).toContain('class="cadence-btn" data-cadence="fortnight"');
+    expect(HTML).toContain('class="cadence-btn" data-cadence="month"');
+    expect(HTML).toContain('class="cadence-btn active" data-cadence="year"');
+  });
+
+  it("keeps plan and edit feedback in a fixed bottom notice dock", () => {
+    expect(HTML).toContain('class="notice-dock"');
+    expect(HTML).toContain('id="impactStatus"');
+    expect(HTML).toContain('id="planStatus"');
+    expect(HTML).toContain("position: fixed; left: 50%;");
+  });
+
+  it("keeps the finding account visible in the fixed notice", () => {
+    const simulation = readFileSync(new URL("../src/ui/simulation.ts", import.meta.url), "utf-8");
+    expect(simulation).toContain("firstProblem.account");
+    expect(simulation).toContain('elements.terminalStatus.classList.toggle("floor-stop", floorStopped)');
+    expect(simulation).toContain("Simulation stopped:");
+    expect(simulation).toContain('firstProblem?.rule === "account-below-floor"');
+    expect(simulation).toContain("Later milestones are not assessed");
+  });
+
+  it("uses the shared finding's exact guidance for accumulating clearing cash", () => {
+    const simulation = readFileSync(new URL("../src/ui/simulation.ts", import.meta.url), "utf-8");
+    expect(simulation).toContain("firstProblem.detail");
+    expect(simulation).not.toContain("Suggestion: consider adding a sweep");
+  });
+
+  it("explains that a sweep keeps a scheduled, inflation-aware balance", () => {
+    const html = readFileSync(new URL("../index.html", import.meta.url), "utf-8");
+    expect(html).toContain("A sweep runs only on its Every / On schedule");
+    expect(html).toContain("keeps the Amount / keep balance in From");
+    expect(html).toContain("grows from the simulation start");
   });
 });

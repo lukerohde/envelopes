@@ -100,6 +100,12 @@ transfers:
     day: 20
     out_of: pay
     into: early retirement
+  - name: send surplus to current focus
+    sweep_above: 12000
+    every: month
+    day: 20
+    out_of: pay
+    into: mortgage
   - name: saving for a holiday
     amount: 500
     every: month
@@ -126,13 +132,8 @@ goals:
       - name: mortgage repayment
         amount: 0
         escalation: 0
-      - name: mortgage freed-up saving
-        amount: 10000
-        every: month
-        day: 5
-        out_of: pay
+      - name: send surplus to current focus
         into: early retirement
-        escalation: 0
       - name: into the offset
         amount: 1200
         every: month
@@ -147,9 +148,8 @@ goals:
       - name: salary
         amount: 0
         escalation: 0
-      - name: mortgage freed-up saving
+      - name: send surplus to current focus
         amount: 0
-        escalation: 0
       - name: into the offset
         amount: 0
       - name: super contribution
@@ -179,7 +179,7 @@ goals:
         amount: 0
         escalation: 0
       - name: super drawdown
-        amount: 2500
+        amount: 2470
         every: fortnight
         day: '2026-08-07'
         out_of: super
@@ -212,3 +212,9 @@ goals:
     by_age:
       person: Alex
       turns: 60
+  - name: Old & broke
+    account: super
+    target: 1000
+    exit: true
+    transfers: []
+    accounts: []

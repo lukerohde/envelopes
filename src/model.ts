@@ -9,9 +9,9 @@
  * the now-deleted closed-form solve.py). Dropped rather than carried forward
  * as dead config surface. `who` and `sources` went the same way later --
  * `who` because an account's own name already says whose it is ("sam pay",
- * "super alex"), `sources` because nothing ever read it. `exit` went too --
- * it existed only so a goal could end the simulation, but that's what an
- * account's own floor is for; a goal doesn't need a second way to say it.
+ * "super alex"), `sources` because nothing ever read it. `exit` is kept as
+ * an explicit end-of-life marker: a plan can intentionally stop at a declared
+ * terminal boundary rather than treating the account reaching it as a fault.
  *
  * `by_age` is sugar, not a real field: "alex turns 60" is just a date once
  * you know alex's birthday, so load() resolves it straight into `by` and
@@ -86,6 +86,10 @@ export interface Transfer {
   outOf: string | null;
   into: string | null;
   escalation: number;
+  /** A named rebudget transfer retains this amount in a clearing account and
+   * moves only the excess when it fires. It is optional so old configs and
+   * the structured editor keep their fixed-amount shape. */
+  sweepAbove?: number;
 }
 
 export interface RhythmOverride {
@@ -96,6 +100,7 @@ export interface RhythmOverride {
   outOf?: string | null;
   into?: string | null;
   escalation?: number;
+  sweepAbove?: number;
 }
 
 export interface AccountOverride {
@@ -117,6 +122,9 @@ export interface Goal {
    * date-triggered ones, where they've always been ignored. Inferring AND
    * would change the meaning of every share link already out there. */
   waitForBoth: boolean;
+  /** Stop the simulation on the day this goal completes. This is for an
+   * intentional terminal boundary, not for ordinary milestones. */
+  exit: boolean;
   transfers: RhythmOverride[];
   accounts: AccountOverride[];
 }
@@ -167,12 +175,13 @@ export function load(yamlText: string): Budget {
   for (const item of transferItems) {
     transfers.push({
       name: item.name as string,
-      amount: item.amount as number,
+      amount: (item.amount as number) ?? 0,
       every: item.every as string,
       day: normalizeDay(item.day),
       outOf: (item.out_of as string) ?? null,
       into: (item.into as string) ?? null,
       escalation: item.escalation === undefined ? inflation : (item.escalation as number),
+      sweepAbove: item.sweep_above === undefined ? undefined : (item.sweep_above as number),
     });
   }
 
@@ -195,6 +204,7 @@ export function load(yamlText: string): Budget {
       if (r.out_of !== undefined) override.outOf = r.out_of as string | null;
       if (r.into !== undefined) override.into = r.into as string | null;
       if (r.escalation !== undefined) override.escalation = r.escalation as number;
+      if (r.sweep_above !== undefined) override.sweepAbove = r.sweep_above as number;
       transferOverrides.push(override);
     }
 
@@ -215,6 +225,7 @@ export function load(yamlText: string): Budget {
       target: item.target as number,
       by,
       waitForBoth: item.wait_for_both === true,
+      exit: item.exit === true,
       transfers: transferOverrides,
       accounts: accountOverrides,
     });
@@ -232,6 +243,16 @@ function check(budget: Budget): void {
     }
     if (transfer.outOf) budget.account(transfer.outOf);
     if (transfer.into) budget.account(transfer.into);
+    if (transfer.sweepAbove !== undefined) {
+      if (!Number.isFinite(transfer.sweepAbove) || transfer.sweepAbove < 0) {
+        throw new Error(`transfer '${transfer.name}' has an invalid sweep_above`);
+      }
+      if (transfer.amount !== 0) throw new Error(`transfer '${transfer.name}' cannot combine amount and sweep_above`);
+      if (!transfer.outOf || budget.account(transfer.outOf).kind !== "clearing") {
+        throw new Error(`transfer '${transfer.name}' sweep_above source must be clearing`);
+      }
+      if (transfer.outOf === transfer.into) throw new Error(`transfer '${transfer.name}' sweeps into its source`);
+    }
   }
   for (const goal of budget.goals) {
     budget.account(goal.account);

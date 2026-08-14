@@ -40,6 +40,9 @@ describe("parseArgs", () => {
     expect(parseArgs(["--real", "--json", "plan.yml"])).toEqual({ path: "plan.yml", json: true, real: true, flows: false, lint: false, check: false });
     expect(parseArgs(["--flows", "plan.yml"]).flows).toBe(true);
     expect(parseArgs(["lint", "--json", "plan.yml"])).toMatchObject({ lint: true, json: true, path: "plan.yml" });
+    expect(parseArgs(["compare", "--json", "before.yml", "after.yml"])).toMatchObject({
+      compare: true, json: true, path: "before.yml", path2: "after.yml",
+    });
   });
 
   it("refuses an unknown flag rather than treating it as a filename", () => {

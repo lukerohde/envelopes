@@ -39,8 +39,10 @@ export { encodeShareUrl, decodeShareUrl, encodeShareHash, decodeShareHash } from
 export { summarise, formatFlows, annualise, coverYears } from "./flows";
 export { formatFindings } from "./lint";
 export { checkPlan, formatCheck } from "./check";
-export type { PlanCheck, Criterion } from "./check";
-export type { Finding, Rule } from "./lint";
+export type { PlanCheck, Criterion, CriterionStatus } from "./check";
+export type { Finding, Rule, FindingSeverity } from "./lint";
+export { compareOutcomes, formatImpact } from "./compare";
+export type { OutcomeComparison, PlanOutcome } from "./compare";
 export type { Phase, AccountFlow } from "./simulate";
 export type { PhaseSummary, FlowRow } from "./flows";
 
@@ -66,6 +68,8 @@ export interface SimulateResult {
   phases: Phase[];
   /** Balances as at the day the plan first ran out -- see RunResult. */
   balancesAtEnd: Record<string, number> | null;
+  /** The day an explicit terminal goal completed, if the plan ended there. */
+  endedOn: ISODate | null;
 }
 
 /** YAML text in, results out. The one call worth knowing. */
@@ -73,8 +77,8 @@ export function simulate(yamlText: string, options: SimulateOptions = {}): Simul
   const budget = load(yamlText);
   const start = options.start ?? todayISO();
   const end = addDays(start, Math.round(365.25 * (options.years ?? 40)));
-  const { balances, completed, history, phases, balancesAtEnd } = run(budget, start, end, options.track ?? []);
-  return { budget, start, end, balances, completed, history, phases, balancesAtEnd };
+  const { balances, completed, history, phases, balancesAtEnd, endedOn } = run(budget, start, end, options.track ?? []);
+  return { budget, start, end, balances, completed, history, phases, balancesAtEnd, endedOn };
 }
 
 /** The same text the console tool prints -- milestones, then closing

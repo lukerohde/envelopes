@@ -91,7 +91,7 @@ goals: []
 
 describe("clearing-account-accumulating", () => {
   it("catches income that no envelope ever claimed", () => {
-    const plan = `
+    const budget = load(`
 inflation: 0
 birthdays: []
 accounts:
@@ -101,8 +101,59 @@ transfers:
   - {name: salary, amount: 2000, every: fortnight, day: 2026-01-02, into: pay, escalation: 0}
   - {name: shopping, amount: 100, every: fortnight, day: 2026-01-02, out_of: pay, into: groceries, escalation: 0}
 goals: []
-`;
-    expect(findings(plan)).toContain("clearing-account-accumulating");
+`);
+    const result = run(budget, "2026-01-01", "2046-01-01");
+    const finding = lint(budget, result, "2026-01-01", "2046-01-01")
+      .find((item) => item.rule === "clearing-account-accumulating")!;
+    expect(finding.detail).toContain("from the start");
+    expect(finding.detail).toContain("base Transfers");
+  });
+
+  it("does not call cash unused when a later phase consumes it", () => {
+    const budget = load(`
+inflation: 0
+birthdays: []
+accounts:
+  - {name: pay, balance: 5000, kind: clearing}
+  - {name: groceries, balance: 0, kind: expense}
+transfers:
+  - {name: salary, amount: 2000, every: fortnight, day: 2026-01-02, into: pay, escalation: 0}
+  - {name: shopping, amount: 100, every: fortnight, day: 2026-01-02, out_of: pay, into: groceries, escalation: 0}
+goals:
+  - name: retire at 55
+    account: pay
+    target: 0
+    by: 2027-01-01
+    transfers:
+      - {name: shopping, amount: 3900}
+`);
+    const result = run(budget, "2026-01-01", "2028-01-01");
+    const finding = lint(budget, result, "2026-01-01", "2028-01-01").find((f) => f.rule === "clearing-account-accumulating");
+    expect(finding).toBeUndefined();
+  });
+
+  it("points to goal overrides when that phase actually creates the surplus", () => {
+    const budget = load(`
+inflation: 0
+birthdays: []
+accounts:
+  - {name: pay, balance: 0, kind: clearing}
+  - {name: groceries, balance: 0, kind: expense}
+transfers:
+  - {name: salary, amount: 2000, every: fortnight, day: 2026-01-02, into: pay, escalation: 0}
+  - {name: shopping, amount: 2000, every: fortnight, day: 2026-01-02, out_of: pay, into: groceries, escalation: 0}
+goals:
+  - name: retire at 55
+    account: pay
+    target: 0
+    by: 2027-01-01
+    transfers:
+      - {name: shopping, amount: 100}
+`);
+    const result = run(budget, "2026-01-01", "2028-01-01");
+    const finding = lint(budget, result, "2026-01-01", "2028-01-01").find((f) => f.rule === "clearing-account-accumulating")!;
+    expect(finding.detail).toContain('after "retire at 55"');
+    expect(finding.detail).toContain('transfer overrides under "retire at 55" in Goals');
   });
 
   // A clearing account is meant to hold a buffer; only a *trend* is wrong.
@@ -210,6 +261,24 @@ goals: []
     const f = lint(budget, result, "2026-01-01", "2028-01-01").find((x) => x.rule === "account-below-floor")!;
     expect(f.account).toBe("pay");
     expect(f.detail).toMatch(/2026-0[12]-\d\d/);
+  });
+
+  it("points to the goal overrides active when the floor is breached", () => {
+    const budget = load(`
+inflation: 0
+birthdays: []
+accounts:
+  - {name: pay, balance: 1000, floor: 800, kind: clearing}
+  - {name: bills, balance: 0, kind: expense}
+transfers:
+  - {name: salary, amount: 2400, every: month, day: 20, into: pay, escalation: 0}
+  - {name: rates, amount: 2400, every: month, day: 5, out_of: pay, into: bills, escalation: 0}
+goals:
+  - {name: pay off the house, account: pay, target: 0, by: 2026-01-02, transfers: []}
+`);
+    const result = run(budget, "2026-01-01", "2028-01-01");
+    const finding = lint(budget, result, "2026-01-01", "2028-01-01").find((f) => f.rule === "account-below-floor")!;
+    expect(finding.detail).toContain('transfer overrides under "pay off the house" in Goals');
   });
 
   it("leaves an account that stays above its floor alone", () => {
@@ -329,10 +398,11 @@ goals: []
 
 // The worked example is what an agent copies when it builds someone a plan,
 // so what it demonstrates matters. It should hold together through the
-// working years and the bridge, and then run out somewhere in the eighties
-// -- because inflation eats every super balance eventually, and pretending
-// otherwise would need either a fortune or unrealistic spending. Where it
-// runs out is the interesting question, and it's left to the reader.
+// working years and the bridge, and then reach its explicit terminal boundary
+// somewhere in the eighties -- because inflation eats every super balance
+// eventually, and pretending otherwise would need either a fortune or
+// unrealistic spending. Where it ends is the interesting question, and it's
+// left to the reader.
 describe("the shipped example", () => {
   const EXAMPLE = readFileSync(new URL("../src/example.yaml", import.meta.url), "utf-8");
 
@@ -355,40 +425,47 @@ describe("the shipped example", () => {
     expect(superOn > retire).toBe(true);
   });
 
-  // It should be super that finally gives out, not the pay account. A pay
-  // account hitting the floor means the cashflow never worked; super hitting
-  // it means the money lasted as long as it lasted, which is the honest
-  // answer to the question the tool is asked.
-  it("ends because super runs dry, not because the cashflow failed", () => {
+  // The example declares the end of its useful projection explicitly. A pay
+  // account hitting the floor means the cashflow never worked; super reaching
+  // this terminal balance is the honest answer to the question the tool is
+  // asked, without turning the example into an out-of-box failure.
+  it("ends at the declared super terminal balance, not a floor breach", () => {
     const { budget, result } = atPageHorizon();
-    const out = breaches(budget, result);
-    expect(out.map((b) => b.account)).toEqual(["super"]);
+    expect(result.endedOn).not.toBeNull();
+    expect(result.balances.super).toBe(1000);
+    expect(breaches(budget, result)).toEqual([]);
   });
 
   it("holds together until well into the eighties", () => {
     const { budget, result } = atPageHorizon();
     const born = budget.birthdays[0].born;
-    const out = breaches(budget, result);
-    expect(out).toHaveLength(1);
-    expect(ageAt(born, out[0].on)).toBeGreaterThanOrEqual(80);
+    expect(result.endedOn).not.toBeNull();
+    expect(ageAt(born, result.endedOn!)).toBeGreaterThanOrEqual(80);
   });
 
-  // Sinking funds that only fill, savings losing to inflation, a goal that
-  // never fires -- those are modelling mistakes and the example has none.
-  //
-  // It does still carry one `clearing-account-accumulating`, and that is
-  // recorded here rather than tuned away or quietly excluded. The pay
-  // account peaks around $80k in the years before the mortgage clears.
-  // Pushing that surplus anywhere makes something else worse: into the
-  // offset and the bridge years starve; into super and the plan lasts
-  // longer, so the retirement-side over-draw has more years to pool and the
-  // peak goes *up*. The knobs are coupled and this was tuned by hand, which
-  // is precisely the thing the repo doesn't yet give an agent a method for.
-  //
-  // Pinned to one finding on one account so it can't quietly grow.
-  it("has one known leak, and no others", () => {
+  it("has no findings on first load", () => {
     const { budget, result, start, end } = atPageHorizon();
-    const other = lint(budget, result, start, end).filter((f) => f.rule !== "account-below-floor");
-    expect(other.map((f) => `${f.rule}:${f.account}`)).toEqual(["clearing-account-accumulating:pay"]);
+    expect(lint(budget, result, start, end)).toEqual([]);
+  });
+
+  it("routes surplus to the current focus without guessing it", () => {
+    const { budget } = atPageHorizon();
+    const sweep = budget.transfers.find((transfer) => transfer.name === "send surplus to current focus");
+    expect(sweep).toMatchObject({
+      sweepAbove: 12000,
+      every: "month",
+      day: 20,
+      outOf: "pay",
+      into: "mortgage",
+      escalation: budget.inflation,
+    });
+
+    const house = budget.goals.find((goal) => goal.name === "pay off the house")!;
+    expect(house.transfers.find((transfer) => transfer.name === sweep!.name)).toMatchObject({
+      into: "early retirement",
+    });
+
+    const retire = budget.goals.find((goal) => goal.name === "retire at 55")!;
+    expect(retire.transfers.find((transfer) => transfer.name === sweep!.name)).toMatchObject({ amount: 0 });
   });
 });

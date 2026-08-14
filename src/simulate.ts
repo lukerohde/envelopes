@@ -12,6 +12,8 @@
  *
  * Goals are independent events, each checked every day -- ported straight
  * from fridge/simulate.py, see that file's own docstring for the reasoning.
+ * An explicit `exit` goal is the one exception to the ordinary walk: it marks
+ * an intentional terminal boundary and stops on the day it completes.
  */
 
 import type { Budget, Goal, Transfer } from "./model";
@@ -92,6 +94,8 @@ export interface RunResult {
    * day it described something real. Null when nothing ever breached, in
    * which case the horizon is the end. Judge a plan on these. */
   balancesAtEnd: Balances | null;
+  /** The day an explicit terminal goal completed, if the run stopped there. */
+  endedOn: ISODate | null;
 }
 
 /** `track` names which accounts to record a daily history for -- pass none
@@ -107,6 +111,7 @@ export function run(budget: Budget, start: ISODate, end: ISODate, track: string[
   const offsetBy = offsettersOf(budget);
 
   const debts = debtAccounts(budget);
+  const loans = new Set(budget.accounts.filter((account) => account.kind === "loan").map((account) => account.name));
   const stopped = new Set<Transfer>();
   const active = [...budget.transfers];
   let pending = [...budget.goals];
@@ -121,19 +126,26 @@ export function run(budget: Budget, start: ISODate, end: ISODate, track: string[
   for (const account of budget.accounts) floors[account.name] = account.floor;
   const ledger = new Ledger(start, balances, debts, floors);
   let balancesAtEnd: Balances | null = null;
+  let endedOn: ISODate | null = null;
 
   let when = start;
   while (when < end) {
     grow(balances, rates, offsetBy, ledger);
-    applyTransfers(active, balances, debts, stopped, when, start, ledger);
+    applyTransfers(active, balances, debts, loans, stopped, when, start, ledger);
     if (pending.length > 0) {
       const before = completed.length;
-      pending = checkGoals(budget, balances, rates, pending, completed, active, stopped, when, alreadyAtTarget);
+      const checked = checkGoals(budget, balances, rates, pending, completed, active, stopped, when, alreadyAtTarget);
+      pending = checked.pending;
       // A goal firing is what ends a phase. Several can land on the same
       // day, so this closes once and names them together rather than
       // leaving a run of zero-length phases in the table.
       if (completed.length > before) {
-        ledger.closePhase(when, completed.slice(before).map(([name]) => name), balances);
+        ledger.closePhase(when, completed.slice(before).map(([name]) => name), balances, checked.exit);
+      }
+      if (checked.exit) {
+        endedOn = when;
+        for (const name of track) history[name].push([when, balances[name]]);
+        break;
       }
     }
     // The walk carries on past a floor breach, because the chart draws that
@@ -152,12 +164,13 @@ export function run(budget: Budget, start: ISODate, end: ISODate, track: string[
     // and recovers, which is a timing problem and not a collapse.
     if (ledger.recordLows(balances, when) && balancesAtEnd === null) {
       balancesAtEnd = { ...balances };
+      ledger.stop(when, balancesAtEnd);
     }
     for (const name of track) history[name].push([when, balances[name]]);
     when = addDays(when, 1);
   }
 
-  return { balances, completed, history, phases: ledger.finish(end, balances), balancesAtEnd };
+  return { balances, completed, history, phases: ledger.finish(endedOn ?? end, balances), balancesAtEnd, endedOn };
 }
 
 /** Accumulates the in/out/interest totals as the run walks, one bucket per
@@ -172,6 +185,7 @@ class Ledger {
   }
 
   record(account: string, field: "in" | "out" | "drawn" | "interest", amount: number): void {
+    if (this.stopped) return;
     this.current.accounts[account][field] += amount;
   }
 
@@ -183,6 +197,7 @@ class Ledger {
    * caller can snapshot what the world looked like while it still made
    * sense. */
   recordLows(balances: Balances, when: ISODate): boolean {
+    if (this.stopped) return false;
     let brokeToday = false;
     for (const [name, flow] of Object.entries(this.current.accounts)) {
       // frozen once the plan has broken -- see the note at the call site
@@ -210,13 +225,33 @@ class Ledger {
   }
 
   private everBroke = false;
+  private stopped = false;
 
-  closePhase(when: ISODate, goalNames: string[], balances: Balances): void {
+  /** Freeze flow measurement at the first breach. The day itself has already
+   * been fully recorded; later chart samples may continue, but they must not
+   * accrue transfers or negative interest into the flow table. */
+  stop(when: ISODate, balances: Balances): void {
+    if (this.stopped) return;
+    this.stopped = true;
     this.seal(when, balances);
+  }
+
+  closePhase(when: ISODate, goalNames: string[], balances: Balances, terminal = false): void {
+    if (this.stopped) return;
+    // A terminal goal has no next phase to receive today's low/high sample.
+    // Record it before sealing so the final flow table describes the actual
+    // terminal balance as well as its closing figure.
+    if (terminal) this.recordLows(balances, when);
+    this.seal(when, balances);
+    if (terminal) {
+      this.stopped = true;
+      return;
+    }
     this.current = openPhase(`after ${goalNames.join(" + ")}`, when, balances, this.debts);
   }
 
   finish(end: ISODate, balances: Balances): Phase[] {
+    if (this.stopped) return this.done;
     this.seal(end, balances);
     return this.done;
   }
@@ -306,6 +341,7 @@ function applyTransfers(
   active: Transfer[],
   balances: Balances,
   debts: Set<string>,
+  loans: Set<string>,
   stopped: Set<Transfer>,
   when: ISODate,
   start: ISODate,
@@ -314,14 +350,16 @@ function applyTransfers(
   for (const transfer of active) {
     if (stopped.has(transfer)) continue;
     if (!fires(transfer.every, transfer.day as string | number, when)) continue;
-    const amount = escalated(transfer, when, start);
+    const amount = transfer.sweepAbove === undefined
+      ? escalated(transfer, when, start)
+      : sweptAmount(transfer, balances, loans, when, start);
     if (transfer.outOf) {
       balances[transfer.outOf] -= amount;
       ledger.record(transfer.outOf, "out", amount);
       if (transfer.into) ledger.record(transfer.outOf, "drawn", amount);
     }
     if (transfer.into) {
-      balances[transfer.into] += arrivingAmount(transfer.into, amount, debts);
+      balances[transfer.into] += arrivingAmount(transfer.into, amount, debts, loans);
       // The gross amount, not the signed one. A $500 mortgage payment is
       // $500 of cashflow arriving at the loan; that it shrinks the balance
       // rather than growing it is the debt convention, not the flow.
@@ -339,8 +377,21 @@ function escalated(transfer: Transfer, when: ISODate, start: ISODate): number {
   return transfer.amount * (1 + transfer.escalation) ** years;
 }
 
-function arrivingAmount(accountName: string, amount: number, debts: Set<string>): number {
-  return debts.has(accountName) ? -amount : amount;
+/** A sweep is deliberately just another scheduled transfer. Its retained
+ * balance follows the same nominal escalation as a fixed amount; it never
+ * tops the source up and never chooses a destination. */
+function sweptAmount(transfer: Transfer, balances: Balances, loans: Set<string>, when: ISODate, start: ISODate): number {
+  if (!transfer.outOf || transfer.sweepAbove === undefined) return 0;
+  const retained = transfer.escalation === 0
+    ? transfer.sweepAbove
+    : transfer.sweepAbove * (1 + transfer.escalation) ** (daysBetween(start, when) / 365.25);
+  const excess = Math.max(0, balances[transfer.outOf] - retained);
+  if (!transfer.into || !loans.has(transfer.into)) return excess;
+  return Math.min(excess, Math.max(0, balances[transfer.into]));
+}
+
+function arrivingAmount(accountName: string, amount: number, debts: Set<string>, loans: Set<string>): number {
+  return debts.has(accountName) || loans.has(accountName) ? -amount : amount;
 }
 
 function checkGoals(
@@ -353,8 +404,9 @@ function checkGoals(
   stopped: Set<Transfer>,
   when: ISODate,
   alreadyAtTarget: Set<Goal>,
-): Goal[] {
+): { pending: Goal[]; exit: boolean } {
   const stillPending: Goal[] = [];
+  let exit = false;
   for (const goal of pending) {
     // Worked out before the goal fires, because firing consumes it.
     const atTarget = balanceReached(budget, balances, goal);
@@ -372,11 +424,12 @@ function checkGoals(
       completed.push([goal.name, when]);
       applyOverrides(goal, budget.inflation, active, stopped, when);
       applyRateOverrides(goal, rates);
+      if (goal.exit) exit = true;
     } else {
       stillPending.push(goal);
     }
   }
-  return stillPending;
+  return { pending: stillPending, exit };
 }
 
 /** By date, or by amount, or -- with `wait_for_both` -- the later of the
@@ -408,7 +461,13 @@ function applyOverrides(
       const { name, ...fields } = override;
       for (const existing of matches) {
         stopped.add(existing);
-        active.push({ ...existing, ...fields } as Transfer);
+        const replacement = { ...existing, ...fields } as Transfer;
+        // `amount: 0` is the established way to stop a named transfer. A
+        // sweep has no useful fixed amount, so make the two forms mutually
+        // exclusive when an override changes one into the other.
+        if (override.amount !== undefined && override.sweepAbove === undefined) replacement.sweepAbove = undefined;
+        if (override.sweepAbove !== undefined) replacement.amount = 0;
+        active.push(replacement);
       }
     } else {
       const every = override.every ?? "fortnight";
@@ -420,6 +479,7 @@ function applyOverrides(
         outOf: override.outOf ?? null,
         into: override.into ?? null,
         escalation: override.escalation ?? inflation,
+        sweepAbove: override.sweepAbove,
       });
     }
   }

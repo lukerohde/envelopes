@@ -23,6 +23,7 @@ export interface UIAccount {
 export interface UITransferOverride {
   name: string;
   amount?: number;
+  sweep_above?: number;
   every?: string;
   day?: string | number;
   out_of?: string | null;
@@ -33,6 +34,7 @@ export interface UITransferOverride {
 export interface UITransfer {
   name: string;
   amount: number;
+  sweep_above?: number;
   every: string;
   day: string | number;
   out_of: string | null;
@@ -59,6 +61,8 @@ export interface UIGoal {
    * Carried through the UI even though nothing on the page sets it yet, so
    * loading a plan that uses it and re-sharing can't silently drop it. */
   waitForBoth: boolean;
+  /** Carried through the editor for an explicit terminal boundary. */
+  exit: boolean;
   transfers: UITransferOverride[];
   accounts: UIAccountOverride[];
   editing: boolean;
@@ -135,7 +139,8 @@ export function parseYamlIntoState(yamlText: string): UIState {
   for (const item of transferItems) {
     transfers.push({
       name: item.name as string,
-      amount: item.amount as number,
+      amount: (item.amount as number) ?? 0,
+      sweep_above: item.sweep_above === undefined ? undefined : item.sweep_above as number,
       every: item.every as string,
       day: stringifyDay(item.day),
       out_of: (item.out_of as string) ?? null,
@@ -156,6 +161,7 @@ export function parseYamlIntoState(yamlText: string): UIState {
     for (const o of overrideItems) {
       const override: UITransferOverride = { name: o.name as string };
       if (o.amount !== undefined) override.amount = o.amount as number;
+      if (o.sweep_above !== undefined) override.sweep_above = o.sweep_above as number;
       if (o.every !== undefined) override.every = o.every as string;
       if (o.day !== undefined) override.day = stringifyDay(o.day);
       if (o.out_of !== undefined) override.out_of = o.out_of as string | null;
@@ -197,6 +203,7 @@ export function parseYamlIntoState(yamlText: string): UIState {
       byAgePerson,
       byAgeTurns,
       waitForBoth: item.wait_for_both === true,
+      exit: item.exit === true,
       transfers: overrides,
       accounts: accountOverrides,
       editing: false,
@@ -380,9 +387,10 @@ export function renameTransfer(state: UIState, from: string, to: string): boolea
 function transferToRaw(t: UITransfer): Record<string, unknown> {
   const raw: Record<string, unknown> = {
     name: t.name,
-    amount: t.amount,
     every: t.every,
   };
+  if (t.sweep_above === undefined) raw.amount = t.amount;
+  else raw.sweep_above = t.sweep_above;
   if (t.day !== "" && t.day !== null && t.day !== undefined) raw.day = t.day;
   if (t.out_of) raw.out_of = t.out_of;
   if (t.into) raw.into = t.into;
@@ -392,7 +400,8 @@ function transferToRaw(t: UITransfer): Record<string, unknown> {
 
 function overrideToRaw(o: UITransferOverride): Record<string, unknown> {
   const raw: Record<string, unknown> = { name: o.name };
-  if (o.amount !== undefined) raw.amount = o.amount;
+  if (o.sweep_above !== undefined) raw.sweep_above = o.sweep_above;
+  else if (o.amount !== undefined) raw.amount = o.amount;
   if (o.every !== undefined) raw.every = o.every;
   if (o.day !== undefined && o.day !== "") raw.day = o.day;
   if (o.out_of !== undefined) raw.out_of = o.out_of;
@@ -415,5 +424,6 @@ function goalToRaw(g: UIGoal): Record<string, unknown> {
   // account and a target, so an unconditional `wait_for_both: false` would
   // be noise on every goal in the file.
   if (g.waitForBoth) raw.wait_for_both = true;
+  if (g.exit) raw.exit = true;
   return raw;
 }

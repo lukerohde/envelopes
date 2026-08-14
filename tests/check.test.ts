@@ -64,6 +64,15 @@ describe("a plan that needs balancing", () => {
     const { check: c } = check(BROKEN);
     expect(c.findings[0].rule).toBe("account-below-floor");
   });
+
+  it("names the remaining fixture faults in deterministic order", () => {
+    const { check: c } = check(BROKEN);
+    expect(c.findings.map((finding) => finding.rule)).toEqual([
+      "account-below-floor",
+      "saving-below-inflation",
+    ]);
+    for (const finding of c.findings) expect(finding.fix.length).toBeGreaterThan(30);
+  });
 });
 
 // Following the harness's own advice has to actually work. If the fix it
@@ -92,6 +101,12 @@ describe("the advice is known-good, not just plausible", () => {
 });
 
 describe("the shipped example", () => {
+  it("passes every criterion without an out-of-box failure", () => {
+    const { check: c } = check(EXAMPLE);
+    expect(c.criteria.every((criterion) => criterion.ok === true)).toBe(true);
+    expect(c.next).toBeNull();
+  });
+
   it("passes the cashflow criterion, so the rest can be measured at all", () => {
     const { check: c } = check(EXAMPLE);
     expect(c.criteria[0].ok).toBe(true);
@@ -100,7 +115,27 @@ describe("the shipped example", () => {
 
   it("lasts well into the eighties", () => {
     const { check: c } = check(EXAMPLE);
-    expect(c.criteria.find((x) => x.name === "the money lasts")!.ok).toBe(true);
+    const lasts = c.criteria.find((x) => x.name === "the money lasts")!;
+    expect(lasts.ok).toBe(true);
+    expect(lasts.detail).toContain("Old & broke");
+  });
+});
+
+describe("review findings are advisory", () => {
+  it("do not turn an intentional low-yield choice into a failing check", () => {
+    const { check: c } = check(`
+inflation: 0.03
+accounts:
+  - {name: pay, balance: 100000, kind: clearing}
+  - {name: accessible, balance: 50000, kind: saving, rate: 0.01}
+transfers: []
+goals: []
+`);
+    const criterion = c.criteria.find((item) => item.name === "savings beat inflation")!;
+    expect(criterion.status).toBe("review");
+    expect(criterion.ok).toBe(true);
+    expect(c.next).toBeNull();
+    expect(c.reviews[0].severity).toBe("review");
   });
 });
 

@@ -10,7 +10,9 @@
  * it sat in. A fixed element isn't clipped by an ancestor's overflow at all.
  */
 
-export function initCombos(container: HTMLElement, accountNames: string[]): void {
+export type ComboCreate = (name: string, field: "from" | "to") => void;
+
+export function initCombos(container: HTMLElement, accountNames: string[], onCreate?: ComboCreate): void {
   document.querySelectorAll<HTMLElement>("[data-combo-list]").forEach((list) => list.remove());
   container.querySelectorAll<HTMLElement>("[data-combo]").forEach((el) => {
     const input = el.querySelector<HTMLInputElement>(".combo-input");
@@ -37,9 +39,33 @@ export function initCombos(container: HTMLElement, accountNames: string[]): void
     }
 
     function renderList(): void {
-      const query = input!.value.trim();
+      const typed = input!.value.trim();
+      // External income is the placeholder for a new From transfer. It must
+      // not become the filter text, or opening the picker offers only that
+      // one row and hides every real account the user could choose instead.
+      const query = typed.toLowerCase() === "external income" ? "" : typed;
       const matches = accountNames.filter((name) => name.toLowerCase().includes(query.toLowerCase()));
       list.innerHTML = "";
+
+      // A missing `out_of` is external income, not a missing account. Keep it
+      // as an explicit choice in the From picker, including after the user
+      // clears the field, so they never have to type a magic string or
+      // accidentally create an account called "external income".
+      const externalIncome = input!.dataset.field === "from" &&
+        "external income".includes(typed.toLowerCase());
+      if (externalIncome) {
+        const item = document.createElement("div");
+        item.className = "combo-item combo-special";
+        item.textContent = "External income (no source account)";
+        item.addEventListener("mousedown", (evt) => {
+          evt.preventDefault();
+          input!.value = "external income";
+          input!.dispatchEvent(new Event("input", { bubbles: true }));
+          input!.dispatchEvent(new Event("change", { bubbles: true }));
+          hide();
+        });
+        list.appendChild(item);
+      }
       for (const name of matches) {
         const item = document.createElement("div");
         item.className = "combo-item";
@@ -48,17 +74,22 @@ export function initCombos(container: HTMLElement, accountNames: string[]): void
           evt.preventDefault();
           input!.value = name;
           input!.dispatchEvent(new Event("input", { bubbles: true }));
+          input!.dispatchEvent(new Event("change", { bubbles: true }));
           hide();
         });
         list.appendChild(item);
       }
-      const exists = accountNames.some((name) => name.toLowerCase() === query.toLowerCase());
+      const exists = accountNames.some((name) => name.toLowerCase() === query.toLowerCase()) || externalIncome;
       if (query && !exists) {
         const create = document.createElement("div");
         create.className = "combo-item combo-create";
-        create.textContent = `+ Create “${query}”`;
+        create.textContent = onCreate ? `+ Add account “${query}”` : `+ Add “${query}” in Accounts`;
         create.addEventListener("mousedown", (evt) => {
           evt.preventDefault();
+          input!.value = query;
+          input!.dispatchEvent(new Event("input", { bubbles: true }));
+          input!.dispatchEvent(new Event("change", { bubbles: true }));
+          onCreate?.(query, input!.dataset.field as "from" | "to");
           hide();
         });
         list.appendChild(create);
@@ -69,6 +100,7 @@ export function initCombos(container: HTMLElement, accountNames: string[]): void
     // the page -- a fixed list doesn't move with its input on its own
     function show(): void {
       if (!list.isConnected) document.body.appendChild(list);
+      if (input!.value.trim().toLowerCase() === "external income") input!.select();
       renderList();
       list.hidden = false;
       place();

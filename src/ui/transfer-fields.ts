@@ -4,7 +4,7 @@
  * other.
  */
 
-import { EARLIEST_PLAN_DATE, LATEST_PLAN_DATE } from "../dates";
+import { EARLIEST_PLAN_DATE, LATEST_PLAN_DATE, todayISO } from "../dates";
 import { wireDateClamp } from "./date-input";
 
 /** Lowercase value, capitalised label. The engine matches weekday names in
@@ -22,10 +22,12 @@ export interface RowFields {
   name: string;
   from: string;
   to: string;
+  mode: "fixed" | "sweep";
   amount: number | string;
   every: string;
   day: string | number;
   escalates: boolean;
+  sweepAllowed?: boolean;
 }
 
 function escapeHTML(value: string): string {
@@ -36,7 +38,8 @@ function escapeHTML(value: string): string {
 }
 
 export function mobileTransferSummary(fields: RowFields): string {
-  return `${formatAmount(fields.amount)} · ${fields.every}`;
+  const amount = fields.mode === "sweep" ? `above ${formatAmount(fields.amount)}` : formatAmount(fields.amount);
+  return `${amount} · ${fields.every}`;
 }
 
 function formatAmount(value: number | string): string {
@@ -49,7 +52,7 @@ function formatAmount(value: number | string): string {
 // "Infl." rather than "Inflation" -- the column under it is one checkbox
 // wide, and the full word overflows the card it sits in. The button itself
 // carries the long form as its title and aria-label.
-const COLUMN_LABELS = ["Name", "From", "→", "To", "Amount", "Every", "On", "Infl."];
+const COLUMN_LABELS = ["Name", "From", "→", "To", "Type", "Amount / keep", "Every", "On", "Infl."];
 
 export function transferHeadHTML(): string {
   let html = "";
@@ -65,6 +68,19 @@ function everySelectHTML(every: string, disabled: boolean, inherited: boolean): 
     html += `<option${!inherited && option === every ? " selected" : ""}>${option}</option>`;
   }
   return html + "</select>";
+}
+
+function modeSelectHTML(mode: RowFields["mode"], disabled: boolean, inherited: boolean, sweepAllowed: boolean): string {
+  const dis = disabled ? " disabled" : "";
+  const inheritedOption = inherited ? `<option value="" selected>inherits ${mode === "sweep" ? "sweep" : "fixed"}</option>` : "";
+  const sweepOption = `<option value="sweep"${!inherited && mode === "sweep" ? " selected" : ""}${!sweepAllowed ? " disabled" : ""}>Sweep</option>`;
+  return (
+    `<select class="field-input amount-mode" data-field="mode"${dis} aria-label="Transfer mode" ` +
+    `title="Fixed transfers the amount. Sweep keeps the configured balance in From and transfers only the excess when its schedule runs.">` +
+    `${inheritedOption}<option value="fixed"${!inherited && mode === "fixed" ? " selected" : ""}>Fixed</option>` +
+    sweepOption +
+    `</select>`
+  );
 }
 
 /** A yearly transfer's `day` is "MM-DD" -- the engine matches on month and
@@ -87,6 +103,31 @@ export function dayFromInput(every: string, value: string): string {
   return value;
 }
 
+/** Changing Every also changes what On means. A select whose state contains
+ * an incompatible old value still displays its first option, which is much
+ * worse than a blank: it looks configured while the schedule never fires.
+ * Keep compatible values and otherwise store the same sensible default the
+ * newly rendered control will show. */
+export function dayForEvery(every: string, day: string | number, today = todayISO()): string | number {
+  const value = String(day).toLowerCase();
+  if (every === "week") return WEEKDAYS.some(([name]) => name === value) ? value : "mon";
+  if (every === "month") {
+    const numbered = Number(value);
+    return Number.isInteger(numbered) && numbered >= 1 && numbered <= 31 ? numbered : 1;
+  }
+  if (every === "year") {
+    const monthDay = value.match(/^(\d{2})-(\d{2})$/);
+    if (monthDay && Number(monthDay[1]) >= 1 && Number(monthDay[1]) <= 12 && Number(monthDay[2]) >= 1 && Number(monthDay[2]) <= 31) {
+      return value;
+    }
+    return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value.slice(5) : today.slice(5);
+  }
+  if (every === "once" || every === "fortnight") {
+    return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : today;
+  }
+  return day;
+}
+
 /** week names a weekday -- every week has exactly one. Fortnight is the
  * same weekday, but a weekday alone doesn't say which of the two
  * alternating weeks -- it needs one real anchor date to count from, same
@@ -100,16 +141,22 @@ function onFieldHTML(every: string, day: string | number, disabled: boolean, inh
     const selected = String(day).toLowerCase();
     let html = `<select class="field-input" data-field="day"${dis}>`;
     html += inheritedOption;
+    if (!inherited && !WEEKDAYS.some(([value]) => value === selected)) {
+      html += '<option value="" selected>pick a day</option>';
+    }
     for (const [value, label] of WEEKDAYS) {
       html += `<option value="${value}"${!inherited && value === selected ? " selected" : ""}>${label}</option>`;
     }
     return html + "</select>";
   }
   if (every === "month") {
+    const selected = Number(day);
+    const valid = Number.isInteger(selected) && selected >= 1 && selected <= 31;
     let html = `<select class="field-input t-on" data-field="day"${dis}>`;
     html += inheritedOption;
+    if (!inherited && !valid) html += '<option value="" selected>pick a day</option>';
     for (const dayOfMonth of DAYS_OF_MONTH) {
-      html += `<option${!inherited && dayOfMonth === String(day) ? " selected" : ""}>${dayOfMonth}</option>`;
+      html += `<option${!inherited && valid && dayOfMonth === String(selected) ? " selected" : ""}>${dayOfMonth}</option>`;
     }
     return html + "</select>";
   }
@@ -128,10 +175,16 @@ function onFieldHTML(every: string, day: string | number, disabled: boolean, inh
  * the row -- a repayment that was fixed while you were working can become
  * inflation-linked once a goal turns it into something else. That wasn't
  * obvious from a bare checkbox, hence the label spelling it out. */
-function inflationCheckboxHTML(escalates: boolean, disabled: boolean, inGoal: boolean, inherited: boolean): string {
-  const label = inherited ? "Inherits inflation from the transfer" : inGoal
-    ? "Grows with inflation — set here, this goal onwards"
-    : "Grows with inflation";
+function inflationCheckboxHTML(escalates: boolean, disabled: boolean, inGoal: boolean, inherited: boolean, mode: RowFields["mode"]): string {
+  const label = mode === "sweep"
+    ? inherited
+      ? "Inherits whether the retained balance grows with inflation from the simulation start"
+      : inGoal
+        ? "Retained balance grows with inflation from the simulation start — set here, this goal onwards"
+        : "Retained balance grows with inflation from the simulation start"
+    : inherited ? "Inherits inflation from the transfer" : inGoal
+      ? "Grows with inflation — set here, this goal onwards"
+      : "Grows with inflation";
   return (
     `<button type="button" class="chk infl-chk${escalates ? " checked" : ""}${inherited ? " inherited" : ""}" data-field="escalates" data-inherited-value="${escalates}"` +
     `${disabled ? " disabled" : ""} title="${label}" aria-label="${label}"></button>`
@@ -162,10 +215,15 @@ export function transferFieldsHTML(fields: RowFields, options: RowOptions = {}):
   const inheritedInput = (key: string, value: string | number): string => inherits.has(key)
     ? `value="" placeholder="inherits ${escapeHTML(String(value))}"`
     : `value="${escapeHTML(String(value))}"`;
+  const amountLabel = fields.mode === "sweep" ? "Keep balance" : "Amount";
+  const amountHelp = fields.mode === "sweep"
+    ? "A sweep runs only on its schedule, keeps this balance in From, and transfers the excess. With inflation on, the retained balance grows from the simulation start."
+    : "Amount transferred whenever the schedule runs.";
+  const amountAria = fields.mode === "sweep" ? "Balance to keep when the sweep runs" : "Transfer amount";
   return (
     `<div class="mobile-row-summary">` +
     `<span class="mobile-row-name">${name}</span>` +
-    `<span class="mobile-row-meta"><span data-mobile-amount="${escapeHTML(formatAmount(fields.amount))}">${escapeHTML(formatAmount(fields.amount))}</span> · <span data-mobile-every="${escapeHTML(fields.every)}">${escapeHTML(fields.every)}</span></span>` +
+    `<span class="mobile-row-meta"><span data-mobile-amount="${escapeHTML(formatAmount(fields.amount))}">${escapeHTML(fields.mode === "sweep" ? `above ${formatAmount(fields.amount)}` : formatAmount(fields.amount))}</span> · <span data-mobile-every="${escapeHTML(fields.every)}">${escapeHTML(fields.every)}</span></span>` +
     `<button type="button" class="mobile-toggle" data-mobile-toggle aria-expanded="false" aria-label="Edit ${name}">Edit</button>` +
     `</div>` +
     `<div class="transfer-fields-grid">` +
@@ -176,21 +234,24 @@ export function transferFieldsHTML(fields: RowFields, options: RowOptions = {}):
     `<div class="mobile-field" data-label="From"><div class="combo" data-combo><input type="text" class="field-input combo-input" data-field="from" ${inheritedInput("from", fields.from)}${dis}></div></div>` +
     `<span class="arrow mobile-arrow">→</span>` +
     `<div class="mobile-field" data-label="To"><div class="combo" data-combo><input type="text" class="field-input combo-input" data-field="to" ${inheritedInput("to", fields.to)}${dis}></div></div>` +
-    `<div class="mobile-field" data-label="Amount"><input class="field-input fig t-amount" data-field="amount" ${inheritedInput("amount", formatAmount(fields.amount))}${dis}></div>` +
+    `<div class="mobile-field" data-label="Type">${modeSelectHTML(fields.mode, disabled, inherits.has("mode"), fields.sweepAllowed !== false)}</div>` +
+    `<div class="mobile-field" data-label="${amountLabel}"><input class="field-input fig t-amount" data-field="amount" ${inheritedInput("amount", formatAmount(fields.amount))}${dis} ` +
+    `aria-label="${amountAria}" title="${amountHelp}"></div>` +
     `<div class="mobile-field" data-label="Every">${everySelectHTML(fields.every, disabled, inherits.has("every"))}</div>` +
     `<div class="mobile-field" data-label="On">${onFieldHTML(fields.every, fields.day, disabled, inherits.has("day"))}</div>` +
-    `<div class="mobile-field" data-label="Inflation">${inflationCheckboxHTML(fields.escalates, disabled, inGoal, inherits.has("escalates"))}</div>` +
+    `<div class="mobile-field" data-label="Inflation">${inflationCheckboxHTML(fields.escalates, disabled, inGoal, inherits.has("escalates"), fields.mode)}</div>` +
     `</div>`
   );
 }
 
 function updateMobileSummary(row: HTMLElement): void {
   const amount = row.querySelector<HTMLInputElement>('[data-field="amount"]');
+  const mode = row.querySelector<HTMLSelectElement>('[data-field="mode"]');
   const every = row.querySelector<HTMLSelectElement>('[data-field="every"]');
   const amountSummary = row.querySelector<HTMLElement>("[data-mobile-amount]");
   const everySummary = row.querySelector<HTMLElement>("[data-mobile-every]");
-  if (!amount || !every || !amountSummary || !everySummary) return;
-  amountSummary.textContent = formatAmount(amount.value);
+  if (!amount || !mode || !every || !amountSummary || !everySummary) return;
+  amountSummary.textContent = mode.value === "sweep" ? `above ${formatAmount(amount.value)}` : formatAmount(amount.value);
   amountSummary.dataset.mobileAmount = formatAmount(amount.value);
   everySummary.textContent = every.value;
   everySummary.dataset.mobileEvery = every.value;
@@ -237,13 +298,20 @@ export function wireTransferFieldRow(
     if (key === "day" && input.getAttribute("type") === "date") {
       wireDateClamp(input as HTMLInputElement, EARLIEST_PLAN_DATE, LATEST_PLAN_DATE);
     }
-    const eventName = key === "every" ? "change" : "input";
+    const eventName = key === "every" || key === "mode" ? "change" : "input";
     input.addEventListener(eventName, () => {
       const every = row.querySelector<HTMLSelectElement>('[data-field="every"]')!.value;
       setField(key, key === "day" ? dayFromInput(every, input.value) : input.value);
       updateMobileSummary(row);
       onAnyChange();
-      if (key === "every") onEveryChange();
+      // Mode changes what the adjacent number and inflation toggle mean, so
+      // redraw it as well as the schedule-dependent On control.
+      if (key === "every" || key === "mode") onEveryChange();
     });
+    // A source account determines whether Sweep above is legal. The combo
+    // emits change only when an option is chosen (not on every search
+    // keystroke), so a newly selected clearing account enables the mode
+    // immediately without interrupting account-name entry.
+    if (key === "from") input.addEventListener("change", onEveryChange);
   });
 }

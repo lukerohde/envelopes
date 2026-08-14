@@ -85,4 +85,20 @@ describe("llms.txt", () => {
       expect(LLMS).toContain(failure);
     }
   });
+
+  it("does not teach an agent to sweep a future cashflow buffer", () => {
+    expect(LLMS).toContain("Growth a later phase draws back down is a future cashflow buffer");
+    expect(LLMS).toContain("reduce the incoming drawdown before considering a sweep");
+  });
+
+  it("says the shipped example starts clean", () => {
+    expect(LLMS).toContain("passes every mechanical check on first load");
+    expect(LLMS).not.toContain("intentionally leaves one excess-cash finding");
+  });
+
+  it("explains how the example routes its surplus by phase", () => {
+    expect(LLMS).toContain("starts by sweeping monthly surplus");
+    expect(LLMS).toContain("redirects that same named sweep");
+    expect(LLMS).toContain("retirement stops it");
+  });
 });

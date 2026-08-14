@@ -21,9 +21,12 @@ export interface CliArgs {
   /** `envelopes check plan.yml` -- lint, plus what a good plan looks like
    * and which single thing to do next. */
   check: boolean;
+  /** `envelopes compare before.yml after.yml` -- same engine window for both. */
+  compare?: boolean;
+  path2?: string;
 }
 
-const USAGE = "usage: envelopes [check|lint] [--json] [--real] [--flows] <config.yml>";
+const USAGE = "usage: envelopes [check|lint] [--json] [--real] [--flows] <config.yml> | compare [--json] <before.yml> <after.yml>";
 
 /** Deliberately tiny: one verb, three boolean flags and a path. Anything
  * that wants real argument parsing wants the library instead. */
@@ -35,16 +38,21 @@ export function parseArgs(argv: string[]): CliArgs {
   } else if (argv[0] === "check") {
     args.check = true;
     argv = argv.slice(1);
+  } else if (argv[0] === "compare") {
+    args.compare = true;
+    args.path2 = "";
+    argv = argv.slice(1);
   }
   for (const arg of argv) {
     if (arg === "--json") args.json = true;
     else if (arg === "--real") args.real = true;
     else if (arg === "--flows") args.flows = true;
     else if (arg.startsWith("-")) throw new Error(`unknown option: ${arg}`);
-    else if (args.path) throw new Error(USAGE);
-    else args.path = arg;
+    else if (!args.path) args.path = arg;
+    else if (args.compare && !args.path2) args.path2 = arg;
+    else throw new Error(USAGE);
   }
-  if (!args.path) throw new Error(USAGE);
+  if (!args.path || (args.compare && !args.path2)) throw new Error(USAGE);
   return args;
 }
 

@@ -57,6 +57,9 @@
     .mono, .fig { font-family: ui-monospace, "SF Mono", "Menlo", monospace; font-variant-numeric: tabular-nums; }
 
     .wrap { max-width: 800px; margin: 0 auto; padding: 0 1.5rem 5rem; }
+    @media (min-width: 700px) {
+      .wrap { max-width: 1100px; }
+    }
 
     header.app-head { padding: 2.6rem 0 1.6rem; }
     header.app-head h1 { margin: 0; font-size: 1.6rem; font-family: Georgia, "Iowan Old Style", ui-serif, serif; }
@@ -90,6 +93,23 @@
       .keep-bar.leaving { transform: none; }
     }
     .keep-text { font-size: .75rem; color: var(--ink-muted); line-height: 1.25; }
+
+    /* The plan warning and the before/after consequence belong to the page,
+       not to the section currently in view. Keep them readable while the
+       person scrolls between an edit and the milestones it changes. */
+    .notice-dock {
+      position: fixed; left: 50%; bottom: max(.8rem, env(safe-area-inset-bottom)); z-index: 15;
+      width: min(calc(100% - 1.6rem), 48rem); transform: translateX(-50%);
+      display: flex; flex-direction: column; gap: .2rem; padding: .55rem .8rem;
+      background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px;
+      box-shadow: var(--shadow); pointer-events: none;
+    }
+    .notice-dock p { margin: 0; line-height: 1.3; }
+    .notice-dock .impact-status { color: var(--ink); font-size: .82rem; }
+    .notice-dock .terminal-status { color: var(--accent); font-size: .82rem; font-weight: 600; }
+    .notice-dock .terminal-status.floor-stop { color: var(--stamp); }
+    .notice-dock .plan-status { color: var(--ink-muted); font-size: .74rem; }
+    .notice-dock p:empty { display: none; }
 
     .ai-prompt { margin-top: .8rem; }
     .ai-prompt summary {
@@ -195,12 +215,12 @@
 
     /* ── Transfers, and the shared row format Goals reuses ──────────── */
     .transfers-scroll, .override-scroll { overflow-x: auto; }
-    /* wide enough that eight columns stay readable, narrow enough that a goal
-       card (the tighter of the two places this grid appears) doesn't need to
-       scroll on a desktop -- below that it scrolls, which is what it's for */
-    .transfers-table, .override-table { min-width: 660px; display: flex; flex-direction: column; gap: 0; }
+    /* Wide enough that nine columns stay readable on a desktop. Every track
+       may shrink below its content width; otherwise a long account name or
+       select label pushes the inflation and delete controls off the card. */
+    .transfers-table, .override-table { width: 100%; min-width: 760px; display: flex; flex-direction: column; gap: 0; }
     .t-head, .transfer-fields-grid {
-      display: grid; grid-template-columns: 1.1fr .85fr auto .85fr .8fr .8fr .8fr 2.1rem; gap: .5rem; align-items: center;
+      display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .85fr) 1.1rem minmax(0, .85fr) minmax(4.5rem, .65fr) minmax(0, .9fr) minmax(0, .8fr) minmax(0, .8fr) 1.8rem; gap: .5rem; align-items: center;
     }
     .mobile-row-summary { display: none; }
     .mobile-field { display: contents; }
@@ -217,6 +237,7 @@
     .t-name-cell { display: flex; align-items: center; gap: .35rem; min-width: 0; }
     .transfer-row .t-name { font-weight: 600; min-width: 0; }
     .transfer-row .t-name[readonly] { border-color: transparent; background: none; cursor: default; padding-left: 0; }
+    .transfer-row .amount-mode { min-width: 0; padding-left: .35rem; padding-right: .9rem; font-size: .72rem; }
 
     .override-head { display: flex; align-items: center; gap: .5rem; }
     .override-head .chk-spacer { flex: 0 0 .9rem; }
@@ -230,8 +251,10 @@
     .transfer-row .arrow { color: var(--ink-faint); text-align: center; font-size: .82rem; }
     .transfer-row .t-amount { text-align: right; }
     .transfer-row .field-input, .transfer-row .combo-input { padding: .3rem .5rem; font-size: .83rem; }
+    .transfer-fields-grid .combo, .transfer-fields-grid .field-input { min-width: 0; }
     .transfer-row .t-on { text-align: center; }
     .transfer-row input:disabled, .transfer-row select:disabled { color: var(--ink-faint); background: var(--surface-2); cursor: not-allowed; }
+    .transfer-help { margin: .65rem 0 0; color: var(--ink-muted); font-size: .75rem; line-height: 1.4; max-width: 54rem; }
     .infl-chk {
       justify-self: center; width: 1.3rem; height: 1.3rem; border-radius: 5px; border: 1.5px solid var(--line-strong);
       background: var(--surface); color: var(--ink-faint); font-size: .74rem; font-weight: 700; cursor: pointer;
@@ -279,6 +302,7 @@
     .combo-list[hidden] { display: none; }
     .combo-item { padding: .4rem .6rem; border-radius: 5px; font-size: .85rem; cursor: pointer; }
     .combo-item:hover { background: var(--accent-soft); }
+    .combo-special { color: var(--ink-muted); font-style: italic; }
     .combo-create { color: var(--accent); font-weight: 600; }
 
     /* ── Narrow screens ────────────────────────────────────────────── */
@@ -353,7 +377,6 @@
       .transfer-fields-grid .mobile-field .combo-input { width: 100%; min-width: 0; }
       .transfer-fields-grid .mobile-field[data-label="Inflation"] .infl-chk { align-self: flex-start; }
       .mobile-arrow { display: none; }
-
       .override-row { display: grid; grid-template-columns: .9rem minmax(0, 1fr); align-items: start; gap: .5rem; padding: .5rem .1rem; }
       .override-row > .chk { margin-top: .7rem; }
       .override-row .transfer-row { grid-column: 2; width: 100%; padding: 0; min-width: 0; }
@@ -402,6 +425,7 @@
       display: inline-flex; align-items: center; gap: .35rem; font-size: .74rem; color: var(--stamp); font-weight: 600;
       background: var(--stamp-soft); border: 1px solid var(--stamp); border-radius: 999px; padding: .2rem .6rem;
     }
+    .auto-badge.terminal { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
 
     #chartSvg { width: 100%; height: auto; display: block; }
     .gridline { stroke: var(--line); stroke-width: 1; }
@@ -411,6 +435,7 @@
     .never-label { fill: var(--ink-faint); font-size: 10px; font-style: italic; }
     .bal-line { fill: none; stroke: var(--accent); stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; }
     .end-dot { fill: var(--accent); stroke: var(--surface); stroke-width: 2; }
+    .end-label { fill: var(--accent); font: 700 11px -apple-system, sans-serif; }
     .breach-dot { fill: var(--stamp); stroke: var(--surface); stroke-width: 2; }
     .breach-label { fill: var(--stamp); font: 700 11px -apple-system, sans-serif; }
     .crosshair { stroke: var(--ink-faint); stroke-width: 1; pointer-events: none; }
@@ -452,6 +477,8 @@
       color: var(--ink-muted); margin: 0 0 .2rem;
     }
     .scrub-readout .sr-date { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+    .impact-status, .plan-status { min-height: 1.3em; margin: .7rem 0 0; font-size: .82rem; color: var(--ink-muted); }
+    .plan-status { font-size: .76rem; }
 
     .balances-strip, .milestones-strip { margin-top: 1.4rem; padding-top: 1.2rem; border-top: 1px dashed var(--line); }
     .milestones-strip h4 {
@@ -459,12 +486,16 @@
     }
     .strip-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: .6rem; }
     .strip-head h4 { margin: 0; font-size: .95rem; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
-    .dollar-toggle { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 999px; padding: 2px; flex: 0 0 auto; }
+    .dollar-toggle, .cadence-toggle { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 999px; padding: 2px; flex: 0 0 auto; }
     .dt-btn {
       border: none; background: none; font-size: .72rem; font-weight: 600; padding: .25rem .65rem; border-radius: 999px;
       cursor: pointer; color: var(--ink-muted); font-family: inherit;
     }
-    .dt-btn.active { background: var(--accent); color: var(--accent-ink); }
+    .dt-btn.active, .cadence-btn.active { background: var(--accent); color: var(--accent-ink); }
+    .cadence-btn {
+      border: none; background: none; font-size: .72rem; font-weight: 600; padding: .25rem .55rem; border-radius: 999px;
+      cursor: pointer; color: var(--ink-muted); font-family: inherit;
+    }
     .bal-rows { display: flex; flex-direction: column; gap: 0; }
     .bal-group {
       font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-muted);
@@ -479,7 +510,11 @@
     .bal-row.selected .swatch { background: var(--accent); }
     .bal-row .bv { font-size: 1rem; }
 
-    .flows-intro { margin: 0 0 1rem; font-size: .85rem; color: var(--ink-muted); max-width: 46rem; }
+    .flow-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
+    .flows-intro { margin: 0; font-size: .85rem; color: var(--ink-muted); max-width: 46rem; }
+    .flow-controls { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; flex: 0 0 auto; }
+    .flow-control { display: flex; align-items: center; gap: .35rem; }
+    .flow-control-label { color: var(--ink-muted); font-size: .68rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
     .flow-phase { margin-bottom: 1.6rem; }
     .flow-phase:last-child { margin-bottom: 0; }
     .flow-phase h4 { margin: 0 0 .1rem; font-size: .95rem; font-weight: 600; }
@@ -498,6 +533,18 @@
     .flow-table tr.flow-surplus td { border-bottom: none; font-weight: 600; }
     .flow-table tr.flow-surplus td:first-child { color: var(--ink-muted); font-weight: 400; }
     .flow-neg { color: var(--danger, #b4342b); }
+
+    /* These must follow the desktop flow rules above. At phone widths the
+       explanation gets the full card, then each control gets its own row. */
+    @media (max-width: 699px) {
+      .flow-head { display: block; }
+      .flows-intro { max-width: none; }
+      .flow-controls { flex-direction: column; align-items: stretch; justify-content: flex-start; margin-top: .8rem; }
+      .flow-control { width: 100%; min-width: 0; align-items: flex-start; flex-direction: column; gap: .2rem; }
+      .flow-control-label { font-size: .62rem; }
+      .flow-control .cadence-toggle { width: 100%; min-width: 0; }
+      .flow-control .cadence-btn { flex: 1 1 0; min-width: 0; padding-left: .2rem; padding-right: .2rem; }
+    }
 
     .milestones { display: flex; flex-direction: column; gap: 0; }
     .milestone-row { padding: .6rem 0; border-bottom: 1px solid var(--line); }
@@ -610,6 +657,7 @@
             <div id="transferRows"></div>
           </div>
         </div>
+        <p class="transfer-help">A sweep runs only on its Every / On schedule. It keeps the Amount / keep balance in From and transfers only the excess. With inflation on, that retained balance grows from the simulation start.</p>
         <button class="add-ghost" type="button" id="addTransfer"><span class="plus">+</span> Add a transfer</button>
       </div>
     </details>
@@ -667,9 +715,12 @@
         <div class="balances-strip">
           <div class="strip-head">
             <h4 id="balHeading"></h4>
-            <div class="dollar-toggle" role="group" aria-label="Show values in">
-              <button type="button" class="dt-btn active" data-mode="future">Future $</button>
-              <button type="button" class="dt-btn" data-mode="today">Today's $</button>
+            <div class="flow-control">
+              <span class="flow-control-label">Dollars</span>
+              <div class="dollar-toggle" role="group" aria-label="Show account values in">
+                <button type="button" class="dt-btn active" data-mode="future">Future $</button>
+                <button type="button" class="dt-btn" data-mode="today">Today's $</button>
+              </div>
             </div>
           </div>
           <div class="bal-rows" id="balRows"></div>
@@ -680,14 +731,40 @@
     <details class="block">
       <summary><h2>Where the money goes</h2></summary>
       <div class="card">
-        <p class="flows-intro">Every account's yearly in, out and net — split at each goal,
-          because that's where a plan changes shape. Averaging across a whole
-          lifetime describes none of it. Use this to check that what leaves an
-          account matches what's meant to.</p>
+        <div class="flow-head">
+          <p class="flows-intro">Every account's in, out and net — split at each goal,
+            because that's where a plan changes shape. Averaging across a whole
+            lifetime describes none of it. Use this to check that what leaves an
+            account matches what's meant to.</p>
+          <div class="flow-controls">
+            <div class="flow-control">
+              <span class="flow-control-label">Dollars</span>
+              <div class="dollar-toggle" role="group" aria-label="Show values in">
+                <button type="button" class="dt-btn active" data-mode="future">Future $</button>
+                <button type="button" class="dt-btn" data-mode="today">Today's $</button>
+              </div>
+            </div>
+            <div class="flow-control">
+              <span class="flow-control-label">Per</span>
+              <div class="cadence-toggle" role="group" aria-label="Show flows per">
+                <button type="button" class="cadence-btn" data-cadence="week">Weekly</button>
+                <button type="button" class="cadence-btn" data-cadence="fortnight">Fortnightly</button>
+                <button type="button" class="cadence-btn" data-cadence="month">Monthly</button>
+                <button type="button" class="cadence-btn active" data-cadence="year">Yearly</button>
+              </div>
+            </div>
+          </div>
+        </div>
         <div class="flows" id="flowRows"></div>
       </div>
     </details>
 
+  </div>
+
+  <div class="notice-dock" aria-label="Plan notices" aria-live="polite">
+    <p class="terminal-status" id="terminalStatus"></p>
+    <p class="impact-status" id="impactStatus"></p>
+    <p class="plan-status" id="planStatus"></p>
   </div>
 
   <!-- Raised on the first edit, then fades out on its own. -->

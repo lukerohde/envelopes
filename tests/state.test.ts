@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseYamlIntoState, toBudget, removeAccount, renameAccount, renameTransfer, nextName, stateToYamlText, groupAccounts } from "../src/state";
+import { setTransferField } from "../src/ui/transfers";
 import { load } from "../src/model";
 import { initialState } from "../src/state";
 import exampleYaml from "../src/example.yaml?raw";
@@ -51,6 +52,36 @@ describe("parseYamlIntoState", () => {
     expect(retire.trigger).toBe("age");
     expect(retire.byAgePerson).toBe("alex");
     expect(retire.byAgeTurns).toBe(55);
+  });
+
+  it("preserves a sweep_above transfer through the UI state round-trip", () => {
+    const state = parseYamlIntoState(`
+accounts:
+  - {name: pay, balance: 1000, kind: clearing}
+  - {name: reserve, balance: 0, kind: saving}
+transfers:
+  - {name: sweep, sweep_above: 1000, every: month, day: 5, out_of: pay, into: reserve}
+goals: []
+`);
+    expect(state.transfers[0].sweep_above).toBe(1000);
+    expect(toBudget(state).transfers[0].sweepAbove).toBe(1000);
+  });
+
+  it("makes a newly monthly sweep fire on the day the editor displays", () => {
+    const state = parseYamlIntoState(`
+inflation: 0
+accounts:
+  - {name: pay, balance: 1500, kind: clearing}
+  - {name: reserve, balance: 0, kind: saving}
+transfers:
+  - {name: sweep, sweep_above: 1000, every: fortnight, day: 2026-08-14, out_of: pay, into: reserve}
+goals: []
+`);
+    const sweep = state.transfers[0];
+    setTransferField(sweep, "every", "month", state);
+
+    expect(sweep.day).toBe(1);
+    expect(run(toBudget(state), "2026-01-01", "2026-01-02").balances).toMatchObject({ pay: 1000, reserve: 500 });
   });
 });
 
@@ -319,6 +350,19 @@ describe("the shipped example survives the round-trip the UI actually uses", () 
     const viaState = run(toBudget(parseYamlIntoState(exampleYaml)), "2026-08-11", "2086-08-11");
     expect(viaState.balances).toEqual(direct.balances);
     expect(viaState.completed).toEqual(direct.completed);
+  });
+});
+
+describe("terminal goals survive the UI round-trip", () => {
+  it("keeps exit: true in the budget", () => {
+    const state = parseYamlIntoState(`
+accounts:
+  - {name: super, balance: 5000, kind: investment}
+goals:
+  - {name: old and broke, account: super, target: 1000, exit: true}
+`);
+    expect(state.goals[0].exit).toBe(true);
+    expect(toBudget(state).goals[0].exit).toBe(true);
   });
 });
 
