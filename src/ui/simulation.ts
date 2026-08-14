@@ -103,6 +103,22 @@ export function completedThrough(completed: [string, ISODate][], stopOn: ISODate
   return stopOn ? completed.filter(([, when]) => when <= stopOn) : completed;
 }
 
+/** Pick the account that explains why this run stops. A failed plan takes
+ * precedence over its later intended ending; a person's own choice takes
+ * precedence over both. */
+export function autoSelectedAccount(
+  pickedByHand: boolean,
+  accountNames: string[],
+  breachAccount: string | null,
+  terminalAccount: string | null,
+): string | null {
+  if (pickedByHand) return null;
+  for (const candidate of [breachAccount, terminalAccount]) {
+    if (candidate && accountNames.includes(candidate)) return candidate;
+  }
+  return null;
+}
+
 function ageAtISO(born: ISODate, when: ISODate): number {
   const b = new Date(born), w = new Date(when);
   let years = w.getUTCFullYear() - b.getUTCFullYear();
@@ -131,10 +147,11 @@ export function createSimulationView(elements: Elements) {
   let breachYear = Infinity;
   let breachAccount: string | null = null;
   let terminalYear = Infinity;
-  // Until you choose an account yourself, the chart shows whichever one
-  // breaks first -- the thing actually worth looking at. Once you've picked
-  // one, it stays picked; having the selection yanked away on every
-  // recompute while you're editing would be maddening.
+  let terminalAccount: string | null = null;
+  // Until you choose an account yourself, the chart shows why the run ended:
+  // a floor failure, otherwise the explicit terminal goal. Once you've picked
+  // one, it stays picked; having the selection yanked away on every recompute
+  // while you're editing would be maddening.
   let pickedByHand = false;
 
   function inflationRate(): number {
@@ -195,8 +212,14 @@ export function createSimulationView(elements: Elements) {
     // only claim "auto-selected" when it actually was -- picking the
     // breaching account yourself shouldn't be described back to you as
     // something the page did
-    const autoShown = !pickedByHand && account === breachAccount && stoppedAtBreach;
+    const autoFloor = !pickedByHand && account === breachAccount && stoppedAtBreach;
+    const autoTerminal = !pickedByHand && account === terminalAccount && stoppedAtExit;
+    const autoShown = autoFloor || autoTerminal;
     elements.autoBadge.style.display = autoShown ? "" : "none";
+    elements.autoBadge.classList.toggle("terminal", autoTerminal);
+    elements.autoBadge.textContent = autoTerminal
+      ? "✓ auto-selected — ends simulation"
+      : "⚠ auto-selected — hit its floor";
 
     const knots = data.points.filter((p) => p[0] <= max);
     if (knots.length === 0 || knots[knots.length - 1][0] < max) knots.push([max, interpAt(data.points, max)]);
@@ -426,6 +449,7 @@ export function createSimulationView(elements: Elements) {
       const terminalGoal = !floorStopped && endedOn
           ? budget.goals.find((goal) => goal.exit && completed.some(([name, when]) => name === goal.name && when === endedOn))
           : undefined;
+      terminalAccount = terminalGoal?.account ?? null;
       elements.terminalStatus.classList.toggle("floor-stop", floorStopped);
       elements.terminalStatus.textContent = floorStopped
         ? `Simulation stopped: ${worst.account} fell under its floor of ${money(worst.floor)} on ${formatDateLong(worst.on)}`
@@ -464,13 +488,11 @@ export function createSimulationView(elements: Elements) {
       // this reads that rather than scanning for it again. Two detectors for
       // one fact is two chances to disagree -- and the linter reports this
       // same breach, from these same numbers, under account-below-floor.
-      breachYear = worst ? daysBetween(start, worst.on) / 365.25 : Infinity;
-      breachAccount = worst ? worst.account : null;
+      breachYear = floorStopped && worst ? daysBetween(start, worst.on) / 365.25 : Infinity;
+      breachAccount = floorStopped && worst ? worst.account : null;
 
-      // the badge next to the account picker has always said "auto-selected
-      // -- hit its floor", but nothing ever did the selecting: you only saw
-      // it if you happened to pick the breaching account yourself
-      if (!pickedByHand && breachAccount) elements.acctSelect.value = breachAccount;
+      const selected = autoSelectedAccount(pickedByHand, trackNames, breachAccount, terminalAccount);
+      if (selected) elements.acctSelect.value = selected;
 
       moveScrubTo(defaultScrubYear(visibleCompleted, start, breachYear));
       refresh(state, visibleCompleted);

@@ -236,6 +236,16 @@ describe("the page carries it too, not just the CLI", () => {
     expect(HTML).toContain(".flow-scroll { overflow-x: auto");
   });
 
+  it("stacks the flow explanation and controls after the desktop rules on a phone", () => {
+    const desktop = HTML.indexOf(".flow-head { display: flex");
+    const mobile = HTML.lastIndexOf("@media (max-width: 699px)");
+    const mobileCSS = HTML.slice(mobile, HTML.indexOf("</style>", mobile));
+    expect(mobile).toBeGreaterThan(desktop);
+    expect(mobileCSS).toContain(".flow-head { display: block;");
+    expect(mobileCSS).toContain(".flow-controls { flex-direction: column;");
+    expect(mobileCSS).toContain(".flow-control .cadence-toggle { width: 100%;");
+  });
+
   it("offers dollar basis and an everyday display cadence in the flow section", () => {
     expect(HTML).toContain('class="dt-btn active" data-mode="future"');
     expect(HTML).toContain('class="dt-btn" data-mode="today"');

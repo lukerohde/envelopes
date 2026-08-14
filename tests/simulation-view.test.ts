@@ -1,5 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { completedThrough, defaultScrubYear, simulationHorizonLabel } from "../src/ui/simulation";
+import { autoSelectedAccount, completedThrough, defaultScrubYear, simulationHorizonLabel } from "../src/ui/simulation";
+
+describe("autoSelectedAccount", () => {
+  const accounts = ["pay", "super", "mortgage"];
+
+  it("opens on the account that intentionally ends the simulation", () => {
+    expect(autoSelectedAccount(false, accounts, null, "super")).toBe("super");
+  });
+
+  it("shows a floor breach before an intentional terminal account", () => {
+    expect(autoSelectedAccount(false, accounts, "pay", "super")).toBe("pay");
+  });
+
+  it("does not replace an account the person selected", () => {
+    expect(autoSelectedAccount(true, accounts, null, "super")).toBeNull();
+  });
+
+  it("does not select a goal account absent from the chart", () => {
+    expect(autoSelectedAccount(false, accounts, null, "missing")).toBeNull();
+  });
+});
 
 describe("completedThrough", () => {
   it("does not present goals reached after a floor stop", () => {

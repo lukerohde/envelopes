@@ -592,6 +592,10 @@ pre-existing unallocated surplus.
 - [x] Make a frequency change replace its incompatible hidden `day`, so the
       `On` value displayed by the editor is the value the simulator receives
       and a newly monthly sweep actually fires
+- [x] Keep the flow explanation full-width above its controls on phones, and
+      auto-select the account responsible for the run ending (a floor breach
+      first, otherwise the explicit terminal goal) until the person chooses
+      another chart themselves
 - [x] Add an eval whose preferences genuinely conflict: earlier retirement,
       longer funded retirement, home ownership certainty, accessible savings
       and super tax treatment. Passing means the agent offers alternatives and

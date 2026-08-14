@@ -377,10 +377,6 @@
       .transfer-fields-grid .mobile-field .combo-input { width: 100%; min-width: 0; }
       .transfer-fields-grid .mobile-field[data-label="Inflation"] .infl-chk { align-self: flex-start; }
       .mobile-arrow { display: none; }
-      .flow-head { display: block; }
-      .flow-controls { justify-content: flex-start; margin-top: .8rem; }
-      .flow-control { align-items: flex-start; flex-direction: column; gap: .2rem; }
-      .flow-control-label { font-size: .62rem; }
       .override-row { display: grid; grid-template-columns: .9rem minmax(0, 1fr); align-items: start; gap: .5rem; padding: .5rem .1rem; }
       .override-row > .chk { margin-top: .7rem; }
       .override-row .transfer-row { grid-column: 2; width: 100%; padding: 0; min-width: 0; }
@@ -429,6 +425,7 @@
       display: inline-flex; align-items: center; gap: .35rem; font-size: .74rem; color: var(--stamp); font-weight: 600;
       background: var(--stamp-soft); border: 1px solid var(--stamp); border-radius: 999px; padding: .2rem .6rem;
     }
+    .auto-badge.terminal { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
 
     #chartSvg { width: 100%; height: auto; display: block; }
     .gridline { stroke: var(--line); stroke-width: 1; }
@@ -536,6 +533,18 @@
     .flow-table tr.flow-surplus td { border-bottom: none; font-weight: 600; }
     .flow-table tr.flow-surplus td:first-child { color: var(--ink-muted); font-weight: 400; }
     .flow-neg { color: var(--danger, #b4342b); }
+
+    /* These must follow the desktop flow rules above. At phone widths the
+       explanation gets the full card, then each control gets its own row. */
+    @media (max-width: 699px) {
+      .flow-head { display: block; }
+      .flows-intro { max-width: none; }
+      .flow-controls { flex-direction: column; align-items: stretch; justify-content: flex-start; margin-top: .8rem; }
+      .flow-control { width: 100%; min-width: 0; align-items: flex-start; flex-direction: column; gap: .2rem; }
+      .flow-control-label { font-size: .62rem; }
+      .flow-control .cadence-toggle { width: 100%; min-width: 0; }
+      .flow-control .cadence-btn { flex: 1 1 0; min-width: 0; padding-left: .2rem; padding-right: .2rem; }
+    }
 
     .milestones { display: flex; flex-direction: column; gap: 0; }
     .milestone-row { padding: .6rem 0; border-bottom: 1px solid var(--line); }
