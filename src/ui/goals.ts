@@ -360,7 +360,6 @@ export function renderGoals(container: HTMLElement, state: UIState, onChange: ()
 }
 
 function wireGoalRow(container: HTMLElement, row: HTMLElement, state: UIState, goal: UIGoal, goalIndex: number, onChange: () => void): void {
-  const clearingSources = state.accounts.filter((account) => account.kind === "clearing").map((account) => account.name);
   const editBtn = row.querySelector<HTMLButtonElement>("[data-edit]");
   if (editBtn) editBtn.addEventListener("click", () => { goal.editing = true; renderGoals(container, state, onChange); });
 
@@ -485,7 +484,6 @@ function wireGoalRow(container: HTMLElement, row: HTMLElement, state: UIState, g
       },
       () => renderGoals(container, state, onChange),
       onChange,
-      clearingSources,
     );
   });
 }

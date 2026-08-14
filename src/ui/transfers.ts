@@ -67,7 +67,6 @@ export function renderTransfers(container: HTMLElement, state: UIState, onChange
     Array.from(container.querySelectorAll<HTMLElement>(".transfer-row.mobile-expanded"), (row) => row.dataset.transferName),
   );
   container.innerHTML = "";
-  const clearingSources = state.accounts.filter((account) => account.kind === "clearing").map((account) => account.name);
 
   for (let i = 0; i < state.transfers.length; i++) {
     const transfer = state.transfers[i];
@@ -83,7 +82,6 @@ export function renderTransfers(container: HTMLElement, state: UIState, onChange
       (key, value) => setTransferField(transfer, key, value, state),
       () => renderTransfers(container, state, onChange, redrawAll),
       onChange,
-      clearingSources,
     );
 
     if (expandedNames.has(transfer.name) || expandName === transfer.name) {

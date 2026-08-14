@@ -1,15 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dayForEvery, dayForInput, dayFromInput, mobileTransferSummary, transferFieldsHTML, updateSweepAvailability } from "../src/ui/transfer-fields";
-
-describe("live sweep eligibility", () => {
-  it("enables the existing type picker as soon as From names a clearing account", () => {
-    const option = { disabled: true };
-    updateSweepAvailability(option, "pay", ["pay"]);
-    expect(option.disabled).toBe(false);
-    updateSweepAvailability(option, "super", ["pay"]);
-    expect(option.disabled).toBe(true);
-  });
-});
+import { dayForEvery, dayForInput, dayFromInput, mobileTransferSummary, transferFieldsHTML } from "../src/ui/transfer-fields";
 
 describe("changing transfer frequency", () => {
   it("replaces an incompatible hidden day with what the new control displays", () => {
@@ -115,7 +105,7 @@ describe("mobile transfer rows", () => {
   it("keeps the desktop mode labels short", () => {
     const html = transferFieldsHTML({ ...fields, sweepAllowed: false });
     expect(html).toContain('value="fixed" selected>Fixed</option>');
-    expect(html).toContain('value="sweep" disabled>Sweep</option>');
+    expect(html).toContain('value="sweep" disabled>Sweep (clearing only)</option>');
   });
 
   it("keeps sweep visible but disabled until the source is a clearing account", () => {

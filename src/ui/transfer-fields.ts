@@ -73,7 +73,7 @@ function everySelectHTML(every: string, disabled: boolean, inherited: boolean): 
 function modeSelectHTML(mode: RowFields["mode"], disabled: boolean, inherited: boolean, sweepAllowed: boolean): string {
   const dis = disabled ? " disabled" : "";
   const inheritedOption = inherited ? `<option value="" selected>inherits ${mode === "sweep" ? "sweep" : "fixed"}</option>` : "";
-  const sweepOption = `<option value="sweep"${!inherited && mode === "sweep" ? " selected" : ""}${!sweepAllowed ? " disabled" : ""}>Sweep</option>`;
+  const sweepOption = `<option value="sweep"${!inherited && mode === "sweep" ? " selected" : ""}${!sweepAllowed ? " disabled" : ""}>${sweepAllowed ? "Sweep" : "Sweep (clearing only)"}</option>`;
   return (
     `<select class="field-input amount-mode" data-field="mode"${dis} aria-label="Transfer mode" ` +
     `title="Fixed transfers the amount. Sweep keeps the configured balance in From and transfers only the excess when its schedule runs.">` +
@@ -81,17 +81,6 @@ function modeSelectHTML(mode: RowFields["mode"], disabled: boolean, inherited: b
     sweepOption +
     `</select>`
   );
-}
-
-/** From is a searchable text field. Keep the already-open Type control in
- * sync while that text changes; waiting for a full row rebuild leaves the
- * old native select open with Sweep still disabled. */
-export function updateSweepAvailability(
-  option: { disabled: boolean } | null,
-  from: string,
-  clearingSources: readonly string[],
-): void {
-  if (option) option.disabled = !clearingSources.includes(from);
 }
 
 /** A yearly transfer's `day` is "MM-DD" -- the engine matches on month and
@@ -278,7 +267,6 @@ export function wireTransferFieldRow(
   setField: (key: string, value: string | boolean) => void,
   onEveryChange: () => void,
   onAnyChange: () => void,
-  clearingSources: readonly string[],
 ): void {
   const toggle = row.querySelector<HTMLButtonElement>("[data-mobile-toggle]");
   if (toggle) {
@@ -314,13 +302,6 @@ export function wireTransferFieldRow(
     input.addEventListener(eventName, () => {
       const every = row.querySelector<HTMLSelectElement>('[data-field="every"]')!.value;
       setField(key, key === "day" ? dayFromInput(every, input.value) : input.value);
-      if (key === "from") {
-        updateSweepAvailability(
-          row.querySelector<HTMLOptionElement>('[data-field="mode"] option[value="sweep"]'),
-          input.value,
-          clearingSources,
-        );
-      }
       updateMobileSummary(row);
       onAnyChange();
       // Mode changes what the adjacent number and inflation toggle mean, so

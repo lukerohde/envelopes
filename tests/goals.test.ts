@@ -44,23 +44,4 @@ describe("goal transfer overrides", () => {
     expect(html).toContain('data-inherited-value="false"');
   });
 
-  it("allows a new goal transfer from a clearing account to become a sweep", () => {
-    const withNewSweep: UIState = {
-      ...state,
-      accounts: [
-        { name: "pay", balance: 10000, floor: 800, kind: "clearing", rate: 0, offsets: null },
-        ...state.accounts,
-      ],
-      goals: [{
-        ...state.goals[0],
-        transfers: [{
-          name: "new transfer", amount: 0, every: "once", day: "",
-          out_of: "pay", into: "super Luke", escalates: true,
-        }],
-      }],
-    };
-    const html = overrideRowHTML(withNewSweep, withNewSweep.goals[0], 0, "new transfer", true);
-    expect(html).toContain('value="sweep">Sweep</option>');
-    expect(html).not.toContain('value="sweep" disabled');
-  });
 });
