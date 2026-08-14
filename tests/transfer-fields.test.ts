@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { dayForEvery, dayForInput, dayFromInput, mobileTransferSummary, transferFieldsHTML } from "../src/ui/transfer-fields";
+import { dayForEvery, dayForInput, dayFromInput, mobileTransferSummary, transferFieldsHTML, updateSweepAvailability } from "../src/ui/transfer-fields";
+
+describe("live sweep eligibility", () => {
+  it("enables the existing type picker as soon as From names a clearing account", () => {
+    const option = { disabled: true };
+    updateSweepAvailability(option, "pay", ["pay"]);
+    expect(option.disabled).toBe(false);
+    updateSweepAvailability(option, "super", ["pay"]);
+    expect(option.disabled).toBe(true);
+  });
+});
 
 describe("changing transfer frequency", () => {
   it("replaces an incompatible hidden day with what the new control displays", () => {

@@ -83,6 +83,17 @@ function modeSelectHTML(mode: RowFields["mode"], disabled: boolean, inherited: b
   );
 }
 
+/** From is a searchable text field. Keep the already-open Type control in
+ * sync while that text changes; waiting for a full row rebuild leaves the
+ * old native select open with Sweep still disabled. */
+export function updateSweepAvailability(
+  option: { disabled: boolean } | null,
+  from: string,
+  clearingSources: readonly string[],
+): void {
+  if (option) option.disabled = !clearingSources.includes(from);
+}
+
 /** A yearly transfer's `day` is "MM-DD" -- the engine matches on month and
  * day and never looks at a year. The On column is a date picker, which only
  * deals in whole dates, so translate at the edge in both directions. The
@@ -267,6 +278,7 @@ export function wireTransferFieldRow(
   setField: (key: string, value: string | boolean) => void,
   onEveryChange: () => void,
   onAnyChange: () => void,
+  clearingSources: readonly string[],
 ): void {
   const toggle = row.querySelector<HTMLButtonElement>("[data-mobile-toggle]");
   if (toggle) {
@@ -302,6 +314,13 @@ export function wireTransferFieldRow(
     input.addEventListener(eventName, () => {
       const every = row.querySelector<HTMLSelectElement>('[data-field="every"]')!.value;
       setField(key, key === "day" ? dayFromInput(every, input.value) : input.value);
+      if (key === "from") {
+        updateSweepAvailability(
+          row.querySelector<HTMLOptionElement>('[data-field="mode"] option[value="sweep"]'),
+          input.value,
+          clearingSources,
+        );
+      }
       updateMobileSummary(row);
       onAnyChange();
       // Mode changes what the adjacent number and inflation toggle mean, so

@@ -596,6 +596,8 @@ pre-existing unallocated surplus.
       auto-select the account responsible for the run ending (a floor breach
       first, otherwise the explicit terminal goal) until the person chooses
       another chart themselves
+- [x] Enable a goal transfer's existing Sweep option immediately when its
+      From field names a clearing account, without waiting for a row rebuild
 - [x] Add an eval whose preferences genuinely conflict: earlier retirement,
       longer funded retirement, home ownership certainty, accessible savings
       and super tax treatment. Passing means the agent offers alternatives and
