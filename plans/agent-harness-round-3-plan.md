@@ -267,29 +267,29 @@ also catches the wider class: a `once` date before the run starts, a `once`
 date past the horizon, an override that introduces a transfer with a schedule
 that never comes round.
 
-- [ ] Failing test: a goal override introducing `every: once` dated the goal's
+- [x] Failing test: a goal override introducing `every: once` dated the goal's
       own firing day produces a `transfer-never-fires` finding, and the same
       override with `day` omitted does not
-- [ ] Failing test: a top-level `once` transfer dated before the run start is
+- [x] Failing test: a top-level `once` transfer dated before the run start is
       reported; one dated inside the run is not
-- [ ] Failing test: an override that *replaces* an existing transfer's fields
+- [x] Failing test: an override that *replaces* an existing transfer's fields
       is not reported — the name already moved money
-- [ ] `run()` collects the names of transfers that fired and returns
+- [x] `run()` collects the names of transfers that fired and returns
       `neverFired: string[]` on `RunResult`. By name, not by object: a
       replacement is a new object under a name that already worked, and
       flagging that would be noise
-- [ ] New `transfer-never-fires` rule in `lint`, severity `fail`, ordered
+- [x] New `transfer-never-fires` rule in `lint`, severity `fail`, ordered
       immediately after `goal-never-fires`
-- [ ] Its `fix` states the actual trap in plain words: a goal's overrides are
+- [x] Its `fix` states the actual trap in plain words: a goal's overrides are
       applied *after* that day's transfers have already run, so a `once` date
       on or before the goal's own day is already past — leave `day` off and it
       lands the day after the goal, which is what "when this goal happens"
       means
-- [ ] `check` grows an "every transfer fires" criterion beside "every goal
+- [x] `check` grows an "every transfer fires" criterion beside "every goal
       fires"
-- [ ] `llms.txt`: the rule in the findings table, and the `once`-dating trap in
+- [x] `llms.txt`: the rule in the findings table, and the `once`-dating trap in
       the goal-overrides section
-- [ ] Q (resolve at review): a terminal `exit: true` goal that introduces a
+- [x] Q (resolve at review): a terminal `exit: true` goal that introduces a
       transfer would be reported, since the run stops that day. Real enough to
       special-case, or leave it — who starts a transfer at end of life?
 
@@ -452,6 +452,14 @@ above, not here.
   round 2 fixed for the horizon, and it's still half-fixed.
 - **The reduction pass may not change behaviour.** If a test has to change, the
   work isn't reduction and it moves to whichever phase owns the behaviour.
+- **A terminal `exit: true` goal introducing a transfer is left unhandled,
+  deliberately.** It's real enough to flag — a transfer introduced the same day
+  the run stops genuinely never fires, so `transfer-never-fires` naming it is
+  accurate, not a false positive. Special-casing it would be complexity spent
+  on an edge nobody writes: a plan that starts a brand new transfer on the day
+  it declares life over. If this ever shows up on a real plan, it'll be an
+  obvious, cheap-to-read false alarm, not a silent trap — that's an acceptable
+  trade against a special case for something this rare.
 
 ---
 

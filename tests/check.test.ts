@@ -121,6 +121,36 @@ describe("the shipped example", () => {
   });
 });
 
+describe("every transfer fires", () => {
+  it("fails when a once transfer never fires inside the run", () => {
+    const { check: c } = check(`
+inflation: 0
+accounts:
+  - {name: pay, balance: 1000, kind: clearing}
+transfers:
+  - {name: salary, amount: 1000, every: fortnight, day: 2026-08-14, into: pay, escalation: 0}
+  - {name: old bonus, amount: 500, every: once, day: 2020-01-01, into: pay, escalation: 0}
+goals: []
+`);
+    const criterion = c.criteria.find((x) => x.name === "every transfer fires")!;
+    expect(criterion.ok).toBe(false);
+    expect(criterion.finding?.account).toBe("old bonus");
+  });
+
+  it("passes when everything active in the run fires at least once", () => {
+    const { check: c } = check(`
+inflation: 0
+accounts:
+  - {name: pay, balance: 1000, kind: clearing}
+transfers:
+  - {name: salary, amount: 1000, every: fortnight, day: 2026-08-14, into: pay, escalation: 0}
+goals: []
+`);
+    const criterion = c.criteria.find((x) => x.name === "every transfer fires")!;
+    expect(criterion.ok).toBe(true);
+  });
+});
+
 describe("review findings are advisory", () => {
   it("do not turn an intentional low-yield choice into a failing check", () => {
     const { check: c } = check(`

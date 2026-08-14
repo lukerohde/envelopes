@@ -70,6 +70,9 @@ export interface SimulateResult {
   balancesAtEnd: Record<string, number> | null;
   /** The day an explicit terminal goal completed, if the plan ended there. */
   endedOn: ISODate | null;
+  /** Names of every transfer that was active at some point but never fired --
+   * see RunResult. */
+  neverFired: string[];
 }
 
 /** YAML text in, results out. The one call worth knowing. */
@@ -77,8 +80,8 @@ export function simulate(yamlText: string, options: SimulateOptions = {}): Simul
   const budget = load(yamlText);
   const start = options.start ?? todayISO();
   const end = addDays(start, Math.round(365.25 * (options.years ?? 40)));
-  const { balances, completed, history, phases, balancesAtEnd, endedOn } = run(budget, start, end, options.track ?? []);
-  return { budget, start, end, balances, completed, history, phases, balancesAtEnd, endedOn };
+  const { balances, completed, history, phases, balancesAtEnd, endedOn, neverFired } = run(budget, start, end, options.track ?? []);
+  return { budget, start, end, balances, completed, history, phases, balancesAtEnd, endedOn, neverFired };
 }
 
 /** The same text the console tool prints -- milestones, then closing

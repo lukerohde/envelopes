@@ -412,6 +412,66 @@ describe("a goal introducing a one-off transfer", () => {
   });
 });
 
+describe("run -- neverFired", () => {
+  it("a goal override introducing a once dated on the goal's own firing day never fires", () => {
+    // "lease ends" fires on 2026-02-01, the day the second lease payment
+    // clears it -- an override with that same day is already in the past
+    // by the time run() gets round to checking goals that day
+    const dated = BALLOON.replace(
+      "{name: lease balloon, amount: 5000, every: once, out_of: pay}",
+      "{name: lease balloon, amount: 5000, every: once, day: 2026-02-01, out_of: pay}",
+    );
+    const got = run(load(dated), "2026-01-01", "2027-01-01");
+    expect(got.neverFired).toContain("lease balloon");
+  });
+
+  it("the same override with no day of its own does fire, and isn't reported", () => {
+    const got = run(load(BALLOON), "2026-01-01", "2027-01-01");
+    expect(got.neverFired).not.toContain("lease balloon");
+  });
+
+  it("a top-level once transfer dated before the run starts never fires", () => {
+    const b = budget(`
+accounts:
+  - {name: pay, balance: 1000}
+transfers:
+  - {name: old payment, amount: 100, every: once, day: 2025-01-01, out_of: pay}
+`);
+    const got = run(b, "2026-01-01", "2027-01-01");
+    expect(got.neverFired).toContain("old payment");
+  });
+
+  it("a top-level once transfer dated inside the run fires, and isn't reported", () => {
+    const b = budget(`
+accounts:
+  - {name: pay, balance: 1000}
+transfers:
+  - {name: payment, amount: 100, every: once, day: 2026-06-01, out_of: pay}
+`);
+    const got = run(b, "2026-01-01", "2027-01-01");
+    expect(got.neverFired).not.toContain("payment");
+  });
+
+  it("a goal override that redirects an existing transfer isn't reported -- the name already moved money", () => {
+    const b = budget(`
+accounts:
+  - {name: pay, balance: 0}
+  - {name: mortgage, balance: 0, kind: saving}
+  - {name: savings, kind: saving}
+transfers:
+  - {name: repayment, amount: 100, every: fortnight, day: 2026-01-01, into: mortgage}
+goals:
+  - name: switch it
+    account: mortgage
+    target: 100
+    transfers:
+      - {name: repayment, into: savings}
+`);
+    const got = run(b, START, "2026-01-16");
+    expect(got.neverFired).not.toContain("repayment");
+  });
+});
+
 describe("a goal stopping a transfer that doesn't exist yet", () => {
   // "retire" fires long before "pay off the house", so the transfer it tries
   // to zero has never been created. Ordinary mistake to make in a real

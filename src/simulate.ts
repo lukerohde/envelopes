@@ -96,6 +96,13 @@ export interface RunResult {
   balancesAtEnd: Balances | null;
   /** The day an explicit terminal goal completed, if the run stopped there. */
   endedOn: ISODate | null;
+  /** Names of every transfer that was active at some point during the run
+   * but never actually fired -- a `once` dated in the past, past the
+   * horizon, or on a schedule that never came round. By name, not by
+   * transfer object: a goal override that replaces a transfer keeps the
+   * same name, and that name has already moved money under an earlier
+   * object, so it isn't "never fired". */
+  neverFired: string[];
 }
 
 /** `track` names which accounts to record a daily history for -- pass none
@@ -114,6 +121,7 @@ export function run(budget: Budget, start: ISODate, end: ISODate, track: string[
   const loans = new Set(budget.accounts.filter((account) => account.kind === "loan").map((account) => account.name));
   const stopped = new Set<Transfer>();
   const active = [...budget.transfers];
+  const fired = new Set<string>();
   let pending = [...budget.goals];
   const completed: [string, ISODate][] = [];
   // Goals whose balance condition was already satisfied at the last check.
@@ -131,7 +139,7 @@ export function run(budget: Budget, start: ISODate, end: ISODate, track: string[
   let when = start;
   while (when < end) {
     grow(balances, rates, offsetBy, ledger);
-    applyTransfers(active, balances, debts, loans, stopped, when, start, ledger);
+    applyTransfers(active, balances, debts, loans, stopped, when, start, ledger, fired);
     if (pending.length > 0) {
       const before = completed.length;
       const checked = checkGoals(budget, balances, rates, pending, completed, active, stopped, when, alreadyAtTarget);
@@ -170,7 +178,10 @@ export function run(budget: Budget, start: ISODate, end: ISODate, track: string[
     when = addDays(when, 1);
   }
 
-  return { balances, completed, history, phases: ledger.finish(endedOn ?? end, balances), balancesAtEnd, endedOn };
+  const activeNames = new Set(active.map((transfer) => transfer.name));
+  const neverFired = [...activeNames].filter((name) => !fired.has(name));
+
+  return { balances, completed, history, phases: ledger.finish(endedOn ?? end, balances), balancesAtEnd, endedOn, neverFired };
 }
 
 /** Accumulates the in/out/interest totals as the run walks, one bucket per
@@ -346,10 +357,12 @@ function applyTransfers(
   when: ISODate,
   start: ISODate,
   ledger: Ledger,
+  fired: Set<string>,
 ): void {
   for (const transfer of active) {
     if (stopped.has(transfer)) continue;
     if (!fires(transfer.every, transfer.day as string | number, when)) continue;
+    fired.add(transfer.name);
     const amount = transfer.sweepAbove === undefined
       ? escalated(transfer, when, start)
       : sweptAmount(transfer, balances, loans, when, start);

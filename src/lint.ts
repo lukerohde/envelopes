@@ -23,6 +23,7 @@ export type Rule =
   | "saving-below-inflation"
   | "sinking-fund-trending"
   | "goal-never-fires"
+  | "transfer-never-fires"
   | "super-before-preservation-age";
 
 export type FindingSeverity = "fail" | "review";
@@ -55,6 +56,7 @@ const RULE_ORDER: Rule[] = [
   "account-below-floor",
   "super-before-preservation-age",
   "goal-never-fires",
+  "transfer-never-fires",
   "clearing-account-accumulating",
   "sinking-fund-trending",
   "saving-below-inflation",
@@ -279,9 +281,9 @@ export function lint(budget: Budget, result: RunResult, start: ISODate, end: ISO
     });
   }
 
-  const fired = new Set(result.completed.map(([name]) => name));
+  const goalsFired = new Set(result.completed.map(([name]) => name));
   for (const goal of budget.goals) {
-    if (fired.has(goal.name)) continue;
+    if (goalsFired.has(goal.name)) continue;
     findings.push({
       rule: "goal-never-fires",
       severity: "fail",
@@ -292,6 +294,26 @@ export function lint(budget: Budget, result: RunResult, start: ISODate, end: ISO
         `balance, so a fund that starts at 0 can't say "back to 0" — that reads as "at or above 0", ` +
         `true on day one. If the plan collapsed earlier, fix that first; goals after the collapse ` +
         `never get the chance to fire.`,
+    });
+  }
+
+  // A transfer can sit in the active list all run and never once match its
+  // own schedule -- a once dated before the run started, past the horizon,
+  // or (the trap that actually bit someone) dated by a goal override on the
+  // goal's own firing day, which is already in the past by the time run()
+  // gets round to checking that day's goals.
+  for (const name of result.neverFired) {
+    findings.push({
+      rule: "transfer-never-fires",
+      severity: "fail",
+      account: name,
+      detail: `'${name}' never fires in this run — nothing it was set up to move ever moved`,
+      fix:
+        `run() applies a day's transfers before it checks that day's goals, so a goal override's ` +
+        `date lands after the day it names has already gone. A once override dated on or before its ` +
+        `own goal's firing day is already in the past the moment it's created. Leave day off and ` +
+        `onceDay() dates it to the day after the goal instead, which is what "when this goal happens" ` +
+        `means. If this is a plain top-level transfer, check its own day sits inside the run.`,
     });
   }
 

@@ -172,6 +172,14 @@ export function checkPlan(budget: Budget, result: RunResult, start: ISODate, end
     detail: say(unfired, "every goal is reached inside the run"),
   });
 
+  const unfiredTransfer = has("transfer-never-fires");
+  criteria.push({
+    name: "every transfer fires",
+    ...settle(unfiredTransfer, ""),
+    finding: unfiredTransfer,
+    detail: say(unfiredTransfer, "every transfer fires at least once inside the run"),
+  });
+
   const early = has("super-before-preservation-age");
   criteria.push({
     name: "super stays preserved",

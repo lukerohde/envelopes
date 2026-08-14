@@ -320,6 +320,60 @@ goals:
   });
 });
 
+describe("transfer-never-fires", () => {
+  it("catches a once transfer dated before the run starts", () => {
+    const plan = `
+inflation: 0
+birthdays: []
+accounts:
+  - {name: pay, balance: 1000, kind: clearing}
+transfers:
+  - {name: old bonus, amount: 500, every: once, day: 2020-01-01, into: pay, escalation: 0}
+goals: []
+`;
+    expect(findings(plan)).toContain("transfer-never-fires");
+  });
+
+  it("names the transfer that never fired", () => {
+    const budget = load(`
+inflation: 0
+birthdays: []
+accounts:
+  - {name: pay, balance: 1000, kind: clearing}
+transfers:
+  - {name: old bonus, amount: 500, every: once, day: 2020-01-01, into: pay, escalation: 0}
+goals: []
+`);
+    const result = run(budget, "2026-01-01", "2027-01-01");
+    const finding = lint(budget, result, "2026-01-01", "2027-01-01").find((f) => f.rule === "transfer-never-fires")!;
+    expect(finding.account).toBe("old bonus");
+  });
+
+  it("leaves an ordinary plan alone", () => {
+    expect(findings(clean())).not.toContain("transfer-never-fires");
+  });
+
+  it("doesn't flag a goal override that redirects an existing transfer -- the name already moved money", () => {
+    const plan = `
+inflation: 0
+birthdays: []
+accounts:
+  - {name: pay, balance: 0, kind: clearing}
+  - {name: mortgage, balance: 0, kind: saving}
+  - {name: savings, balance: 0, kind: saving}
+transfers:
+  - {name: repayment, amount: 100, every: fortnight, day: 2026-01-01, into: mortgage, escalation: 0}
+goals:
+  - name: switch it
+    account: mortgage
+    target: 100
+    transfers:
+      - {name: repayment, into: savings}
+`;
+    expect(findings(plan)).not.toContain("transfer-never-fires");
+  });
+});
+
 describe("super-before-preservation-age", () => {
   it("catches an investment account drawn down before its owner turns 60", () => {
     const plan = `

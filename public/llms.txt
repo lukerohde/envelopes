@@ -229,6 +229,7 @@ against the row it came from rather than taking it on faith. The rules:
 | `saving-below-inflation` | `REVIEW`: grows in dollars, shrinks in what it buys; low yield may be intentional |
 | `sinking-fund-trending` | money in, none out, forever — the spending it saved for isn't modelled |
 | `goal-never-fires` | never reached, so everything downstream of it never happens |
+| `transfer-never-fires` | active all run but never once matched its schedule — nothing it was set up to move ever moved |
 | `super-before-preservation-age` | super drawn before 60 |
 
 Growth a later phase draws back down is a future cashflow buffer, not idle
@@ -552,6 +553,17 @@ interest rates once it fires.
   # Omit for ordinary milestones.
   # exit: true
 ```
+
+**The `once`-dating trap.** A day's transfers apply *before* that day's goals are
+checked, so by the time an override introducing `every: once` exists, the day it
+names may already be behind the run. Writing your own `day` equal to (or before)
+the goal's own firing day dates it into the past the moment it's created, and it
+silently never fires — nothing errors, nothing moves, and `lint`/`check` both catch
+it now as `transfer-never-fires`, but it's cheaper to just not write the date.
+**Leave `day` off** a goal-introduced `once` override — `onceDay()` dates it to the
+day *after* the goal fires, which is what "when this goal happens" means (a lease
+balloon payment the day the lease ends, say). Only give it an explicit `day` when
+you mean some other date entirely, not "whenever this goal happens to land".
 
 A goal's `account`/`target` fields are only read for a balance trigger — if you use
 `by` or `by_age` instead, you can leave them out entirely:
