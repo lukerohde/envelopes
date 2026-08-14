@@ -55,14 +55,21 @@ plans/archive/, and update the two lists below.
 CURRENT PLANS
 =============
 
-- agent-harness-round-2-plan.md -- turn the findings into a harness a fresh
-  agent can actually pass. Phases 1-3 and part of phase 4 landed inside round
-  1's branch; the open work starts by comparing the possible ways to detect,
-  remedy and surface excess cash before choosing which ones belong.
+- agent-harness-round-3-plan.md -- the friction a *passing* agent still hit:
+  put the intent interview where it can't be walked past, make a share link
+  check its own work, stop a date-triggered goal demanding an account, report
+  transfers that never fire, stop short phases annualising ordinary swing into
+  an alarm, give the CLI --help and --start, and pay back some duplication.
 
 
 ARCHIVED PLANS
 ==============
+- archive/agent-harness-round-2-plan.md -- feedforward, not just feedback:
+  said what a good plan looks like, gave every finding a next move, and added
+  `check`, `sweep_above` and `compareOutcomes`. Shipped, merged as PR #4. A
+  fresh agent then used it to build a real budget end to end -- and what it
+  hit on the way is what round 3 is made of. Two eval runs stay open and are
+  carried into round 3's phase 8.
 - archive/agent-feedback-round-1-plan.md -- made the tool legible to an AI
   agent handed a share link, then closed the engine and schema gaps that review
   exposed. Shipped for review in PR #3.
