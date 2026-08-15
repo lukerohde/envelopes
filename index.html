@@ -76,6 +76,8 @@
     }
     .io-btn:hover { border-color: var(--accent); color: var(--accent); }
     .io-status { font-size: .78rem; color: var(--accent); min-height: 1.2em; }
+    .agent-note { margin: .6rem 0 0; font-size: .74rem; color: var(--ink-muted); }
+    .agent-note a { color: var(--ink-muted); }
 
     .keep-bar {
       position: fixed; top: .8rem; right: .8rem; z-index: 20;
@@ -621,6 +623,17 @@
           <span class="io-status" id="aiPromptStatus" role="status"></span>
         </div>
       </details>
+
+      <!-- A real anchor, in the body, outside any <details>. The comment
+           above the doctype, the <link rel="llms"> and the <meta> are all
+           still there and still useful to crawlers that parse properly --
+           but an agent's fetcher extracts the page to markdown, which eats
+           all three. This is the only pointer that survives that, and it
+           also makes /llms.txt a URL the agent is allowed to request:
+           fetchers on an allowlist can only ask for URLs they've already
+           seen, and a path they had to guess gets refused before it's sent.
+           Keep it visible and keep it an <a href>. -->
+      <p class="agent-note"><a href="/llms.txt">llms.txt</a> — instructions for AI agents</p>
     </header>
 
     <div id="structuredView">
