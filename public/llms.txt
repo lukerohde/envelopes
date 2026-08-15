@@ -469,11 +469,12 @@ Then tell them: "Paste this into 'Edit as YAML' at https://envelopes.lukeroh.de 
 click the toggle near the top of the page, paste, and it'll build the rest of the page
 from what you gave it."
 
-If you can run JavaScript, you can also hand them a share link directly, with
-`encodeShareUrl` from the bundle. **Use that function; don't hand-roll it.** Gzipping
-and base64url-encoding a fragment yourself is easy to get subtly wrong, and a link
-that decodes to nothing is worse than no link at all. If you can't run the bundle,
-plain YAML text is the robust choice — they can make their own link with one click.
+Hand them a link as well, with `node envelopes-cli.mjs link plan.yml`. Don't
+hand-roll the encoding — gzipping and base64url-encoding a fragment yourself is easy
+to get subtly wrong, and `link` decodes its own output before it prints anything, so
+a link it gives you has already been proven to round-trip. Present it exactly as
+described under "Hand back a new link" above: bare, on its own line, in a fenced code
+block. Both, always — the YAML is the copy that survives, the link is the convenience.
 
 ## The schema
 
