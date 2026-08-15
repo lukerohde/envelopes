@@ -172,20 +172,20 @@ sentence. `llms.txt` says "hand back a new link" and "if it's too long to paste
 comfortably, give them the YAML" — neither of which warns against what actually
 went wrong, twice.
 
-- [ ] Add the presentation rule, in those words: emit the URL **bare, on its
+- [x] Add the presentation rule, in those words: emit the URL **bare, on its
       own line, in a fenced code block**. Never as markdown link text, never
       abbreviated with an ellipsis, never inline in a sentence
-- [ ] Say why it matters that hard: a truncated share link is worse than no
+- [x] Say why it matters that hard: a truncated share link is worse than no
       link. Once phase 2 lands the app says so; until then it silently shows
       the sample plan, and either way the person can't tell what they're
       looking at
-- [ ] Change "give them the YAML instead *if* the URL is too long" to **always
+- [x] Change "give them the YAML instead *if* the URL is too long" to **always
       hand back both**. The YAML survived both times the link didn't; making
       the robust artefact conditional on the convenient one failing is
       backwards
-- [ ] Replace the `encodeShareUrl` snippet with `link`, and add `decode` as the
+- [x] Replace the `encodeShareUrl` snippet with `link`, and add `decode` as the
       way to check any link before handing it over
-- [ ] Test in `tests/llms-txt.test.ts` that the presentation rule is present —
+- [x] Test in `tests/llms-txt.test.ts` that the presentation rule is present —
       it's the sort of paragraph that gets tidied away later by someone who
       doesn't know what it cost
 

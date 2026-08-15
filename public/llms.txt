@@ -314,7 +314,7 @@ invisible unless you go looking at the right account:
 ### 6. Hand back a new link
 
 An edit that only exists in your chat window is not a change to their plan.
-All four steps, or you've wasted their time:
+All the steps below, or you've wasted their time:
 
 1. Decode the link to `plan.yml`.
 2. Edit with **minimal diffs**. Goals reference transfers and accounts by
@@ -322,16 +322,38 @@ All four steps, or you've wasted their time:
    every goal pointing at it silently stops matching.
 3. Re-run and show before/after milestones, so they can see what your change
    actually did.
-4. Re-encode and give them the new link:
+4. Make the link, checked, and hand back **both** it and the YAML — always,
+   not only when the link looks too long. The YAML is the one that survived
+   both times a link didn't; making the robust copy conditional on the
+   convenient one failing is backwards.
 
-```js
-import { readFileSync } from "node:fs";
-import { encodeShareUrl } from "./envelopes.mjs";
-console.log(await encodeShareUrl(readFileSync("plan.yml", "utf-8")));
-```
+    node envelopes-cli.mjs link plan.yml
 
-If the resulting URL is too long to paste comfortably, give them the YAML
-instead and tell them to paste it into "Edit as YAML" on the site.
+`link` decodes its own output and compares it against the file before it
+prints anything, so a link it hands you has already been proven to round-trip
+— it refuses to print one that doesn't. Got a link from somewhere else in the
+conversation and want to check it before relying on it? `decode` does the
+other direction and fails loudly on anything truncated or mangled, instead of
+printing rubbish that looks like a plan:
+
+    node envelopes-cli.mjs decode '<share url>'
+
+**Emit the URL bare, on its own line, in a fenced code block. Never as
+markdown link text, never abbreviated with an ellipsis, never inline in a
+sentence.** Both times an agent has actually handed one back broken, that was
+exactly the mistake, and never the codec: wrapping the URL as
+`[shortened…text](the real url)` gives something that *works* when clicked
+— the href is fine — but copies as 120 characters of visible text that fail
+to decode; writing a 1,300-character string into the middle of a sentence
+gets it mangled by whatever's reflowing the prose around it. A bare URL alone
+in a code block is the one form nothing else reaches in and touches.
+
+It matters this much because a truncated share link is worse than no link at
+all, and the site doesn't quietly paper over the difference: a hash that's
+present but won't decode gets a message saying the link is broken, not the
+worked example loading in its place with nothing said. If the person you're
+helping says they're looking at someone else's budget, that's what happened
+— hand the link back the right way and it won't.
 
 ### 7. Iterate, don't speculate
 

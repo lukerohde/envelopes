@@ -139,4 +139,28 @@ describe("llms.txt", () => {
   it("says what to do when they won't be drawn on intent", () => {
     expect(LLMS).toContain("State the assumption you're making");
   });
+
+  // Both broken links an agent actually produced were presentation, not the
+  // codec: a URL used as markdown link text with an ellipsis in it, and
+  // 1,309 characters generated inline in a sentence. This is the paragraph
+  // that stops the next agent doing either -- easy to tidy away later by
+  // someone who doesn't know what it cost.
+  it("says to present a share link bare, on its own line, in a fenced code block", () => {
+    expect(LLMS).toMatch(/bare, on its own line, in a fenced code\s+block/);
+    expect(LLMS.toLowerCase()).toContain("ellipsis");
+    expect(LLMS).toMatch(/inline in a\s+sentence/);
+  });
+
+  it("hands back the YAML and the link always, not only when the link looks too long", () => {
+    expect(LLMS).not.toContain("If the resulting URL is too long to paste comfortably, give them the YAML");
+    const handBackSection = LLMS.slice(LLMS.indexOf("### 6. Hand back a new link"), LLMS.indexOf("### 7. Iterate"));
+    expect(handBackSection).toMatch(/always/i);
+  });
+
+  it("hands back a link with the CLI's checked verb, not a hand-rolled snippet", () => {
+    const handBackSection = LLMS.slice(LLMS.indexOf("### 6. Hand back a new link"), LLMS.indexOf("### 7. Iterate"));
+    expect(handBackSection).toContain("envelopes-cli.mjs link");
+    expect(handBackSection).toContain("envelopes-cli.mjs decode");
+    expect(handBackSection).not.toContain("encodeShareUrl");
+  });
 });
