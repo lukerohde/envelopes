@@ -25,6 +25,14 @@ export function daysBetween(from: ISODate, to: ISODate): number {
   return toEpochDay(to) - toEpochDay(from);
 }
 
+/** Same span as daysBetween, in years -- the unit annualised rates and phase
+ * lengths actually need. 365.25 days a year throughout, not the calendar's
+ * own day count, so a leap year doesn't nudge a rate up and down against its
+ * neighbours for no reason. */
+export function yearsBetween(from: ISODate, to: ISODate): number {
+  return daysBetween(from, to) / 365.25;
+}
+
 export function year(d: ISODate): number {
   return Number(d.slice(0, 4));
 }

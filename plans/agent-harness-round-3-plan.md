@@ -373,16 +373,16 @@ Behaviour-preserving. Every existing test stays green without being edited; if
 a test needs editing, that's a behaviour change and it belongs in a phase
 above, not here.
 
-- [ ] `report.ts`'s `yearsBetween` and `flows.ts`'s `yearsIn` are the same
+- [x] `report.ts`'s `yearsBetween` and `flows.ts`'s `yearsIn` are the same
       function. One of them, in `dates.ts`, next to `daysBetween`
-- [ ] `check.ts`'s last five criteria are the same six lines five times. One
+- [x] `check.ts`'s last five criteria are the same six lines five times. One
       small table and one loop. Drop `settle`'s second parameter while there —
       it has never been read
-- [ ] `ui/flows.ts` has its own `money()`; export `flows.ts`'s and use it
-- [ ] Look for other honest duplication and remove it. **No new abstractions,
+- [x] `ui/flows.ts` has its own `money()`; export `flows.ts`'s and use it
+- [x] Look for other honest duplication and remove it. **No new abstractions,
       no cleverness, no indirection to save three lines.** If the shorter
       version is harder to read, keep the longer one
-- [ ] Q (resolve at review): `cover()` exists in both `flows.ts` and
+- [x] Q (resolve at review): `cover()` exists in both `flows.ts` and
       `ui/flows.ts` and renders `Infinity` differently ("never empties" vs
       "—"). Genuinely two presentations, or should the page say what the CLI
       says?
@@ -476,6 +476,40 @@ above, not here.
   round 2 fixed for the horizon, and it's still half-fixed.
 - **The reduction pass may not change behaviour.** If a test has to change, the
   work isn't reduction and it moves to whichever phase owns the behaviour.
+- **`cover()` stays duplicated in `flows.ts` and `ui/flows.ts`, per the plan's
+  own recommendation.** "never empties" is a phrase for someone reading a
+  terminal table top to bottom; "—" is a phrase for someone reading a column
+  of table cells where a whole word would crowd the row. That's the actual
+  difference between the two readers, not an accident of two people writing
+  the same thing twice. Sharing the *logic* and not the wording would mean a
+  function that takes years in and returns "never empties"/"—" behind a flag
+  or a lookup table keyed by caller — more moving parts than the four-line
+  function it would replace, in each place. Left alone in both places.
+- **Found and left alone: `stringifyDay` in `state.ts` and `normalizeDay` in
+  `model.ts`.** Same Date-to-string branch, but `normalizeDay` also maps
+  `undefined`/`null` to an explicit `null` and `stringifyDay` doesn't — it
+  passes them through untyped. Merging would mean either changing what a
+  missing transfer day resolves to in the UI path (a behaviour change, out of
+  scope for this phase) or keeping two call sites that treat the same shared
+  function differently depending on which one calls it, which is worse than
+  the duplication it would remove.
+- **Found and left alone: `toRowFields` in `ui/goals.ts` and
+  `ui/transfers.ts`.** Same name, same `RowFields` shape out, but the logic
+  differs on purpose: goals.ts resolves a transfer through zero or more
+  earlier goals' overrides before reading its fields; transfers.ts reads a
+  base transfer directly, no override to resolve. Routing the simple case
+  through the override-resolution one to share the function would be
+  indirection for a call site that has nothing to resolve.
+- **Removed: `escapeHTML`, byte-for-byte identical in `ui/accounts.ts` and
+  `ui/transfer-fields.ts`.** Not one of the three named items, but the same
+  kind of thing `remove-button.ts` already exists to solve — a small shared
+  UI helper both files import — so it moved to a new `ui/html.ts` alongside
+  it rather than staying doubled.
+- **`addDays` in `simulate.ts` duplicates `dates.ts`'s own, left alone.**
+  Already has its own comment explaining why: a local, tiny copy to avoid
+  what its author called "a circular-feeling extra import for one call site."
+  That's a decision already made and written down, not an oversight to
+  correct in a behaviour-preserving pass.
 - **A terminal `exit: true` goal introducing a transfer is left unhandled,
   deliberately.** It's real enough to flag — a transfer introduced the same day
   the run stops genuinely never fires, so `transfer-never-fires` naming it is

@@ -8,11 +8,7 @@
  * paper is miserable.
  */
 
-import { cadenceFactor, phaseWindow, type FlowCadence, type PhaseSummary } from "../flows";
-
-function money(value: number): string {
-  return Math.round(value).toLocaleString();
-}
+import { cadenceFactor, money, phaseWindow, type FlowCadence, type PhaseSummary } from "../flows";
 
 function cover(years: number): string {
   if (Number.isNaN(years)) return "";

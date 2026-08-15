@@ -8,7 +8,7 @@
  * break somebody's script.
  */
 
-import { ageAt, type ISODate } from "./dates";
+import { ageAt, yearsBetween, type ISODate } from "./dates";
 import type { Budget } from "./model";
 
 /** What to do, or null for the plain projection. A field rather than a
@@ -104,10 +104,6 @@ export function parseArgs(argv: string[]): CliArgs {
  * figure on screen is nominal. */
 export function deflate(amount: number, inflation: number, years: number): number {
   return amount / (1 + inflation) ** years;
-}
-
-export function yearsBetween(start: ISODate, end: ISODate): number {
-  return (Date.parse(end) - Date.parse(start)) / (365.25 * 24 * 60 * 60 * 1000);
 }
 
 export interface RealOptions {

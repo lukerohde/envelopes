@@ -23,10 +23,10 @@
  */
 
 import { readFileSync } from "node:fs";
-import { horizonEnd, todayISO } from "./dates";
+import { horizonEnd, todayISO, yearsBetween } from "./dates";
 import { load } from "./model";
 import { run } from "./simulate";
-import { formatReport, parseArgs, reportJson, yearsBetween, USAGE } from "./report";
+import { formatReport, parseArgs, reportJson, USAGE } from "./report";
 import { formatFlows, summarise } from "./flows";
 import { formatFindings, lint } from "./lint";
 import { checkPlan, formatCheck } from "./check";

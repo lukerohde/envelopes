@@ -1,6 +1,7 @@
 import { removeAccount, renameAccount, type UIAccount, type UIState } from "../state";
 import { canOffset } from "../model";
 import { confirmRemove, removeButtonHTML } from "./remove-button";
+import { escapeHTML } from "./html";
 
 /** Ordered the way someone adding an account thinks, not alphabetically:
  * the everyday two first, then the three that hold money, then debt. The
@@ -14,13 +15,6 @@ const KIND_LABELS: Array<[UIAccount["kind"], string]> = [
   ["investment", "Investment (super, shares)"],
   ["loan", "Loan"],
 ];
-
-function escapeHTML(value: string): string {
-  return value.replace(/[&<>"']/g, (character) => {
-    const entities: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
-    return entities[character];
-  });
-}
 
 function kindLabel(kind: UIAccount["kind"]): string {
   return KIND_LABELS.find(([value]) => value === kind)![1];

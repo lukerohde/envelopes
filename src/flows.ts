@@ -15,11 +15,7 @@
 import type { AccountFlow, Phase, RunResult } from "./simulate";
 import type { Budget } from "./model";
 import { deflate } from "./report";
-import type { ISODate } from "./dates";
-
-export function yearsIn(start: ISODate, end: ISODate): number {
-  return (Date.parse(end) - Date.parse(start)) / (365.25 * 24 * 60 * 60 * 1000);
-}
+import { yearsBetween, type ISODate } from "./dates";
 
 /** How to describe a phase's length next to its annualised rates. "12.4
  * years" is fine on its own, but a phase under a year needs to say so
@@ -172,8 +168,8 @@ export interface PhaseSummary {
 export function summarise(phases: Phase[], budget: Budget, start: ISODate, real: boolean): PhaseSummary[] {
   const summaries: PhaseSummary[] = [];
   for (const phase of phases) {
-    const years = yearsIn(phase.start, phase.end);
-    const midpoint = yearsIn(start, phase.start) + years / 2;
+    const years = yearsBetween(phase.start, phase.end);
+    const midpoint = yearsBetween(start, phase.start) + years / 2;
     const toToday = (amount: number): number => (real ? deflate(amount, budget.inflation, midpoint) : amount);
 
     const rows: FlowRow[] = [];
@@ -213,7 +209,7 @@ export function summarise(phases: Phase[], budget: Budget, start: ISODate, real:
   return summaries;
 }
 
-function money(value: number): string {
+export function money(value: number): string {
   return value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
 

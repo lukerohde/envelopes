@@ -14,8 +14,8 @@
 
 import type { Budget } from "./model";
 import type { AccountFlow, RunResult } from "./simulate";
-import { ageAt, type ISODate } from "./dates";
-import { annualise, breaches, phaseWindow, yearsIn } from "./flows";
+import { ageAt, yearsBetween, type ISODate } from "./dates";
+import { annualise, breaches, phaseWindow } from "./flows";
 
 export type Rule =
   | "account-below-floor"
@@ -130,7 +130,7 @@ function monthOfThroughput(flow: AccountFlow, years: number): number {
 function firstUnusedGrowth(result: RunResult, account: string): UnusedGrowth | null {
   const finalPhase = result.phases.at(-1);
   const finalFlow = finalPhase?.accounts[account];
-  const finalYears = finalPhase ? yearsIn(finalPhase.start, finalPhase.end) : 0;
+  const finalYears = finalPhase ? yearsBetween(finalPhase.start, finalPhase.end) : 0;
   // One month's incoming cash is normal operating swing, not accumulation.
   // Treat it like future use before matching the larger inter-phase draws.
   let futureUse = finalFlow ? monthOfThroughput(finalFlow, finalYears) : 0;
@@ -146,7 +146,7 @@ function firstUnusedGrowth(result: RunResult, account: string): UnusedGrowth | n
     }
     const amount = Math.max(0, growth - futureUse);
     futureUse = Math.max(0, futureUse - growth);
-    const phaseYears = yearsIn(phase.start, phase.end);
+    const phaseYears = yearsBetween(phase.start, phase.end);
     const perYear = annualise(amount, phaseYears);
     const throughput = annualise(flow.in, phaseYears);
     const material = Math.max(SURPLUS_FLOOR_PER_YEAR, throughput * SURPLUS_SHARE_OF_INCOME);
@@ -166,7 +166,7 @@ function firstUnusedGrowth(result: RunResult, account: string): UnusedGrowth | n
 
 export function lint(budget: Budget, result: RunResult, start: ISODate, end: ISODate): Finding[] {
   const findings: Finding[] = [];
-  const years = yearsIn(start, end);
+  const years = yearsBetween(start, end);
 
   // Once an account has gone under its floor the plan has stopped working,
   // and every figure after that point is fiction -- the simulation keeps
