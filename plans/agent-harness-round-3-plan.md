@@ -480,6 +480,13 @@ above, not here.
 - **`--start` belongs on the CLI because the library already has it.** Two
   surfaces over one engine disagreeing about the start date is the same defect
   round 2 fixed for the horizon, and it's still half-fixed.
+- **One rounding change slipped through the reduction pass, and it stays.**
+  Sharing `money()` moved the browser's flow table from `Math.round(v)` to
+  `toLocaleString`'s own rounding. They differ on exactly one input — a
+  negative value landing precisely on `.5`, where `Math.round` goes toward
+  zero and `toLocaleString` goes away from it. A compounded balance never
+  lands there, and the CLI's answer is the more defensible one, so it's noted
+  rather than reverted.
 - **The reduction pass may not change behaviour.** If a test has to change, the
   work isn't reduction and it moves to whichever phase owns the behaviour.
 - **`cover()` stays duplicated in `flows.ts` and `ui/flows.ts`, per the plan's
