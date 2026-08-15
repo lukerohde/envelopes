@@ -54,9 +54,49 @@ you have.
 
 **They handed you a link** — something like
 `https://envelopes.lukeroh.de/#H4sIAAAA...`. That fragment *is* their plan,
-gzipped. Go to "You've been handed an existing plan". Read it, run it, and
-hand back a new link — don't start over, and don't reimplement the engine to
-read it.
+gzipped. Go to "You've been handed an existing plan". Interview them first
+too — an existing plan is *more* reason to ask what it's for, not less. Then
+read it, run it, and hand back a new link — don't start over, and don't
+reimplement the engine to read it.
+
+## The short intent interview
+
+Step 1, whichever way you arrived. Before you write a line of YAML, or change
+one that already exists, ask what they're actually aiming at — then restate
+it back and **get an explicit yes before you write or change any YAML.** Not
+"ask, then assume you understood" — wait for them to actually say you've got
+it right. An existing plan someone handed you is more reason to do this, not
+less: you're about to change something that already works, for reasons you
+haven't been told yet.
+
+- Which outcomes are hard constraints (for example, no cashflow floor breach,
+  super inaccessible before 60, a paid-off home, or a minimum retirement age)?
+- Which outcomes should move earlier or later if there is a trade-off: retirement,
+  home ownership, accessible savings, or how long the money is funded?
+- Which levers may change (contributions, retirement date, drawdown, rates,
+  retained cash) and which are off limits? Spending is not a tuning knob unless
+  the person explicitly offers it.
+- Which uncertainties deserve certainty: market risk, access or lock-up, tax,
+  or the possibility of policy changes to super?
+
+Do not demand numerical weights. A partial ordering and a few minimums or
+maximums are enough. Early retirement and a longer-funded retirement can point
+in opposite directions; an age-60 access goal is a fixed transition, not a
+lever. The engine reports dates and balances, while the person decides which
+trade-off expresses their will. Never choose the highest rate or a single
+"best" plan without asking.
+
+If they won't be drawn — "just make it work" is a common answer — don't guess
+in silence. State the assumption you're making, in one line, and carry that
+line into whatever you hand back, so it's on the record instead of buried in
+your own reasoning. "Assuming retirement stays the priority over paying the
+mortgage off early" is a sentence anyone can check later; a plan that quietly
+picked one without saying so is not.
+
+The product framing is simple: a dollar spent today is a dollar that cannot buy
+future freedom. The old family shorthand was "$1 today is $10 tomorrow", but
+that multiplier is not universal. Run the real engine and show the actual days
+or dates changed by a choice; do not shame a purchase or hard-code a multiplier.
 
 ## Getting the engine
 
@@ -131,7 +171,12 @@ not for building someone's budget.
 
 ## You've been handed an existing plan
 
-### 1. Decode the link
+### 1. Interview them first
+
+See "The short intent interview" above — don't decode anything until you've
+asked what this plan is for and they've confirmed you've got it right.
+
+### 2. Decode the link
 
 The plan is gzipped and base64url-encoded into the URL fragment. With the
 bundle:
@@ -152,14 +197,14 @@ open('plan.yml','wb').write(gzip.decompress(base64.b64decode(s + '='*(-len(s)%4)
 Either way you now have their actual plan as YAML. The rest of this file —
 the schema, the worked example — tells you how to read it.
 
-### 2. Run it before you say anything about it
+### 3. Run it before you say anything about it
 
     node envelopes-cli.mjs plan.yml
 
 You now have real milestones and real closing balances. Say those, not
 impressions of the config.
 
-### 3. Let the tool tell you what to fix first
+### 4. Let the tool tell you what to fix first
 
     node envelopes-cli.mjs check plan.yml
     node envelopes-cli.mjs check --json plan.yml
@@ -194,32 +239,6 @@ someone's groceries you have not balanced anything, you've just moved the
 problem somewhere they'll notice later. Ask them before you change what they
 told you they spend. Income, savings rates, retirement dates and drawdown
 sizes are yours to tune; their life is not.
-
-### The short intent interview
-
-Before changing an existing plan, ask and then restate:
-
-- Which outcomes are hard constraints (for example, no cashflow floor breach,
-  super inaccessible before 60, a paid-off home, or a minimum retirement age)?
-- Which outcomes should move earlier or later if there is a trade-off: retirement,
-  home ownership, accessible savings, or how long the money is funded?
-- Which levers may change (contributions, retirement date, drawdown, rates,
-  retained cash) and which are off limits? Spending is not a tuning knob unless
-  the person explicitly offers it.
-- Which uncertainties deserve certainty: market risk, access or lock-up, tax,
-  or the possibility of policy changes to super?
-
-Do not demand numerical weights. A partial ordering and a few minimums or
-maximums are enough. Early retirement and a longer-funded retirement can point
-in opposite directions; an age-60 access goal is a fixed transition, not a
-lever. The engine reports dates and balances, while the person decides which
-trade-off expresses their will. Never choose the highest rate or a single
-"best" plan without asking.
-
-The product framing is simple: a dollar spent today is a dollar that cannot buy
-future freedom. The old family shorthand was "$1 today is $10 tomorrow", but
-that multiplier is not universal. Run the real engine and show the actual days
-or dates changed by a choice; do not shame a purchase or hard-code a multiplier.
 
 `lint` gives the same findings without the goal-setting, if that's all you
 want:
@@ -267,7 +286,7 @@ balance from beyond the point a plan collapsed, and neither should you.
 A clean run means no rule tripped. It does **not** mean the plan is good —
 the linter has no idea what they want. Read the checklist below too.
 
-### 4. Then review it yourself
+### 5. Then review it yourself
 
 These are the failures that show up again and again, and most of them are
 invisible unless you go looking at the right account:
@@ -292,7 +311,7 @@ invisible unless you go looking at the right account:
   a goal starts keeps going until something stops it. Walk the plan forward
   and ask of each one: what is still funding this?
 
-### 5. Hand back a new link
+### 6. Hand back a new link
 
 An edit that only exists in your chat window is not a change to their plan.
 All four steps, or you've wasted their time:
@@ -314,7 +333,7 @@ console.log(await encodeShareUrl(readFileSync("plan.yml", "utf-8")));
 If the resulting URL is too long to paste comfortably, give them the YAML
 instead and tell them to paste it into "Edit as YAML" on the site.
 
-### 6. Iterate, don't speculate
+### 7. Iterate, don't speculate
 
 A whole-life projection runs in milliseconds, so test your ideas instead of
 reasoning about them. `simulate()` takes the YAML *text*, not a parsed
@@ -375,7 +394,13 @@ the balance to retain must cover future lows, not merely the next pay cycle.
 
 ## Starting from nothing
 
-### 1. Interview them first — properly
+### 1. Interview them first — on intent
+
+See "The short intent interview" above. Do it before the facts-gathering
+below, not after — what they're aiming at shapes which facts are even worth
+asking about.
+
+### 2. Then get the facts
 
 Do not write any YAML until you have all of this. Ask one thing at a time, like a
 person would, not as a form to fill in. Most people have never been asked these
@@ -398,11 +423,10 @@ groceries in a normal week?" beats "please state your weekly grocery expenditure
 - **Savings and retirement**: what's in each, what interest or return they expect,
   and what's going in regularly. In Australia this is superannuation; ask for the
   balance, the contribution, and the contributions tax coming back out.
-- **What they're actually aiming at.** This is the whole point and the easiest bit to
-  skip past. Retire by a certain age? Pay the house off? Save a deposit, a car, a
-  trip? Get specific: which account, what number, by when or by what age. Ask what
-  changes when each one lands — that's what a goal's transfer overrides express, and
-  it's the difference between a projection and a plan.
+- **The specifics of what they're aiming at.** You already have the shape of it from
+  the interview above — now get it concrete: which account, what number, by when or
+  by what age. Ask what changes when each one lands — that's what a goal's transfer
+  overrides express, and it's the difference between a projection and a plan.
 - **One-offs worth modelling**: a car in four years, school fees starting in 2029, an
   inheritance. `every: once` exists for exactly this.
 
@@ -410,9 +434,9 @@ Ask follow-ups when something doesn't add up. If their income minus their spendi
 doesn't match what they say they're saving, say so and work out where the difference
 went — that gap is usually the most useful thing in the conversation.
 
-### 2. Write a YAML config matching the schema below.
+### 3. Write a YAML config matching the schema below.
 
-### 3. Check it, then hand it over
+### 4. Check it, then hand it over
 
 Run it first. A config that looks right and quietly sends an account to minus forty
 thousand dollars is not a helpful thing to give someone — see "Getting the engine"

@@ -210,6 +210,12 @@ function nextStep(criteria: Criterion[], endAge: number | null): string | null {
 
 export function formatCheck(check: PlanCheck, budget: Budget): string {
   const lines: string[] = [];
+  // Round 2's agent only heard this at the end of an all-pass run -- far too
+  // late to change what it did on the way there. It goes here instead, every
+  // run, pass or fail. --json prints the PlanCheck object directly and never
+  // calls this function, so it stays a line for a person, not a data field.
+  lines.push("Before you act on any of this: have you asked them what this plan is for?");
+  lines.push("");
   const ages = budget.birthdays.map((p) => `${p.name} ${ageAt(p.born, check.end)}`).join(", ");
   lines.push(`plan check — to ${check.end}${ages ? ` (${ages})` : ""}`);
   lines.push("");

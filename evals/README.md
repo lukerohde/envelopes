@@ -49,6 +49,8 @@ Run `envelopes check` on whatever it hands back:
   it left and why.
 - **It handed back a share link**, not just YAML in the chat. An edit that
   stays in the conversation isn't a change to anyone's plan.
+- **It interviewed and restated intent, and got a yes, before touching the
+  plan.** Not after it had already started fixing things.
 
 ## What failing looks like — score these, they're the real signal
 
@@ -67,6 +69,8 @@ a gap, not a bad agent:
 - **Read five `??`s and one `FAIL` as "nearly right".**
 - **Never ran the engine at all** and reasoned about the YAML instead. That's
   the original failure this whole line of work started from.
+- **Started optimising before asking what it was for.** The numbers can be
+  perfect and still aimed at the wrong thing.
 
 ## When it fails
 

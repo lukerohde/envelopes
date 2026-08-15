@@ -86,28 +86,28 @@ Nothing to implement in the engine. The whole failure is where the words sit:
 a numbered procedure beats an unnumbered section every time, because an agent
 working through a list works through the list.
 
-- [ ] Move "The short intent interview" so it is **step 1** of "You've been
+- [x] Move "The short intent interview" so it is **step 1** of "You've been
       handed an existing plan", before decoding anything. Renumber the rest
-- [ ] Make the same interview step 1 of "Starting from nothing" too, ahead of
+- [x] Make the same interview step 1 of "Starting from nothing" too, ahead of
       the facts-gathering — what they're aiming at shapes which facts matter.
       One section, referenced from both paths; do not write it twice and let
       the two drift
-- [ ] Add the gate in plain words: **restate what you heard and get an explicit
+- [x] Add the gate in plain words: **restate what you heard and get an explicit
       yes before you write or change any YAML.** Not "ask and then restate" —
       say don't proceed until they've agreed you've got it right
-- [ ] Say what to do when they won't be drawn: state the assumption you're
+- [x] Say what to do when they won't be drawn: state the assumption you're
       making, in one line, and carry it into the handover so it's on the record
       rather than buried in your reasoning
-- [ ] "Two ways you'll arrive here" tells the from-scratch path to interview
+- [x] "Two ways you'll arrive here" tells the from-scratch path to interview
       first and says nothing of the sort to the handed-a-link path. Fix that —
       an existing plan is *more* reason to ask what it's for, not less
-- [ ] Test in `tests/llms-txt.test.ts`: both arrival paths have the interview
+- [x] Test in `tests/llms-txt.test.ts`: both arrival paths have the interview
       as their first numbered step, and the confirm-before-changing sentence is
       present
-- [ ] `evals/README.md`: add "interviewed and restated intent, and got a yes,
+- [x] `evals/README.md`: add "interviewed and restated intent, and got a yes,
       before touching the plan" to what passing looks like, and "started
       optimising before asking what it was for" to what failing looks like
-- [ ] Q (resolve at review): should `check`'s header carry a one-line "have you
+- [x] Q (resolve at review): should `check`'s header carry a one-line "have you
       asked them what this plan is for?" — it currently says the equivalent
       only at the very end, on an all-pass run, which is far too late to change
       what the agent does. One line, every run, or noise?
@@ -414,6 +414,14 @@ above, not here.
   intent questions are good. They sit after the step that tells the agent to
   start fixing things, so they get walked past. Moving them is the whole fix;
   rewriting them is not.
+- **`check`'s text output gets the one-line reminder; `--json` doesn't.** The
+  old placement — the equivalent sentence only at the very end of an all-pass
+  run — is too late to change what the agent does on the way there. One line
+  at the top of `formatCheck`'s output fixes that without turning `check` into
+  a lecture: `--json` calls `JSON.stringify(checked)` directly and never calls
+  `formatCheck`, so the line only ever reaches a person reading text, never a
+  program parsing structure. Every run, pass or fail — a plan that failed
+  cashflow needed asking about just as much as one that passed everything.
 - **The share codec is not the bug and doesn't change.** Both broken links were
   presentation failures in the handover — a URL used as markdown link text with
   an ellipsis in it, then 1,309 characters generated inline in a sentence. The

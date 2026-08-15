@@ -183,4 +183,20 @@ describe("the printed report", () => {
     expect(text).toContain("??");
     expect(text).toContain("FAIL");
   });
+
+  // Round 2's agent only saw "have you asked them what this plan is for" at
+  // the very end of an all-pass run -- too late to change what it did on the
+  // way there. formatCheck says it up front, every run; the raw PlanCheck
+  // object (what --json prints) carries no such text at all.
+  it("asks up front, every run, whether they've been asked what this plan is for", () => {
+    const { budget, check: passing } = check(EXAMPLE);
+    const { budget: brokenBudget, check: failing } = check(BROKEN);
+    expect(formatCheck(passing, budget).split("\n")[0]).toMatch(/asked.*what this plan is for/i);
+    expect(formatCheck(failing, brokenBudget).split("\n")[0]).toMatch(/asked.*what this plan is for/i);
+  });
+
+  it("keeps that line out of the JSON output -- it's data, not a lecture", () => {
+    const { check: c } = check(EXAMPLE);
+    expect(JSON.stringify(c)).not.toMatch(/what this plan is for/i);
+  });
 });

@@ -101,4 +101,42 @@ describe("llms.txt", () => {
     expect(LLMS).toContain("redirects that same named sweep");
     expect(LLMS).toContain("retirement stops it");
   });
+
+  // Round 2 put the intent interview in; round 3 found it in the wrong spot --
+  // an unnumbered aside after "You've been handed an existing plan" had
+  // already told the agent to start fixing things, so a numbered-list reader
+  // walked straight past it. These pin the fix: it's step 1, both paths, not
+  // an aside either could skip.
+  it("opens both arrival paths with the intent interview as step 1", () => {
+    const handedPlan = LLMS.slice(
+      LLMS.indexOf("## You've been handed an existing plan"),
+      LLMS.indexOf("## Starting from nothing"),
+    );
+    const fromScratch = LLMS.slice(LLMS.indexOf("## Starting from nothing"));
+    expect(handedPlan).toMatch(/### 1\..*[Ii]nterview/);
+    expect(fromScratch).toMatch(/### 1\..*[Ii]nterview/);
+  });
+
+  it("keeps the interview content in one shared place instead of copying it per path", () => {
+    // A distinctive line from the interview's substance -- if this shows up
+    // more than once, the two paths have drifted into two copies.
+    const occurrences = LLMS.split("Which levers may change").length - 1;
+    expect(occurrences).toBe(1);
+  });
+
+  it("tells the handed-a-link path to ask about intent too, not just the from-scratch one", () => {
+    const handedLinkBullet = LLMS.slice(
+      LLMS.indexOf("**They handed you a link**"),
+      LLMS.indexOf("## Getting the engine"),
+    );
+    expect(handedLinkBullet.toLowerCase()).toContain("interview");
+  });
+
+  it("gates changing YAML on an explicit yes, not just on having asked", () => {
+    expect(LLMS).toContain("get an explicit yes before you write or change any YAML");
+  });
+
+  it("says what to do when they won't be drawn on intent", () => {
+    expect(LLMS).toContain("State the assumption you're making");
+  });
 });
