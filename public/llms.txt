@@ -72,6 +72,8 @@ JavaScript file — no clone, no package install, no Docker:
     node envelopes-cli.mjs --flows my-draft.yml   # annual in/out/net per phase
     node envelopes-cli.mjs check my-draft.yml     # what to fix, in order
     node envelopes-cli.mjs lint my-draft.yml      # just the findings
+    node envelopes-cli.mjs link my-draft.yml      # a share link, checked
+    node envelopes-cli.mjs decode '<share url>'   # the YAML inside a link
 
 **Every run walks from today until the youngest person in the plan turns
 100** — the same window the page uses, not a flat 40 years. Pass

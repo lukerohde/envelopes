@@ -14,6 +14,6 @@
  * apart again. `node:fs` stays unbundled, because Node provides it.
  */
 
-import { runCli } from "./cli";
+import { reportAndExit, runCli } from "./cli";
 
-runCli(process.argv.slice(2));
+runCli(process.argv.slice(2)).catch(reportAndExit);

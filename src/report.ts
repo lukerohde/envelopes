@@ -11,19 +11,22 @@
 import { ageAt, type ISODate } from "./dates";
 import type { Budget } from "./model";
 
+/** What to do, or null for the plain projection. A field rather than a
+ * boolean each, because there are five of them now and only ever one at a
+ * time -- five booleans can express four states that don't exist. */
+export const VERBS = ["check", "lint", "compare", "link", "decode"] as const;
+export type Verb = (typeof VERBS)[number];
+
 export interface CliArgs {
+  verb: Verb | null;
+  /** The config file -- or, for `decode`, the share URL. It's whatever the
+   * verb was pointed at. */
   path: string;
+  /** `compare` is the only verb taking a second one. */
+  path2?: string;
   json: boolean;
   real: boolean;
   flows: boolean;
-  /** `envelopes lint plan.yml` -- report findings instead of a projection. */
-  lint: boolean;
-  /** `envelopes check plan.yml` -- lint, plus what a good plan looks like
-   * and which single thing to do next. */
-  check: boolean;
-  /** `envelopes compare before.yml after.yml` -- same engine window for both. */
-  compare?: boolean;
-  path2?: string;
   /** `--help` / `-h` -- print usage and stop, before anything asks for a path. */
   help: boolean;
   /** `--start=YYYY-MM-DD` or `--start YYYY-MM-DD` -- defaults to today. Moves
@@ -34,6 +37,8 @@ export interface CliArgs {
 
 export const USAGE = `usage: envelopes [check|lint] [--json] [--real] [--flows] [--start=YYYY-MM-DD] <config.yml>
    or: envelopes compare [--json] [--start=YYYY-MM-DD] <before.yml> <after.yml>
+   or: envelopes link <config.yml>
+   or: envelopes decode '<share url>'
    or: envelopes --help
 
 verbs:
@@ -41,6 +46,8 @@ verbs:
   check    what to fix, in order -- criteria plus the one next step
   lint     named findings only, no projection
   compare  the same run for two configs, exact differences, no winner
+  link     a share link for this config, checked by decoding it back first
+  decode   the YAML inside a share link -- quote the URL, it contains a #
 
 flags:
   --json    machine-readable, nominal and real balances together
@@ -56,19 +63,10 @@ const DATE_SHAPE = /^\d{4}-\d{2}-\d{2}$/;
  * value -- and a path. Anything that wants real argument parsing wants the
  * library instead. */
 export function parseArgs(argv: string[]): CliArgs {
-  const args: CliArgs = { path: "", json: false, real: false, flows: false, lint: false, check: false, help: false };
-  let i = 0;
-  if (argv[0] === "lint") {
-    args.lint = true;
-    i = 1;
-  } else if (argv[0] === "check") {
-    args.check = true;
-    i = 1;
-  } else if (argv[0] === "compare") {
-    args.compare = true;
-    args.path2 = "";
-    i = 1;
-  }
+  const verb = (VERBS as readonly string[]).includes(argv[0]) ? (argv[0] as Verb) : null;
+  const args: CliArgs = { verb, path: "", json: false, real: false, flows: false, help: false };
+  if (verb === "compare") args.path2 = "";
+  let i = verb === null ? 0 : 1;
 
   for (; i < argv.length; i++) {
     const arg = argv[i];
@@ -93,10 +91,10 @@ export function parseArgs(argv: string[]): CliArgs {
     else if (arg === "--flows") args.flows = true;
     else if (arg.startsWith("-")) throw new Error(`unknown option: ${arg}`);
     else if (!args.path) args.path = arg;
-    else if (args.compare && !args.path2) args.path2 = arg;
+    else if (args.verb === "compare" && !args.path2) args.path2 = arg;
     else throw new Error(USAGE);
   }
-  if (!args.path || (args.compare && !args.path2)) throw new Error(USAGE);
+  if (!args.path || (args.verb === "compare" && !args.path2)) throw new Error(USAGE);
   return args;
 }
 

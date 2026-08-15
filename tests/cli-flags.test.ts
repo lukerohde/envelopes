@@ -31,18 +31,23 @@ function summary(): Parameters<typeof reportJson> {
 
 describe("parseArgs", () => {
   it("takes a bare path, same as it always did", () => {
-    expect(parseArgs(["plan.yml"])).toEqual({ path: "plan.yml", json: false, real: false, flows: false, lint: false, check: false, help: false });
+    expect(parseArgs(["plan.yml"])).toEqual({ verb: null, path: "plan.yml", json: false, real: false, flows: false, help: false });
   });
 
   it("reads the flags in any order", () => {
     expect(parseArgs(["--json", "plan.yml"]).json).toBe(true);
     expect(parseArgs(["plan.yml", "--real"]).real).toBe(true);
-    expect(parseArgs(["--real", "--json", "plan.yml"])).toEqual({ path: "plan.yml", json: true, real: true, flows: false, lint: false, check: false, help: false });
+    expect(parseArgs(["--real", "--json", "plan.yml"])).toEqual({ verb: null, path: "plan.yml", json: true, real: true, flows: false, help: false });
     expect(parseArgs(["--flows", "plan.yml"]).flows).toBe(true);
-    expect(parseArgs(["lint", "--json", "plan.yml"])).toMatchObject({ lint: true, json: true, path: "plan.yml" });
+    expect(parseArgs(["lint", "--json", "plan.yml"])).toMatchObject({ verb: "lint", json: true, path: "plan.yml" });
     expect(parseArgs(["compare", "--json", "before.yml", "after.yml"])).toMatchObject({
-      compare: true, json: true, path: "before.yml", path2: "after.yml",
+      verb: "compare", json: true, path: "before.yml", path2: "after.yml",
     });
+  });
+
+  it("names the verb once, since only ever one of them is running", () => {
+    expect(parseArgs(["link", "plan.yml"])).toMatchObject({ verb: "link", path: "plan.yml" });
+    expect(parseArgs(["decode", "https://envelopes.lukeroh.de/#H4sIAAA"]).path).toBe("https://envelopes.lukeroh.de/#H4sIAAA");
   });
 
   it("refuses an unknown flag rather than treating it as a filename", () => {

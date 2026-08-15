@@ -37,8 +37,13 @@ async function gzip(text: string): Promise<Uint8Array> {
 async function gunzip(bytes: Uint8Array): Promise<string> {
   const stream = new DecompressionStream("gzip");
   const writer = stream.writable.getWriter();
-  writer.write(new Uint8Array(bytes));
-  writer.close();
+  // A truncated fragment fails at *both* ends of the stream. The readable's
+  // failure is the one worth reporting, and the caller does; the writable's
+  // is the same news twice, and left alone it escapes as an unhandled
+  // rejection that takes Node down after the error was already handled
+  // properly. Which is a rotten way to tell somebody their link got cut off.
+  writer.write(new Uint8Array(bytes)).catch(() => {});
+  writer.close().catch(() => {});
   const out = await readAllChunks(stream.readable);
   return new TextDecoder().decode(out);
 }

@@ -143,23 +143,23 @@ all**. Every other step in `llms.txt` is a CLI command; this one drops you into
 writing JavaScript against the bundle. Its own words: "the docs push you to the
 CLI for everything else, so the gap is surprising."
 
-- [ ] Failing test: `link plan.yml` prints a bare URL and nothing else on the
+- [x] Failing test: `link plan.yml` prints a bare URL and nothing else on the
       line, and the URL decodes back to a YAML that `load()`s to the same
       budget that went in
-- [ ] Failing test: `decode <url>` prints the YAML inside a link, and fails
+- [x] Failing test: `decode <url>` prints the YAML inside a link, and fails
       loudly on a truncated or mangled one rather than printing rubbish
-- [ ] `node envelopes-cli.mjs link plan.yml` — prints the share URL, having
+- [x] `node envelopes-cli.mjs link plan.yml` — prints the share URL, having
       first decoded its own output and compared it to the input. It refuses to
       print a link that doesn't round-trip
-- [ ] `node envelopes-cli.mjs decode <url>` — the other direction, so an agent
+- [x] `node envelopes-cli.mjs decode <url>` — the other direction, so an agent
       can self-verify a link it was given or one it just made
-- [ ] The bare URL goes to stdout on its own; the character count and any
+- [x] The bare URL goes to stdout on its own; the character count and any
       length warning go to stderr, so `link plan.yml > link.txt` gives a clean
       link and a piped agent can't accidentally paste the commentary
-- [ ] `runCli` becomes `async` — the share codec is promise-based and there's
+- [x] `runCli` becomes `async` — the share codec is promise-based and there's
       no honest way round it. One keyword, plus `await` at the call sites and
       in the CLI tests
-- [ ] Bundle smoke check covers `link` and `decode`, since this is a failure
+- [x] Bundle smoke check covers `link` and `decode`, since this is a failure
       that only ever happens to people running the downloaded file
 
 ### Phase 4 — Say how to hand a link over
@@ -423,6 +423,15 @@ above, not here.
   instead of saying so is why nobody could tell what had gone wrong. Four lines
   in `stateFromShareHash`, and the single highest-value change in this round
   after the interview.
+- **Two deviations while building `link`/`decode`, both recorded rather than
+  smuggled.** First, `CliArgs` grew a single `verb` field instead of a fifth
+  boolean — five booleans can express four states that don't exist, and this
+  round is meant to be paying duplication back, not adding to it. Second,
+  `share.ts` did change after all: feeding `gunzip` a deliberately truncated
+  fragment left the writable side's rejection unhandled, which takes Node down
+  *after* the error has already been reported properly. That's not the codec
+  being wrong about encoding — it's an error path nothing had ever walked
+  before `decode` existed to walk it.
 - **Hand back both the YAML and the link, always.** The YAML survived twice
   when the link didn't. Making the robust artefact conditional on the
   convenient one failing is backwards.
