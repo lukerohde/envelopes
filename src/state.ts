@@ -258,7 +258,7 @@ export function stateToYamlText(state: UIState): string {
   const raw: Record<string, unknown> = {
     inflation: state.inflation,
     birthdays: state.birthdays,
-    accounts: state.accounts,
+    accounts: state.accounts.map(accountToRaw),
     transfers: state.transfers.map(transferToRaw),
     goals: state.goals.map(goalToRaw),
   };
@@ -380,6 +380,20 @@ export function renameTransfer(state: UIState, from: string, to: string): boolea
   return true;
 }
 
+/** Only the fields that differ from what load() already assumes when a key
+ * is missing -- see model.ts's own defaulting in `load()`. Every one of
+ * these has to come back unchanged when parseYamlIntoState() reads a config
+ * that left them out, which is what the round-trip tests check. */
+function accountToRaw(a: UIAccount): Record<string, unknown> {
+  const raw: Record<string, unknown> = { name: a.name };
+  if (a.balance !== 0) raw.balance = a.balance;
+  if (a.kind !== "expense") raw.kind = a.kind;
+  if (a.floor !== 0) raw.floor = a.floor;
+  if (a.rate !== 0) raw.rate = a.rate;
+  if (a.offsets !== null) raw.offsets = a.offsets;
+  return raw;
+}
+
 /** A blank `day` is left out entirely rather than written as an empty
  * string. No frequency matches "", so writing it would be a value that
  * silently never fires -- and on a goal's one-off override, an absent `day`
@@ -415,9 +429,9 @@ function goalToRaw(g: UIGoal): Record<string, unknown> {
     name: g.name,
     account: g.account,
     target: g.target,
-    transfers: g.transfers.map(overrideToRaw),
-    accounts: g.accounts,
   };
+  if (g.transfers.length > 0) raw.transfers = g.transfers.map(overrideToRaw);
+  if (g.accounts.length > 0) raw.accounts = g.accounts;
   if (g.trigger === "date") raw.by = g.by;
   if (g.trigger === "age") raw.by_age = { person: g.byAgePerson, turns: g.byAgeTurns };
   // Only written when it's actually on: every goal the UI emits carries an

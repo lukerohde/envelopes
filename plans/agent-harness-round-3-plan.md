@@ -203,18 +203,18 @@ This is the app's own emitter only. Do **not** strip defaults inside the share
 codec: it gzips the YAML text verbatim, comments and all, and re-serialising
 someone's hand-written file to save bytes would throw their comments away.
 
-- [ ] Failing test: a plan whose accounts and goals are all at their defaults
+- [x] Failing test: a plan whose accounts and goals are all at their defaults
       round-trips through `stateToYamlText` → `parseYamlIntoState` unchanged,
       and its YAML contains no `rate: 0`, `floor: 0` or empty override lists
-- [ ] Failing test: the same plan's share link is measurably shorter, and
+- [x] Failing test: the same plan's share link is measurably shorter, and
       `load()` gives the identical budget
-- [ ] An `accountToRaw` beside the existing `transferToRaw`/`goalToRaw`,
+- [x] An `accountToRaw` beside the existing `transferToRaw`/`goalToRaw`,
       dropping anything equal to its schema default. Drop `transfers: []` and
       `accounts: []` from `goalToRaw` too
-- [ ] Every default dropped on the way out must be restored on the way in by
+- [x] Every default dropped on the way out must be restored on the way in by
       `parseYamlIntoState`. That's the only correctness risk here, so the
       round-trip test is the one that matters
-- [ ] Q (resolve at review): `AGENT_HEADER` is ~350 characters of comment in
+- [x] Q (resolve at review): `AGENT_HEADER` is ~350 characters of comment in
       every single link. It gzips well and it's the thing that stops the next
       agent reimplementing the engine, so it probably earns its place — but
       confirm rather than assume
@@ -447,6 +447,13 @@ above, not here.
   gzips YAML text verbatim, comments and all. Re-serialising a hand-written
   file to save bytes would silently throw away its comments, which is a worse
   failure than a long URL.
+- **`AGENT_HEADER` stays.** Measured rather than assumed: dropping schema
+  defaults took the shipped example's share hash from 1342 to 1274 characters
+  — the header itself is a small, fixed, highly-compressible slice of that
+  (repeated words gzip well), while it's the only thing standing between a
+  passing agent and reimplementing the engine from a decoded fragment, which
+  is a failure this round already spent a whole phase fixing after the fact.
+  Not worth trading back for a few dozen bytes.
 - **The engine's transfer-before-goal ordering stays.** A day's transfers fire,
   then that day's goals are checked — which is why `onceDay()` dates an undated
   `once` override to *tomorrow*. Changing it would move the numbers in every

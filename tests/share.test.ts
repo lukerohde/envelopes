@@ -89,6 +89,8 @@ describe("shareHashFor", () => {
   });
 
   it("stays a short enough fragment to paste for the full example config", async () => {
-    expect((await shareHashFor(initialState())).length).toBeLessThan(2000);
+    // was ~1342 before schema defaults were dropped from the emitted YAML;
+    // this stays tight enough that the win can't silently regress back up
+    expect((await shareHashFor(initialState())).length).toBeLessThan(1350);
   });
 });

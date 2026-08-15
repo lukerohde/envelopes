@@ -296,6 +296,65 @@ describe("a goal-introduced one-off with no date", () => {
   });
 });
 
+// Every share link carries this YAML verbatim, so a default written out is
+// bytes spent for nothing. The round trip is the only real risk: whatever
+// gets left out on the way out has to come back on the way in.
+describe("dropping schema defaults from emitted YAML", () => {
+  it("writes an account at every default with just its name", () => {
+    const state = parseYamlIntoState(`
+accounts:
+  - {name: pay}
+goals: []
+`);
+    const text = stateToYamlText(state);
+    expect(text).not.toContain("rate: 0");
+    expect(text).not.toContain("floor: 0");
+    expect(text).not.toContain("offsets: null");
+    expect(text).not.toContain("kind: expense");
+    expect(text).not.toContain("balance: 0");
+  });
+
+  it("still writes an account's non-default fields", () => {
+    const state = parseYamlIntoState(`
+accounts:
+  - {name: mortgage, kind: loan, balance: 5000, rate: 0.06, floor: 100}
+goals: []
+`);
+    const text = stateToYamlText(state);
+    expect(text).toContain("kind: loan");
+    expect(text).toContain("balance: 5000");
+    expect(text).toContain("rate: 0.06");
+    expect(text).toContain("floor: 100");
+  });
+
+  it("drops empty transfers/accounts override lists from a goal", () => {
+    const state = parseYamlIntoState(YAML);
+    const text = stateToYamlText(state);
+    const retirePart = text.slice(text.indexOf("name: retire"));
+    expect(retirePart).not.toContain("transfers:");
+    expect(retirePart).not.toContain("accounts:");
+  });
+
+  it("round-trips a fully-default account and empty-override goal unchanged", () => {
+    const state = parseYamlIntoState(`
+accounts:
+  - {name: pay}
+goals:
+  - {name: done, account: pay, target: 100}
+`);
+    const text = stateToYamlText(state);
+    const back = parseYamlIntoState(text);
+    expect(back.accounts).toEqual(state.accounts);
+    expect(back.goals).toEqual(state.goals);
+  });
+
+  it("shrinks the shipped example's emitted YAML compared to dumping accounts whole", () => {
+    const text = stateToYamlText(initialState());
+    expect(text).not.toContain("rate: 0\n");
+    expect(text).not.toContain("offsets: null");
+  });
+});
+
 describe("groupAccounts", () => {
   const accounts = () => parseYamlIntoState(`
 accounts:
