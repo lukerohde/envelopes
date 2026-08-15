@@ -121,16 +121,16 @@ Luke and the agent an entire exchange. A hash that's present but doesn't
 decode is not "no hash" — it's a broken link, and the page currently treats
 the two the same and quietly boots the worked example.
 
-- [ ] Failing test: a hash that's present and undecodable produces a visible
+- [x] Failing test: a hash that's present and undecodable produces a visible
       error, not a silent fall back to `example.yaml`. An absent hash still
       loads the example with nothing said
-- [ ] `stateFromShareHash` stops swallowing the failure. Distinguish "no hash"
+- [x] `stateFromShareHash` stops swallowing the failure. Distinguish "no hash"
       from "hash that won't decode" and let boot say which
-- [ ] The message names the likely cause, because there's only really one:
+- [x] The message names the likely cause, because there's only really one:
       "that share link is truncated or corrupt — it's probably been cut short
       somewhere between there and here. Ask for it again as plain text, or
       paste the YAML into Edit as YAML"
-- [ ] Leave the broken hash in the URL rather than rewriting it away, so the
+- [x] Leave the broken hash in the URL rather than rewriting it away, so the
       person can still hand it back to whoever sent it
 
 ### Phase 3 — A link the CLI can make and check

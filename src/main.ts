@@ -5,7 +5,7 @@ import { renderAccounts } from "./ui/accounts";
 import { renderHead, renderTransfers } from "./ui/transfers";
 import { renderGoals } from "./ui/goals";
 import { createSimulationView } from "./ui/simulation";
-import { initIO, stateFromShareHash } from "./ui/io";
+import { BROKEN_LINK_NOTICE, initIO, stateFromShareHash } from "./ui/io";
 import { debounce } from "./debounce";
 import { todayISO } from "./dates";
 
@@ -169,10 +169,16 @@ function main(state: UIState): void {
 }
 
 // A share link wins over example.yaml if the URL's fragment decodes to a
-// real config -- checked once, before the first render.
+// real config -- checked once, before the first render. A fragment that
+// won't decode gets said out loud rather than silently becoming the example:
+// the broken hash is left in the URL too, so it can be handed back to
+// whoever sent it.
 async function boot(): Promise<void> {
   const shared = await stateFromShareHash(location.hash.slice(1));
-  main(shared ?? initialState());
+  main(shared.kind === "plan" ? shared.state : initialState());
+  if (shared.kind === "broken") {
+    document.querySelector<HTMLElement>("#linkStatus")!.textContent = BROKEN_LINK_NOTICE;
+  }
 }
 
 boot();

@@ -178,16 +178,32 @@ export async function shareHashFor(state: UIState): Promise<string> {
   return encodeShareHash(stateToYamlText(state));
 }
 
+/** What the URL fragment turned out to be.
+ *
+ * A hash that won't decode is *not* the same as no hash. It's a broken link
+ * -- almost always one truncated on the way here -- and this used to report
+ * both as "nothing usable", so startup quietly loaded example.yaml. Somebody
+ * sent a plan, somebody else opened a sample budget, and nothing on the page
+ * said a word. That cost a whole exchange to work out. */
+export type SharedPlan =
+  | { kind: "none" }
+  | { kind: "plan"; state: UIState }
+  | { kind: "broken"; why: string };
+
 /** A URL fragment left over from a share link, decoded back into state --
  * called once at startup, before the first render, so a shared link wins
- * over example.yaml. Returns null if there's nothing usable there, so
- * startup can fall back to the example without special-casing a broken or
- * absent hash. */
-export async function stateFromShareHash(hash: string): Promise<UIState | null> {
-  if (!hash) return null;
+ * over example.yaml. */
+export async function stateFromShareHash(hash: string): Promise<SharedPlan> {
+  if (!hash) return { kind: "none" };
   try {
-    return parseYamlIntoState(await decodeShareHash(hash));
-  } catch {
-    return null;
+    return { kind: "plan", state: parseYamlIntoState(await decodeShareHash(hash)) };
+  } catch (err) {
+    return { kind: "broken", why: (err as Error).message };
   }
 }
+
+/** What to say when a link arrives broken. Names the likely cause, because
+ * there's only really one, and says what to ask for instead. */
+export const BROKEN_LINK_NOTICE =
+  "That share link is truncated or corrupt, so this is the sample budget, not the plan you were sent. " +
+  "Ask whoever sent it for the link on its own line, or for the plain YAML to paste into Edit as YAML.";
