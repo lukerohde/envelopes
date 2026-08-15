@@ -3,9 +3,8 @@
  * as markup. Shared because accounts.ts and transfer-fields.ts both build
  * rows this way and had drifted into carrying their own identical copy.
  */
+const ENTITIES: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+
 export function escapeHTML(value: string): string {
-  return value.replace(/[&<>"']/g, (character) => {
-    const entities: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
-    return entities[character];
-  });
+  return value.replace(/[&<>"']/g, (character) => ENTITIES[character]);
 }

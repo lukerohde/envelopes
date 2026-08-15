@@ -91,6 +91,7 @@ bundle-check: ## Smoke-test the *published* CLI bundle, not the source tree
 		npm install --silent && npm run build:lib >/dev/null && \
 		node dist/envelopes-cli.mjs --help | head -1 && \
 		node dist/envelopes-cli.mjs check --json src/example.yaml | head -1 && \
+		node dist/envelopes-cli.mjs --json --start=2027-01-01 src/example.yaml | head -3 | tail -1 && \
 		LINK=$$(node dist/envelopes-cli.mjs link src/example.yaml) && \
 		node dist/envelopes-cli.mjs decode "$$LINK" | head -1 && \
 		node dist/envelopes-cli.mjs decode "$${LINK%??????????}" 2>&1 | head -1'

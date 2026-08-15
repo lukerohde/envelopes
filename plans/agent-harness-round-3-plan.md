@@ -391,15 +391,21 @@ above, not here.
 
 `commit: test: the round-3 fixes against the published artefact`
 
-- [ ] Full suite green in Docker (`make test`), production build green
-      (`make build`)
-- [ ] The published bundle smoke check covers `--help`, `--start`, `link` and
+- [x] Full suite green in Docker (`make test`), production build green
+      (`make build`) — 33 files, 394 tests
+- [x] The published bundle smoke check covers `--help`, `--start`, `link` and
       `decode`, because round 2 learned the hard way that the source tree
-      passing proves nothing about the file people actually download
+      passing proves nothing about the file people actually download. It's a
+      new `make bundle-check`, and it runs the built `dist/envelopes-cli.mjs`,
+      not the source
 - [ ] Hand a deliberately truncated link to the built site and confirm it says
-      so rather than showing the sample plan
-- [ ] Re-run the deterministic eval fixtures and regenerate the share link if
-      the plan's numbers moved
+      so rather than showing the sample plan. `stateFromShareHash` is covered
+      by a unit test, but boot's wiring into `#linkStatus` is not — this one
+      needs a real browser
+- [x] Re-run the deterministic eval fixtures and regenerate the share link.
+      `src/example.yaml` still checks all PASS on first load, the
+      needs-balancing fixture still fails on cashflow first, and the eval link
+      was regenerated and verified by decoding it back with `decode`
 - [ ] Carried over from round 2, still open: run the external cold-agent
       preference-conflict eval. Needs a separate model session; the code and
       instructions are ready
