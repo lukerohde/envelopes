@@ -66,11 +66,19 @@ JavaScript file — no clone, no package install, no Docker:
 
     curl -O https://envelopes.lukeroh.de/envelopes-cli.mjs   # CLI, ~70KB
     node envelopes-cli.mjs my-draft.yml
+    node envelopes-cli.mjs --help                 # every verb and flag
     node envelopes-cli.mjs --json my-draft.yml    # machine-readable
     node envelopes-cli.mjs --real my-draft.yml    # in today's dollars
     node envelopes-cli.mjs --flows my-draft.yml   # annual in/out/net per phase
     node envelopes-cli.mjs check my-draft.yml     # what to fix, in order
     node envelopes-cli.mjs lint my-draft.yml      # just the findings
+
+**Every run walks from today until the youngest person in the plan turns
+100** — the same window the page uses, not a flat 40 years. Pass
+`--start=YYYY-MM-DD` to run from a different day; the horizon moves with it.
+Use it whenever you're comparing variants across a session, or "before" and
+"after" are two different experiments and the difference between them is
+partly just the calendar.
 
     curl -O https://envelopes.lukeroh.de/envelopes.mjs       # library, ~72KB
 
@@ -79,7 +87,7 @@ parsing it means a change to the padding can break whatever you built. The
 JSON carries nominal *and* real balances together, so you don't have to
 decide up front which you wanted.
 
-**Nominal figures mislead over a 40-year run.** $1.66M of super in 2038 is
+**Nominal figures mislead over a run this long.** $1.66M of super in 2038 is
 about $1.16M in today's money. Before you tell someone a number that far
 out, look at the real one — `--real`, or the `real` field in the JSON.
 
@@ -306,15 +314,15 @@ instead and tell them to paste it into "Edit as YAML" on the site.
 
 ### 6. Iterate, don't speculate
 
-A 40-year projection runs in milliseconds, so test your ideas instead of
+A whole-life projection runs in milliseconds, so test your ideas instead of
 reasoning about them. `simulate()` takes the YAML *text*, not a parsed
 object:
 
 ```js
 import { simulate } from './envelopes.mjs';
 const s = simulate(yamlText, {
-  years: 40,            // default 40
   start: '2026-08-12',  // default today
+  years: 40,            // default: until the youngest person turns 100
   track: ['pay', 'early retirement']   // per-account daily timeseries
 });
 s.completed   // [["pay off the house","2032-11-05"], ...]

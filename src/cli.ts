@@ -6,7 +6,8 @@
  *
  *   npx tsx src/cli.ts [lint] [--json] [--real] [--flows] <config path>
  *
- * Walks 40 years forward from today, same as fridge/__main__.py.
+ * Walks forward from today until the youngest person turns 100 -- the same
+ * window the page uses.
  *
  *   --json   machine-readable, with nominal and real side by side. Agents
  *            were parsing the column-aligned text, which makes a padding
@@ -14,15 +15,18 @@
  *   --real   the text report in today's dollars instead of nominal.
  *   --flows  annualised in/out/net per account, split by goal phase --
  *            the table that makes a plan checkable by hand.
+ *   --start  run from a day other than today, so two variants compared
+ *            across a session are still the same experiment.
+ *   --help   the whole list, which is otherwise only in this comment.
  *
  *   lint     named findings instead of a projection. Combines with --json.
  */
 
 import { readFileSync } from "node:fs";
-import { addDays, horizonYears, todayISO } from "./dates";
+import { horizonEnd, todayISO } from "./dates";
 import { load } from "./model";
 import { run } from "./simulate";
-import { formatReport, parseArgs, reportJson, yearsBetween } from "./report";
+import { formatReport, parseArgs, reportJson, yearsBetween, USAGE } from "./report";
 import { formatFlows, summarise } from "./flows";
 import { formatFindings, lint } from "./lint";
 import { checkPlan, formatCheck } from "./check";
@@ -46,14 +50,22 @@ export function runCli(argv: string[]): void {
     process.exit(1);
   }
 
+  if (args.help) {
+    console.log(USAGE);
+    return;
+  }
+
   const budget = load(readFileSync(args.path, "utf-8"));
-  const start = todayISO();
+  // Today unless told otherwise. `--start` matters for an agent comparing
+  // variants across a session: without it, the same two configs run today
+  // and run tomorrow are two different experiments.
+  const start = args.start ?? todayISO();
   // The same window the page uses: until the youngest person turns 100.
   // It used to be a flat 40 years, which meant the console tool and the
   // site could give different answers about the same plan -- and the one
   // an agent sees would not be the one its user sees. A plan that survives
   // 40 years and dies in year 44 was reported as fine.
-  const end = addDays(start, Math.round(365.25 * horizonYears(budget.birthdays, start)));
+  const end = horizonEnd(budget.birthdays, start);
 
   if (args.compare) {
     const afterPath = args.path2!;

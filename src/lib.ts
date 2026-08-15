@@ -13,7 +13,7 @@
  * is exactly why it can be bundled for both.
  */
 
-import { addDays, todayISO, type ISODate } from "./dates";
+import { addDays, horizonEnd, todayISO, type ISODate } from "./dates";
 import { load, type Budget } from "./model";
 import { run, type History, type Phase } from "./simulate";
 import { formatReport, reportJson as asJson, type JsonReport } from "./report";
@@ -49,7 +49,8 @@ export type { PhaseSummary, FlowRow } from "./flows";
 export interface SimulateOptions {
   /** Defaults to today. */
   start?: ISODate;
-  /** How far forward to walk. Defaults to 40, same as the console tool. */
+  /** How far forward to walk. Defaults to the same window the console tool
+   * and the page use: until the youngest person in the plan turns 100. */
   years?: number;
   /** Account names to keep a day-by-day balance history for. */
   track?: string[];
@@ -79,7 +80,13 @@ export interface SimulateResult {
 export function simulate(yamlText: string, options: SimulateOptions = {}): SimulateResult {
   const budget = load(yamlText);
   const start = options.start ?? todayISO();
-  const end = addDays(start, Math.round(365.25 * (options.years ?? 40)));
+  // Same window as the console tool, unless the caller says otherwise. It
+  // used to be a flat 40 years here and a real horizon there, so the library
+  // and the CLI answered the same question differently -- and the comment
+  // above it claimed they agreed.
+  const end = options.years === undefined
+    ? horizonEnd(budget.birthdays, start)
+    : addDays(start, Math.round(365.25 * options.years));
   const { balances, completed, history, phases, balancesAtEnd, endedOn, neverFired } = run(budget, start, end, options.track ?? []);
   return { budget, start, end, balances, completed, history, phases, balancesAtEnd, endedOn, neverFired };
 }

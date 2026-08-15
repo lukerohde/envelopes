@@ -350,19 +350,19 @@ moved to the page's window (until the youngest person turns 100). So the two
 disagree about the *end* as well as the start, and the comment claims
 otherwise. One helper, used by both.
 
-- [ ] Failing tests: `--help` prints usage and exits 0 without reading a file;
+- [x] Failing tests: `--help` prints usage and exits 0 without reading a file;
       `--start=2027-01-01` and `--start 2027-01-01` both work; a malformed
       `--start` is rejected with a clear message rather than producing a
       nonsense run; `--start` moves the horizon with it
-- [ ] Failing test: `simulate(yaml)` and the CLI with no `--start` produce the
+- [x] Failing test: `simulate(yaml)` and the CLI with no `--start` produce the
       same end date for the same plan
-- [ ] `parseArgs` handles `--help`/`-h` and `--start` in both spellings. Keep
+- [x] `parseArgs` handles `--help`/`-h` and `--start` in both spellings. Keep
       it an index loop — one option takes a value, that's all the parser owes
       anyone
-- [ ] `horizonEnd(birthdays, start)` in `dates.ts`, used by `cli.ts`, `lib.ts`
+- [x] `horizonEnd(birthdays, start)` in `dates.ts`, used by `cli.ts`, `lib.ts`
       and anywhere else recomputing `addDays(start, 365.25 * horizonYears(...))`
-- [ ] `SimulateOptions.years` still overrides it; fix the stale doc comment
-- [ ] `llms.txt`: `--help` and `--start` in the command block, and say that the
+- [x] `SimulateOptions.years` still overrides it; fix the stale doc comment
+- [x] `llms.txt`: `--help` and `--start` in the command block, and say that the
       run ends when the youngest person turns 100 — not at 40 years
 
 ### Phase 10 — Reduction pass

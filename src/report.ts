@@ -24,26 +24,70 @@ export interface CliArgs {
   /** `envelopes compare before.yml after.yml` -- same engine window for both. */
   compare?: boolean;
   path2?: string;
+  /** `--help` / `-h` -- print usage and stop, before anything asks for a path. */
+  help: boolean;
+  /** `--start=YYYY-MM-DD` or `--start YYYY-MM-DD` -- defaults to today. Moves
+   * the horizon with it, since the run always ends when the youngest person
+   * turns 100 from wherever it starts. */
+  start?: ISODate;
 }
 
-const USAGE = "usage: envelopes [check|lint] [--json] [--real] [--flows] <config.yml> | compare [--json] <before.yml> <after.yml>";
+export const USAGE = `usage: envelopes [check|lint] [--json] [--real] [--flows] [--start=YYYY-MM-DD] <config.yml>
+   or: envelopes compare [--json] [--start=YYYY-MM-DD] <before.yml> <after.yml>
+   or: envelopes --help
 
-/** Deliberately tiny: one verb, three boolean flags and a path. Anything
- * that wants real argument parsing wants the library instead. */
+verbs:
+  (none)   the projection: milestones, then closing balances
+  check    what to fix, in order -- criteria plus the one next step
+  lint     named findings only, no projection
+  compare  the same run for two configs, exact differences, no winner
+
+flags:
+  --json    machine-readable, nominal and real balances together
+  --real    the text report in today's dollars instead of nominal
+  --flows   annualised in/out/net per account, split by goal phase
+  --start   the day the run begins (default: today) -- moves the horizon
+            with it, since the run ends when the youngest person turns 100
+  --help    this text, then stop`;
+
+const DATE_SHAPE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Deliberately tiny: one verb, a handful of flags -- only `--start` takes a
+ * value -- and a path. Anything that wants real argument parsing wants the
+ * library instead. */
 export function parseArgs(argv: string[]): CliArgs {
-  const args: CliArgs = { path: "", json: false, real: false, flows: false, lint: false, check: false };
+  const args: CliArgs = { path: "", json: false, real: false, flows: false, lint: false, check: false, help: false };
+  let i = 0;
   if (argv[0] === "lint") {
     args.lint = true;
-    argv = argv.slice(1);
+    i = 1;
   } else if (argv[0] === "check") {
     args.check = true;
-    argv = argv.slice(1);
+    i = 1;
   } else if (argv[0] === "compare") {
     args.compare = true;
     args.path2 = "";
-    argv = argv.slice(1);
+    i = 1;
   }
-  for (const arg of argv) {
+
+  for (; i < argv.length; i++) {
+    const arg = argv[i];
+    // The two that don't fit the chain below: help wants no path at all, and
+    // start is the only option here that takes a value.
+    if (arg === "--help" || arg === "-h") {
+      args.help = true;
+      return args;
+    }
+    if (arg === "--start" || arg.startsWith("--start=")) {
+      const value = arg.startsWith("--start=") ? arg.slice("--start=".length) : argv[++i];
+      // A start date the engine can't read would silently run from nowhere,
+      // which is worse than refusing.
+      if (!value || !DATE_SHAPE.test(value)) {
+        throw new Error(`--start needs a date like YYYY-MM-DD, got: ${value ?? "nothing"}`);
+      }
+      args.start = value;
+      continue;
+    }
     if (arg === "--json") args.json = true;
     else if (arg === "--real") args.real = true;
     else if (arg === "--flows") args.flows = true;

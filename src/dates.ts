@@ -93,6 +93,14 @@ export function horizonYears(birthdays: Array<{ born: ISODate }>, when: ISODate)
   return Math.max(5, Math.ceil((100 - youngest) / 5) * 5);
 }
 
+/** The day the run should stop, given who's in it -- `horizonYears` turned
+ * into an actual date. The one expression `cli.ts` and `lib.ts` both build
+ * their end date from, so they can't quietly disagree about when a plan
+ * finishes. */
+export function horizonEnd(birthdays: Array<{ born: ISODate }>, start: ISODate): ISODate {
+  return addDays(start, Math.round(365.25 * horizonYears(birthdays, start)));
+}
+
 /** How old someone born on `born` is on `when` -- counts the birthday
  * itself as the new age, same as everyone means when they say their age. */
 export function ageAt(born: ISODate, when: ISODate): number {

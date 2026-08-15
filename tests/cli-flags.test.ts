@@ -31,13 +31,13 @@ function summary(): Parameters<typeof reportJson> {
 
 describe("parseArgs", () => {
   it("takes a bare path, same as it always did", () => {
-    expect(parseArgs(["plan.yml"])).toEqual({ path: "plan.yml", json: false, real: false, flows: false, lint: false, check: false });
+    expect(parseArgs(["plan.yml"])).toEqual({ path: "plan.yml", json: false, real: false, flows: false, lint: false, check: false, help: false });
   });
 
   it("reads the flags in any order", () => {
     expect(parseArgs(["--json", "plan.yml"]).json).toBe(true);
     expect(parseArgs(["plan.yml", "--real"]).real).toBe(true);
-    expect(parseArgs(["--real", "--json", "plan.yml"])).toEqual({ path: "plan.yml", json: true, real: true, flows: false, lint: false, check: false });
+    expect(parseArgs(["--real", "--json", "plan.yml"])).toEqual({ path: "plan.yml", json: true, real: true, flows: false, lint: false, check: false, help: false });
     expect(parseArgs(["--flows", "plan.yml"]).flows).toBe(true);
     expect(parseArgs(["lint", "--json", "plan.yml"])).toMatchObject({ lint: true, json: true, path: "plan.yml" });
     expect(parseArgs(["compare", "--json", "before.yml", "after.yml"])).toMatchObject({
@@ -51,6 +51,41 @@ describe("parseArgs", () => {
 
   it("refuses no path at all", () => {
     expect(() => parseArgs(["--json"])).toThrow(/usage/i);
+  });
+});
+
+describe("--help", () => {
+  it("short-circuits before a path is required", () => {
+    expect(parseArgs(["--help"])).toMatchObject({ help: true });
+    expect(parseArgs(["-h"])).toMatchObject({ help: true });
+  });
+
+  it("wins even after a verb that would otherwise need a path", () => {
+    expect(parseArgs(["check", "--help"]).help).toBe(true);
+    expect(parseArgs(["compare", "--help"]).help).toBe(true);
+  });
+});
+
+describe("--start", () => {
+  it("takes the value as a separate argument", () => {
+    expect(parseArgs(["--start", "2027-01-01", "plan.yml"]).start).toBe("2027-01-01");
+  });
+
+  it("also takes the value joined with =, since an agent will type either", () => {
+    expect(parseArgs(["--start=2027-01-01", "plan.yml"]).start).toBe("2027-01-01");
+  });
+
+  it("leaves start undefined when not given", () => {
+    expect(parseArgs(["plan.yml"]).start).toBeUndefined();
+  });
+
+  it("rejects a malformed date instead of quietly running with it", () => {
+    expect(() => parseArgs(["--start", "not-a-date", "plan.yml"])).toThrow(/--start/);
+    expect(() => parseArgs(["--start=01/01/2027", "plan.yml"])).toThrow(/--start/);
+  });
+
+  it("rejects --start with nothing after it", () => {
+    expect(() => parseArgs(["plan.yml", "--start"])).toThrow(/--start/);
   });
 });
 

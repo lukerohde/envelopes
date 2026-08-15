@@ -1,7 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { load } from "../src/model";
 import { run } from "../src/simulate";
 import { formatReport } from "../src/report";
+import { runCli } from "../src/cli";
+import { simulate } from "../src/lib";
+import { addDays } from "../src/dates";
 
 const CONFIG = `
 accounts:
@@ -38,5 +44,49 @@ describe("formatReport", () => {
     const payLine = text.indexOf("pay");
     expect(nestEggLine).toBeGreaterThan(-1);
     expect(payLine).toBeGreaterThan(nestEggLine); // "nest egg" sorts before "pay"
+  });
+});
+
+/** The console tool as a whole, driven the way somebody actually drives it.
+ * Everything above tests the formatter; this tests the thing with the
+ * arguments, which is where the CLI and the library got to disagree about
+ * what window they were even running. */
+describe("runCli", () => {
+  const path = join(tmpdir(), "envelopes-cli-test.yml");
+  writeFileSync(path, CONFIG);
+
+  function capture(argv: string[]): string {
+    const lines: string[] = [];
+    const log = vi.spyOn(console, "log").mockImplementation((...args) => {
+      lines.push(args.join(" "));
+    });
+    try {
+      runCli(argv);
+    } finally {
+      log.mockRestore();
+    }
+    return lines.join("\n");
+  }
+
+  it("prints usage for --help without being given a file at all", () => {
+    const text = capture(["--help"]);
+    expect(text).toContain("usage: envelopes");
+    expect(text).toContain("--start");
+  });
+
+  it("runs from --start instead of today, so two variants stay the same experiment", () => {
+    expect(capture(["--start", "2027-03-01", path])).toContain("from 2027-03-01");
+    expect(capture(["--start=2027-03-01", path])).toContain("from 2027-03-01");
+  });
+
+  it("ends where the library ends, given the same start", () => {
+    const json = JSON.parse(capture(["--json", "--start=2027-03-01", path]));
+    expect(json.end).toBe(simulate(CONFIG, { start: "2027-03-01" }).end);
+  });
+
+  it("runs to the youngest person turning 100, not a flat 40 years", () => {
+    const json = JSON.parse(capture(["--json", "--start=2027-03-01", path]));
+    // alex is 42 on that date, so the horizon rounds 58 up to 60 years
+    expect(json.end).toBe(addDays("2027-03-01", Math.round(365.25 * 60)));
   });
 });
