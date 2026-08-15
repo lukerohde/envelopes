@@ -6,6 +6,7 @@
 
 import { EARLIEST_PLAN_DATE, LATEST_PLAN_DATE, todayISO } from "../dates";
 import { wireDateClamp } from "./date-input";
+import { escapeHTML } from "./html";
 
 /** Lowercase value, capitalised label. The engine matches weekday names in
  * lowercase, so an option valued "Sat" wrote a day no transfer ever fired
@@ -28,13 +29,6 @@ export interface RowFields {
   day: string | number;
   escalates: boolean;
   sweepAllowed?: boolean;
-}
-
-function escapeHTML(value: string): string {
-  return value.replace(/[&<>"']/g, (character) => {
-    const entities: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
-    return entities[character];
-  });
 }
 
 export function mobileTransferSummary(fields: RowFields): string {

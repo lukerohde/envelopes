@@ -125,6 +125,36 @@ goals:
 });
 
 describe("run -- goals", () => {
+  it("a goal with only a date fires with no account of its own", () => {
+    const b = budget(`
+accounts:
+  - {name: pot, balance: 0}
+transfers:
+  - {name: seed, amount: 100, every: fortnight, day: 2026-01-01, into: pot}
+goals:
+  - name: switch
+    by: 2026-01-15
+    transfers:
+      - {name: seed, amount: 0}
+`);
+    const { completed } = run(b, START, "2026-02-01");
+    expect(completed).toEqual([["switch", "2026-01-15"]]);
+  });
+
+  it("a goal with only an age fires with no account of its own", () => {
+    const b = budget(`
+accounts:
+  - {name: pot, balance: 0}
+birthdays:
+  - {name: alex, born: 1990-01-15}
+goals:
+  - name: sixtieth
+    by_age: {person: alex, turns: 36}
+`);
+    const { completed } = run(b, START, "2026-02-01");
+    expect(completed).toEqual([["sixtieth", "2026-01-15"]]);
+  });
+
   it("a date-triggered goal fires on its date, regardless of balance", () => {
     const b = budget(`
 accounts:
@@ -379,6 +409,66 @@ describe("a goal introducing a one-off transfer", () => {
     const after = run(load(dated), "2026-01-01", "2026-07-01").balances.pay;
     expect(before).toBe(30000 - 2000);
     expect(after).toBe(30000 - 2000 - 5000);
+  });
+});
+
+describe("run -- neverFired", () => {
+  it("a goal override introducing a once dated on the goal's own firing day never fires", () => {
+    // "lease ends" fires on 2026-02-01, the day the second lease payment
+    // clears it -- an override with that same day is already in the past
+    // by the time run() gets round to checking goals that day
+    const dated = BALLOON.replace(
+      "{name: lease balloon, amount: 5000, every: once, out_of: pay}",
+      "{name: lease balloon, amount: 5000, every: once, day: 2026-02-01, out_of: pay}",
+    );
+    const got = run(load(dated), "2026-01-01", "2027-01-01");
+    expect(got.neverFired).toContain("lease balloon");
+  });
+
+  it("the same override with no day of its own does fire, and isn't reported", () => {
+    const got = run(load(BALLOON), "2026-01-01", "2027-01-01");
+    expect(got.neverFired).not.toContain("lease balloon");
+  });
+
+  it("a top-level once transfer dated before the run starts never fires", () => {
+    const b = budget(`
+accounts:
+  - {name: pay, balance: 1000}
+transfers:
+  - {name: old payment, amount: 100, every: once, day: 2025-01-01, out_of: pay}
+`);
+    const got = run(b, "2026-01-01", "2027-01-01");
+    expect(got.neverFired).toContain("old payment");
+  });
+
+  it("a top-level once transfer dated inside the run fires, and isn't reported", () => {
+    const b = budget(`
+accounts:
+  - {name: pay, balance: 1000}
+transfers:
+  - {name: payment, amount: 100, every: once, day: 2026-06-01, out_of: pay}
+`);
+    const got = run(b, "2026-01-01", "2027-01-01");
+    expect(got.neverFired).not.toContain("payment");
+  });
+
+  it("a goal override that redirects an existing transfer isn't reported -- the name already moved money", () => {
+    const b = budget(`
+accounts:
+  - {name: pay, balance: 0}
+  - {name: mortgage, balance: 0, kind: saving}
+  - {name: savings, kind: saving}
+transfers:
+  - {name: repayment, amount: 100, every: fortnight, day: 2026-01-01, into: mortgage}
+goals:
+  - name: switch it
+    account: mortgage
+    target: 100
+    transfers:
+      - {name: repayment, into: savings}
+`);
+    const got = run(b, START, "2026-01-16");
+    expect(got.neverFired).not.toContain("repayment");
   });
 });
 

@@ -101,6 +101,86 @@ goals:
 `);
     expect(budget.goals[0].exit).toBe(true);
   });
+
+  it("a date-only goal loads with no account or target -- neither is read for a date trigger", () => {
+    const budget = load(`
+accounts:
+  - {name: pay, balance: 0}
+goals:
+  - {name: switch, by: 2030-01-01}
+`);
+    expect(budget.goals[0].account).toBeNull();
+    expect(budget.goals[0].target).toBeNull();
+    expect(budget.goals[0].by).toBe("2030-01-01");
+  });
+
+  it("an age-only goal loads with no account or target", () => {
+    const budget = load(`
+accounts:
+  - {name: pay, balance: 0}
+birthdays:
+  - {name: alex, born: 1984-03-14}
+goals:
+  - {name: switch, by_age: {person: alex, turns: 60}}
+`);
+    expect(budget.goals[0].account).toBeNull();
+    expect(budget.goals[0].target).toBeNull();
+  });
+
+  it("throws naming the goal when its account doesn't exist", () => {
+    expect(() => load(`
+accounts:
+  - {name: pay, balance: 0}
+goals:
+  - {name: retire, account: payy, target: 0}
+`)).toThrow(/goal 'retire' refers to no such account: payy/);
+  });
+
+  it("throws naming the goal when it has neither a date nor a balance trigger", () => {
+    expect(() => load(`
+accounts:
+  - {name: pay, balance: 0}
+goals:
+  - {name: nothing to watch}
+`)).toThrow(/goal 'nothing to watch' needs an account and target/);
+  });
+
+  it("throws naming the goal when wait_for_both is set without an account", () => {
+    expect(() => load(`
+accounts:
+  - {name: pay, balance: 0}
+goals:
+  - {name: bridge and 60, by: 2044-03-14, wait_for_both: true}
+`)).toThrow(/goal 'bridge and 60' needs an account and target/);
+  });
+});
+
+describe("load -- reference errors name their owner", () => {
+  it("throws naming the transfer when out_of doesn't exist", () => {
+    expect(() => load(`
+accounts:
+  - {name: pay, balance: 0}
+transfers:
+  - {name: bill, amount: 10, every: month, day: 1, out_of: payy}
+`)).toThrow(/transfer 'bill' refers to no such account: payy/);
+  });
+
+  it("throws naming the transfer when into doesn't exist", () => {
+    expect(() => load(`
+accounts:
+  - {name: pay, balance: 0}
+transfers:
+  - {name: salary, amount: 10, every: month, day: 1, into: payy}
+`)).toThrow(/transfer 'salary' refers to no such account: payy/);
+  });
+
+  it("throws naming the account when offsets doesn't exist", () => {
+    expect(() => load(`
+accounts:
+  - {name: mortgage, balance: 100000, kind: loan}
+  - {name: offset, kind: saving, offsets: mortgagee}
+`)).toThrow(/account 'offset' offsets no such account: mortgagee/);
+  });
 });
 
 describe("load -- inflation default escalation", () => {

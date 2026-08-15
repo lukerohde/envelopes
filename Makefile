@@ -81,3 +81,17 @@ deploy: build ## Build, sync dist/ to S3, invalidate CloudFront -- CI runs this 
 	docker compose run --rm awscli s3 sync /app/dist s3://$$BUCKET --delete; \
 	docker compose run --rm awscli cloudfront create-invalidation \
 		--distribution-id $$CFID --paths '/*'
+
+# The eval always runs the artefact people actually download. Round 1 shipped
+# a bundle whose CLI understood no arguments at all, and every test passed --
+# because every test ran the source.
+.PHONY: bundle-check
+bundle-check: ## Smoke-test the *published* CLI bundle, not the source tree
+	docker compose run --rm node sh -c '\
+		npm install --silent && npm run build:lib >/dev/null && \
+		node dist/envelopes-cli.mjs --help | head -1 && \
+		node dist/envelopes-cli.mjs check --json src/example.yaml | head -1 && \
+		node dist/envelopes-cli.mjs --json --start=2027-01-01 src/example.yaml | head -3 | tail -1 && \
+		LINK=$$(node dist/envelopes-cli.mjs link src/example.yaml) && \
+		node dist/envelopes-cli.mjs decode "$$LINK" | head -1 && \
+		node dist/envelopes-cli.mjs decode "$${LINK%??????????}" 2>&1 | head -1'

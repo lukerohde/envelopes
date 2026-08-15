@@ -109,6 +109,7 @@
     .notice-dock .terminal-status { color: var(--accent); font-size: .82rem; font-weight: 600; }
     .notice-dock .terminal-status.floor-stop { color: var(--stamp); }
     .notice-dock .plan-status { color: var(--ink-muted); font-size: .74rem; }
+    .notice-dock .link-status { color: var(--stamp); font-size: .82rem; font-weight: 600; }
     .notice-dock p:empty { display: none; }
 
     .ai-prompt { margin-top: .8rem; }
@@ -762,6 +763,10 @@
   </div>
 
   <div class="notice-dock" aria-label="Plan notices" aria-live="polite">
+    <!-- Only ever set when a share link arrived broken. Sits above the plan
+         notices because it says the plan on screen isn't the one you were
+         sent, which changes what every notice below it is about. -->
+    <p class="link-status" id="linkStatus"></p>
     <p class="terminal-status" id="terminalStatus"></p>
     <p class="impact-status" id="impactStatus"></p>
     <p class="plan-status" id="planStatus"></p>

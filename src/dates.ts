@@ -25,6 +25,14 @@ export function daysBetween(from: ISODate, to: ISODate): number {
   return toEpochDay(to) - toEpochDay(from);
 }
 
+/** Same span as daysBetween, in years -- the unit annualised rates and phase
+ * lengths actually need. 365.25 days a year throughout, not the calendar's
+ * own day count, so a leap year doesn't nudge a rate up and down against its
+ * neighbours for no reason. */
+export function yearsBetween(from: ISODate, to: ISODate): number {
+  return daysBetween(from, to) / 365.25;
+}
+
 export function year(d: ISODate): number {
   return Number(d.slice(0, 4));
 }
@@ -91,6 +99,14 @@ export function horizonYears(birthdays: Array<{ born: ISODate }>, when: ISODate)
   }
   if (youngest === -1) return DEFAULT_HORIZON_YEARS;
   return Math.max(5, Math.ceil((100 - youngest) / 5) * 5);
+}
+
+/** The day the run should stop, given who's in it -- `horizonYears` turned
+ * into an actual date. The one expression `cli.ts` and `lib.ts` both build
+ * their end date from, so they can't quietly disagree about when a plan
+ * finishes. */
+export function horizonEnd(birthdays: Array<{ born: ISODate }>, start: ISODate): ISODate {
+  return addDays(start, Math.round(365.25 * horizonYears(birthdays, start)));
 }
 
 /** How old someone born on `born` is on `when` -- counts the birthday

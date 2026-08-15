@@ -8,11 +8,7 @@
  * paper is miserable.
  */
 
-import { cadenceFactor, type FlowCadence, type PhaseSummary } from "../flows";
-
-function money(value: number): string {
-  return Math.round(value).toLocaleString();
-}
+import { cadenceFactor, money, phaseWindow, type FlowCadence, type PhaseSummary } from "../flows";
 
 function cover(years: number): string {
   if (Number.isNaN(years)) return "";
@@ -57,7 +53,7 @@ export function renderFlows(
 
     block.innerHTML =
       `<h4>${phase.name}</h4>` +
-      `<div class="flow-when">${phase.start} to ${phase.end} · ${phase.years.toFixed(1)} years` +
+      `<div class="flow-when">${phase.start} to ${phase.end} · ${phaseWindow(phase.years)}` +
       `${real ? " · today's dollars" : ""}</div>` +
       `<div class="flow-scroll"><table class="flow-table">` +
       `<thead><tr><th>Account</th><th>In /${suffix}</th><th>Out /${suffix}</th><th>Interest /${suffix}</th>` +

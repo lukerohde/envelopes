@@ -160,6 +160,53 @@ goals:
   it("leaves a clearing account that merely holds a float alone", () => {
     expect(findings(clean())).not.toContain("clearing-account-accumulating");
   });
+
+  // Two milestones 24 days apart turned $600 of ordinary timing swing into
+  // "$7,973/yr" under the rate gate alone -- annualising a short phase is
+  // scale-free, so any modest swing sails past the per-year materiality
+  // floor. The one-off "bonus" landing inside the short window is exactly
+  // that kind of swing: real dollars, but well under a month of what
+  // normally passes through the account.
+  it("does not annualise ordinary swing across a three-week phase into a finding", () => {
+    const budget = load(`
+inflation: 0
+birthdays: []
+accounts:
+  - {name: pay, balance: 5000, kind: clearing}
+transfers:
+  - {name: salary, amount: 100, every: month, day: 1, into: pay, escalation: 0}
+  - {name: spending, amount: 100, every: month, day: 1, out_of: pay, escalation: 0}
+  - {name: bonus, amount: 600, every: once, day: 2026-01-20, into: pay, escalation: 0}
+goals:
+  - {name: waypoint one, by: 2026-01-08}
+  - {name: waypoint two, by: 2026-02-01}
+`);
+    const result = run(budget, "2026-01-01", "2026-06-01");
+    const finding = lint(budget, result, "2026-01-01", "2026-06-01").find((f) => f.rule === "clearing-account-accumulating");
+    expect(finding).toBeUndefined();
+  });
+
+  // The new dollar gate must not be a mute button: a genuine leak sustained
+  // for years, well past a month of the account's own throughput, still
+  // has to be reported -- and the detail should carry the real dollars and
+  // the window they came from, not just the annualised rate.
+  it("still reports a genuine leak sustained over a long phase", () => {
+    const budget = load(`
+inflation: 0
+birthdays: []
+accounts:
+  - {name: pay, balance: 0, kind: clearing}
+  - {name: groceries, balance: 0, kind: expense}
+transfers:
+  - {name: salary, amount: 2000, every: fortnight, day: 2026-01-02, into: pay, escalation: 0}
+  - {name: shopping, amount: 100, every: fortnight, day: 2026-01-02, out_of: pay, into: groceries, escalation: 0}
+goals: []
+`);
+    const result = run(budget, "2026-01-01", "2036-01-01");
+    const finding = lint(budget, result, "2026-01-01", "2036-01-01").find((f) => f.rule === "clearing-account-accumulating")!;
+    expect(finding).toBeDefined();
+    expect(finding.detail).toMatch(/\$\d[\d,]* over \d+\.\d years/);
+  });
 });
 
 describe("saving-below-inflation", () => {
@@ -317,6 +364,60 @@ goals:
   - {name: a million dollars, account: nest, target: 1000000, transfers: []}
 `;
     expect(findings(plan)).toContain("goal-never-fires");
+  });
+});
+
+describe("transfer-never-fires", () => {
+  it("catches a once transfer dated before the run starts", () => {
+    const plan = `
+inflation: 0
+birthdays: []
+accounts:
+  - {name: pay, balance: 1000, kind: clearing}
+transfers:
+  - {name: old bonus, amount: 500, every: once, day: 2020-01-01, into: pay, escalation: 0}
+goals: []
+`;
+    expect(findings(plan)).toContain("transfer-never-fires");
+  });
+
+  it("names the transfer that never fired", () => {
+    const budget = load(`
+inflation: 0
+birthdays: []
+accounts:
+  - {name: pay, balance: 1000, kind: clearing}
+transfers:
+  - {name: old bonus, amount: 500, every: once, day: 2020-01-01, into: pay, escalation: 0}
+goals: []
+`);
+    const result = run(budget, "2026-01-01", "2027-01-01");
+    const finding = lint(budget, result, "2026-01-01", "2027-01-01").find((f) => f.rule === "transfer-never-fires")!;
+    expect(finding.account).toBe("old bonus");
+  });
+
+  it("leaves an ordinary plan alone", () => {
+    expect(findings(clean())).not.toContain("transfer-never-fires");
+  });
+
+  it("doesn't flag a goal override that redirects an existing transfer -- the name already moved money", () => {
+    const plan = `
+inflation: 0
+birthdays: []
+accounts:
+  - {name: pay, balance: 0, kind: clearing}
+  - {name: mortgage, balance: 0, kind: saving}
+  - {name: savings, balance: 0, kind: saving}
+transfers:
+  - {name: repayment, amount: 100, every: fortnight, day: 2026-01-01, into: mortgage, escalation: 0}
+goals:
+  - name: switch it
+    account: mortgage
+    target: 100
+    transfers:
+      - {name: repayment, into: savings}
+`;
+    expect(findings(plan)).not.toContain("transfer-never-fires");
   });
 });
 

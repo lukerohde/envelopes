@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addDays, ageAt, clampToRange, daysBetween, horizonYears, todayISO } from "../src/dates";
+import { addDays, ageAt, clampToRange, daysBetween, horizonEnd, horizonYears, todayISO } from "../src/dates";
 
 describe("addDays", () => {
   it("adds days within a month", () => {
@@ -108,5 +108,16 @@ describe("horizonYears", () => {
 
   it("still gives something to look at for someone already past 100", () => {
     expect(horizonYears([{ born: "1900-01-01" }], "2026-08-11")).toBe(5);
+  });
+});
+
+describe("horizonEnd", () => {
+  it("is horizonYears turned into the actual last day of the run", () => {
+    const people = [{ born: "1981-08-11" }]; // exactly 45 on this date -> 55 years
+    expect(horizonEnd(people, "2026-08-11")).toBe(addDays("2026-08-11", Math.round(365.25 * 55)));
+  });
+
+  it("falls back the same way horizonYears does when nobody has a birthday", () => {
+    expect(horizonEnd([], "2026-08-11")).toBe(addDays("2026-08-11", Math.round(365.25 * 40)));
   });
 });

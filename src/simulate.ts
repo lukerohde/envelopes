@@ -96,6 +96,13 @@ export interface RunResult {
   balancesAtEnd: Balances | null;
   /** The day an explicit terminal goal completed, if the run stopped there. */
   endedOn: ISODate | null;
+  /** Names of every transfer that was active at some point during the run
+   * but never actually fired -- a `once` dated in the past, past the
+   * horizon, or on a schedule that never came round. By name, not by
+   * transfer object: a goal override that replaces a transfer keeps the
+   * same name, and that name has already moved money under an earlier
+   * object, so it isn't "never fired". */
+  neverFired: string[];
 }
 
 /** `track` names which accounts to record a daily history for -- pass none
@@ -114,6 +121,7 @@ export function run(budget: Budget, start: ISODate, end: ISODate, track: string[
   const loans = new Set(budget.accounts.filter((account) => account.kind === "loan").map((account) => account.name));
   const stopped = new Set<Transfer>();
   const active = [...budget.transfers];
+  const fired = new Set<string>();
   let pending = [...budget.goals];
   const completed: [string, ISODate][] = [];
   // Goals whose balance condition was already satisfied at the last check.
@@ -131,7 +139,7 @@ export function run(budget: Budget, start: ISODate, end: ISODate, track: string[
   let when = start;
   while (when < end) {
     grow(balances, rates, offsetBy, ledger);
-    applyTransfers(active, balances, debts, loans, stopped, when, start, ledger);
+    applyTransfers(active, balances, debts, loans, stopped, when, start, ledger, fired);
     if (pending.length > 0) {
       const before = completed.length;
       const checked = checkGoals(budget, balances, rates, pending, completed, active, stopped, when, alreadyAtTarget);
@@ -170,7 +178,10 @@ export function run(budget: Budget, start: ISODate, end: ISODate, track: string[
     when = addDays(when, 1);
   }
 
-  return { balances, completed, history, phases: ledger.finish(endedOn ?? end, balances), balancesAtEnd, endedOn };
+  const activeNames = new Set(active.map((transfer) => transfer.name));
+  const neverFired = [...activeNames].filter((name) => !fired.has(name));
+
+  return { balances, completed, history, phases: ledger.finish(endedOn ?? end, balances), balancesAtEnd, endedOn, neverFired };
 }
 
 /** Accumulates the in/out/interest totals as the run walks, one bucket per
@@ -299,7 +310,7 @@ function addDays(d: ISODate, n: number): ISODate {
 function debtAccounts(budget: Budget): Set<string> {
   const names = new Set<string>();
   for (const goal of budget.goals) {
-    if (budget.account(goal.account).kind === "loan") names.add(goal.account);
+    if (goal.account !== null && budget.account(goal.account).kind === "loan") names.add(goal.account);
   }
   return names;
 }
@@ -346,10 +357,12 @@ function applyTransfers(
   when: ISODate,
   start: ISODate,
   ledger: Ledger,
+  fired: Set<string>,
 ): void {
   for (const transfer of active) {
     if (stopped.has(transfer)) continue;
     if (!fires(transfer.every, transfer.day as string | number, when)) continue;
+    fired.add(transfer.name);
     const amount = transfer.sweepAbove === undefined
       ? escalated(transfer, when, start)
       : sweptAmount(transfer, balances, loans, when, start);
@@ -420,7 +433,7 @@ function checkGoals(
       // balance actually crossed. A conjunctive goal that spent five years
       // waiting on a birthday crossed long ago, and rewriting the balance
       // then would invent or destroy real money.
-      if (crossedToday) balances[goal.account] = goal.target;
+      if (crossedToday) snapToTarget(goal, balances);
       completed.push([goal.name, when]);
       applyOverrides(goal, budget.inflation, active, stopped, when);
       applyRateOverrides(goal, rates);
@@ -443,9 +456,21 @@ function reached(budget: Budget, balances: Balances, goal: Goal, when: ISODate):
 }
 
 function balanceReached(budget: Budget, balances: Balances, goal: Goal): boolean {
+  // checkGoals calls this for every pending goal every day, including a
+  // pure date/age goal that never named an account -- it has no balance to
+  // be "at", so it's never at it.
+  if (goal.account === null || goal.target === null) return false;
   const startingBalance = budget.account(goal.account).balance;
   if (goal.target >= startingBalance) return balances[goal.account] >= goal.target;
   return balances[goal.account] <= goal.target;
+}
+
+/** Snaps a goal's account to exactly its target on the day the balance
+ * crosses -- see the crossedToday comment above. Guarded because a date-only
+ * goal has no account to snap. */
+function snapToTarget(goal: Goal, balances: Balances): void {
+  if (goal.account === null || goal.target === null) return;
+  balances[goal.account] = goal.target;
 }
 
 function applyOverrides(

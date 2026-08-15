@@ -13,9 +13,9 @@
  */
 
 import type { Budget } from "./model";
-import type { RunResult } from "./simulate";
-import { ageAt, type ISODate } from "./dates";
-import { annualise, breaches, yearsIn } from "./flows";
+import type { AccountFlow, RunResult } from "./simulate";
+import { ageAt, yearsBetween, type ISODate } from "./dates";
+import { annualise, breaches, phaseWindow } from "./flows";
 
 export type Rule =
   | "account-below-floor"
@@ -23,6 +23,7 @@ export type Rule =
   | "saving-below-inflation"
   | "sinking-fund-trending"
   | "goal-never-fires"
+  | "transfer-never-fires"
   | "super-before-preservation-age";
 
 export type FindingSeverity = "fail" | "review";
@@ -55,6 +56,7 @@ const RULE_ORDER: Rule[] = [
   "account-below-floor",
   "super-before-preservation-age",
   "goal-never-fires",
+  "transfer-never-fires",
   "clearing-account-accumulating",
   "sinking-fund-trending",
   "saving-below-inflation",
@@ -104,6 +106,20 @@ interface UnusedGrowth {
   phase: RunResult["phases"][number];
   perYear: number;
   throughput: number;
+  /** The actual dollars behind `perYear`, and the phase length behind the
+   * annualisation -- so a short phase can be reported honestly instead of
+   * as a bare per-year rate. */
+  amount: number;
+  years: number;
+}
+
+/** One month of what actually passes through an account, in real dollars --
+ * the size ordinary operating swing lives inside, whichever direction it's
+ * used in: seeding the final phase's future-use allowance below, or gating
+ * accumulation in absolute dollars so a short phase can't turn that same
+ * swing into an alarm just by annualising it. */
+function monthOfThroughput(flow: AccountFlow, years: number): number {
+  return annualise(flow.in, years) / 12;
 }
 
 /** Match positive clearing growth against later phases that draw it back
@@ -114,10 +130,10 @@ interface UnusedGrowth {
 function firstUnusedGrowth(result: RunResult, account: string): UnusedGrowth | null {
   const finalPhase = result.phases.at(-1);
   const finalFlow = finalPhase?.accounts[account];
-  const finalYears = finalPhase ? yearsIn(finalPhase.start, finalPhase.end) : 0;
+  const finalYears = finalPhase ? yearsBetween(finalPhase.start, finalPhase.end) : 0;
   // One month's incoming cash is normal operating swing, not accumulation.
   // Treat it like future use before matching the larger inter-phase draws.
-  let futureUse = finalFlow ? annualise(finalFlow.in, finalYears) / 12 : 0;
+  let futureUse = finalFlow ? monthOfThroughput(finalFlow, finalYears) : 0;
   const unused: UnusedGrowth[] = [];
   for (let i = result.phases.length - 1; i >= 0; i--) {
     const phase = result.phases[i];
@@ -130,18 +146,27 @@ function firstUnusedGrowth(result: RunResult, account: string): UnusedGrowth | n
     }
     const amount = Math.max(0, growth - futureUse);
     futureUse = Math.max(0, futureUse - growth);
-    const phaseYears = yearsIn(phase.start, phase.end);
+    const phaseYears = yearsBetween(phase.start, phase.end);
     const perYear = annualise(amount, phaseYears);
     const throughput = annualise(flow.in, phaseYears);
     const material = Math.max(SURPLUS_FLOOR_PER_YEAR, throughput * SURPLUS_SHARE_OF_INCOME);
-    if (perYear > material) unused.push({ phase, perYear, throughput });
+    // The rate gate alone is scale-free: dividing by phase length and then
+    // comparing to a per-year floor is the same test at any phase length,
+    // which is how a 24-day phase turned $600 of ordinary timing swing into
+    // "$5,981/yr" and failed the check. A second gate in real dollars, sized
+    // to a genuine month of this account's own throughput, only lets through
+    // the amounts that were never just annualisation doing the multiplying.
+    const materialDollars = Math.max(SURPLUS_FLOOR_PER_YEAR, monthOfThroughput(flow, phaseYears));
+    if (perYear > material && amount > materialDollars) {
+      unused.push({ phase, perYear, throughput, amount, years: phaseYears });
+    }
   }
   return unused.at(-1) ?? null;
 }
 
 export function lint(budget: Budget, result: RunResult, start: ISODate, end: ISODate): Finding[] {
   const findings: Finding[] = [];
-  const years = yearsIn(start, end);
+  const years = yearsBetween(start, end);
 
   // Once an account has gone under its floor the plan has stopped working,
   // and every figure after that point is fiction -- the simulation keeps
@@ -182,8 +207,8 @@ export function lint(budget: Budget, result: RunResult, start: ISODate, end: ISO
           severity: "fail",
           account: account.name,
           detail:
-            `keeps ${money(unused.perYear)}/yr that no later phase uses${share}, ` +
-            `leaving ${money(balance)} in the account when the plan ends. ${editHint}`,
+            `keeps ${money(unused.perYear)}/yr (${money(unused.amount)} over ${phaseWindow(unused.years)}) that no ` +
+            `later phase uses${share}, leaving ${money(balance)} in the account when the plan ends. ${editHint}`,
           fix: phaseName === "from the start"
             ? `Give the genuine residual a job in base Transfers. A named sweep_above is safe only after ` +
               `retaining enough for every later low point and choosing an explicit destination; rerun the ` +
@@ -279,9 +304,9 @@ export function lint(budget: Budget, result: RunResult, start: ISODate, end: ISO
     });
   }
 
-  const fired = new Set(result.completed.map(([name]) => name));
+  const goalsFired = new Set(result.completed.map(([name]) => name));
   for (const goal of budget.goals) {
-    if (fired.has(goal.name)) continue;
+    if (goalsFired.has(goal.name)) continue;
     findings.push({
       rule: "goal-never-fires",
       severity: "fail",
@@ -292,6 +317,26 @@ export function lint(budget: Budget, result: RunResult, start: ISODate, end: ISO
         `balance, so a fund that starts at 0 can't say "back to 0" — that reads as "at or above 0", ` +
         `true on day one. If the plan collapsed earlier, fix that first; goals after the collapse ` +
         `never get the chance to fire.`,
+    });
+  }
+
+  // A transfer can sit in the active list all run and never once match its
+  // own schedule -- a once dated before the run started, past the horizon,
+  // or (the trap that actually bit someone) dated by a goal override on the
+  // goal's own firing day, which is already in the past by the time run()
+  // gets round to checking that day's goals.
+  for (const name of result.neverFired) {
+    findings.push({
+      rule: "transfer-never-fires",
+      severity: "fail",
+      account: name,
+      detail: `never fires — nothing it was set up to move ever moved`,
+      fix:
+        `Check its \`day\`. A day's transfers all run before that day's goals are checked, so a goal's ` +
+        `overrides only ever land on a day that has already gone — an \`every: once\` override dated on ` +
+        `or before its own goal's firing day is in the past the moment it exists. Leave \`day\` off and ` +
+        `it fires the day after the goal, which is what "when this goal happens" means. On a plain ` +
+        `top-level transfer, check the day sits inside the run at all.`,
     });
   }
 

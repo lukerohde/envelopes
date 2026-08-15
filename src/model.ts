@@ -110,8 +110,11 @@ export interface AccountOverride {
 
 export interface Goal {
   name: string;
-  account: string;
-  target: number;
+  /** Null when the goal is triggered purely by date or age -- `account` and
+   * `target` are only ever read for a balance trigger, so a pure `by`/`by_age`
+   * goal has no business naming an account. */
+  account: string | null;
+  target: number | null;
   by: ISODate | null;
   /** Require the date *and* the balance, rather than the date alone.
    *
@@ -148,6 +151,10 @@ export class Budget {
       if (account.name === name) return account;
     }
     throw new Error(`no such account: ${name}`);
+  }
+
+  has(name: string): boolean {
+    return this.accounts.some((account) => account.name === name);
   }
 }
 
@@ -221,8 +228,8 @@ export function load(yamlText: string): Budget {
 
     goals.push({
       name: item.name as string,
-      account: item.account as string,
-      target: item.target as number,
+      account: item.account === undefined ? null : (item.account as string),
+      target: item.target === undefined ? null : (item.target as number),
       by,
       waitForBoth: item.wait_for_both === true,
       exit: item.exit === true,
@@ -241,8 +248,12 @@ function check(budget: Budget): void {
     if (!transfer.outOf && !transfer.into) {
       throw new Error(`transfer '${transfer.name}' moves money nowhere`);
     }
-    if (transfer.outOf) budget.account(transfer.outOf);
-    if (transfer.into) budget.account(transfer.into);
+    if (transfer.outOf && !budget.has(transfer.outOf)) {
+      throw new Error(`transfer '${transfer.name}' refers to no such account: ${transfer.outOf}`);
+    }
+    if (transfer.into && !budget.has(transfer.into)) {
+      throw new Error(`transfer '${transfer.name}' refers to no such account: ${transfer.into}`);
+    }
     if (transfer.sweepAbove !== undefined) {
       if (!Number.isFinite(transfer.sweepAbove) || transfer.sweepAbove < 0) {
         throw new Error(`transfer '${transfer.name}' has an invalid sweep_above`);
@@ -255,10 +266,23 @@ function check(budget: Budget): void {
     }
   }
   for (const goal of budget.goals) {
-    budget.account(goal.account);
+    // A goal with no date fires on its balance alone, and wait_for_both asks
+    // for the balance on top of the date -- either way it needs somewhere to
+    // read that balance from. A goal with neither a date nor a balance has no
+    // trigger at all, and would otherwise just silently never fire.
+    if (goal.by === null || goal.waitForBoth) {
+      if (goal.account === null || goal.target === null) {
+        throw new Error(`goal '${goal.name}' needs an account and target to trigger on balance`);
+      }
+    }
+    if (goal.account !== null && !budget.has(goal.account)) {
+      throw new Error(`goal '${goal.name}' refers to no such account: ${goal.account}`);
+    }
   }
   for (const account of budget.accounts) {
-    if (account.offsets) budget.account(account.offsets);
+    if (account.offsets && !budget.has(account.offsets)) {
+      throw new Error(`account '${account.name}' offsets no such account: ${account.offsets}`);
+    }
   }
 }
 

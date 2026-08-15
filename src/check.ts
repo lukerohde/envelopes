@@ -33,6 +33,18 @@ export type CriterionStatus = "pass" | "fail" | "review" | "unknown";
  * person's own call. */
 const OLD_ENOUGH = 80;
 
+/** The last six criteria are all the same shape: pass if the matching lint
+ * rule found nothing, otherwise report what it found. One table instead of
+ * six copies of the same five lines. */
+const RULE_CRITERIA: Array<[name: string, rule: Rule, whenClean: string]> = [
+  ["nothing pools unspent", "clearing-account-accumulating", "clearing accounts stay flat"],
+  ["sinking funds cycle", "sinking-fund-trending", "what fills up also empties"],
+  ["savings beat inflation", "saving-below-inflation", "no account grows in dollars and shrinks in what it buys"],
+  ["every goal fires", "goal-never-fires", "every goal is reached inside the run"],
+  ["every transfer fires", "transfer-never-fires", "every transfer fires at least once inside the run"],
+  ["super stays preserved", "super-before-preservation-age", "nothing draws super early"],
+];
+
 export interface Criterion {
   name: string;
   /** null means "couldn't be assessed yet", which is not the same as pass.
@@ -110,7 +122,7 @@ export function checkPlan(budget: Budget, result: RunResult, start: ISODate, end
   // broke, so while that's failing these answers aren't answers.
   const blind = cashflowBreaks.length > 0;
   const notYet = "not assessed — fix the cashflow first";
-  const settle = (finding: Finding | undefined, whenClean: string): { ok: boolean | null; status: CriterionStatus } =>
+  const settle = (finding: Finding | undefined): { ok: boolean | null; status: CriterionStatus } =>
     blind ? { ok: null, status: "unknown" } :
       finding ? { ok: finding.severity === "review", status: finding.severity === "review" ? "review" : "fail" } :
       { ok: true, status: "pass" };
@@ -140,45 +152,10 @@ export function checkPlan(budget: Budget, result: RunResult, start: ISODate, end
             },
   );
 
-  const pooling = has("clearing-account-accumulating");
-  criteria.push({
-    name: "nothing pools unspent",
-    ...settle(pooling, ""),
-    finding: pooling,
-    detail: say(pooling, "clearing accounts stay flat"),
-  });
-
-  const trending = has("sinking-fund-trending");
-  criteria.push({
-    name: "sinking funds cycle",
-    ...settle(trending, ""),
-    finding: trending,
-    detail: say(trending, "what fills up also empties"),
-  });
-
-  const losing = has("saving-below-inflation");
-  criteria.push({
-    name: "savings beat inflation",
-    ...settle(losing, ""),
-    finding: losing,
-    detail: say(losing, "no account grows in dollars and shrinks in what it buys"),
-  });
-
-  const unfired = has("goal-never-fires");
-  criteria.push({
-    name: "every goal fires",
-    ...settle(unfired, ""),
-    finding: unfired,
-    detail: say(unfired, "every goal is reached inside the run"),
-  });
-
-  const early = has("super-before-preservation-age");
-  criteria.push({
-    name: "super stays preserved",
-    ...settle(early, ""),
-    finding: early,
-    detail: say(early, "nothing draws super early"),
-  });
+  for (const [name, rule, whenClean] of RULE_CRITERIA) {
+    const finding = has(rule);
+    criteria.push({ name, ...settle(finding), finding, detail: say(finding, whenClean) });
+  }
 
   return { start, end, criteria, findings, reviews: findings.filter((f) => f.severity === "review"), next: nextStep(criteria, endsAt || terminalAt ? endAge : null) };
 }
@@ -202,6 +179,12 @@ function nextStep(criteria: Criterion[], endAge: number | null): string | null {
 
 export function formatCheck(check: PlanCheck, budget: Budget): string {
   const lines: string[] = [];
+  // Round 2's agent only heard this at the end of an all-pass run -- far too
+  // late to change what it did on the way there. It goes here instead, every
+  // run, pass or fail. --json prints the PlanCheck object directly and never
+  // calls this function, so it stays a line for a person, not a data field.
+  lines.push("Before you act on any of this: have you asked them what this plan is for?");
+  lines.push("");
   const ages = budget.birthdays.map((p) => `${p.name} ${ageAt(p.born, check.end)}`).join(", ");
   lines.push(`plan check — to ${check.end}${ages ? ` (${ages})` : ""}`);
   lines.push("");

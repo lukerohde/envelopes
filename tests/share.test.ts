@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { gzipSync } from "node:zlib";
 import { encodeShareHash, decodeShareHash, encodeShareUrl, decodeShareUrl } from "../src/share";
-import { shareHashFor, stateFromShareHash } from "../src/ui/io";
-import { initialState, stateToYamlText } from "../src/state";
+import { BROKEN_LINK_NOTICE, shareHashFor, stateFromShareHash } from "../src/ui/io";
+import { initialState, stateToYamlText, type UIState } from "../src/state";
 
 describe("share hash round-trip", () => {
   it("decodes back to the exact text it encoded", async () => {
@@ -72,11 +72,25 @@ describe("shareHashFor", () => {
     state.transfers[0].amount = 999;
 
     const restored = await stateFromShareHash(await shareHashFor(state));
-    expect(restored).not.toBeNull();
-    expect(stateToYamlText(restored!)).toBe(stateToYamlText(state));
+    expect(restored.kind).toBe("plan");
+    expect(stateToYamlText((restored as { state: UIState }).state)).toBe(stateToYamlText(state));
+  });
+
+  // A hash that won't decode is a broken link, not an absent one. Reporting
+  // both as "nothing usable" is how a truncated link quietly showed somebody
+  // the sample budget instead of the plan they were sent.
+  it("tells a broken link apart from no link at all", async () => {
+    expect(await stateFromShareHash("")).toEqual({ kind: "none" });
+
+    const truncated = (await shareHashFor(initialState())).slice(0, 40);
+    const broken = await stateFromShareHash(truncated);
+    expect(broken.kind).toBe("broken");
+    expect(BROKEN_LINK_NOTICE).toMatch(/truncated or corrupt/);
   });
 
   it("stays a short enough fragment to paste for the full example config", async () => {
-    expect((await shareHashFor(initialState())).length).toBeLessThan(2000);
+    // was ~1342 before schema defaults were dropped from the emitted YAML;
+    // this stays tight enough that the win can't silently regress back up
+    expect((await shareHashFor(initialState())).length).toBeLessThan(1350);
   });
 });
