@@ -66,10 +66,11 @@ export async function runCli(argv: string[]): Promise<void> {
     return;
   }
 
-  // Today unless told otherwise. `--start` matters for an agent comparing
-  // variants across a session: without it, the same two configs run today
-  // and run tomorrow are two different experiments.
-  const start = args.start ?? todayISO();
+  // Explicit `--start` wins; otherwise anchor to the plan's saved
+  // start_date (so a re-run of a saved plan doesn't silently re-anchor the
+  // projection to today). Falls back to today for legacy plans with no
+  // start_date.
+  const start = args.start ?? budget.startDate ?? todayISO();
   // The same window the page uses: until the youngest person turns 100.
   // It used to be a flat 40 years, which meant the console tool and the
   // site could give different answers about the same plan -- and the one

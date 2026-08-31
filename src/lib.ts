@@ -79,7 +79,9 @@ export interface SimulateResult {
 /** YAML text in, results out. The one call worth knowing. */
 export function simulate(yamlText: string, options: SimulateOptions = {}): SimulateResult {
   const budget = load(yamlText);
-  const start = options.start ?? todayISO();
+  // Explicit caller start wins; otherwise anchor to the plan's saved
+  // start_date (so a saved plan doesn't re-anchor to today on re-run).
+  const start = options.start ?? budget.startDate ?? todayISO();
   // Same window as the console tool, unless the caller says otherwise. It
   // used to be a flat 40 years here and a real horizon there, so the library
   // and the CLI answered the same question differently -- and the comment

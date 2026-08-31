@@ -430,7 +430,10 @@ export function createSimulationView(elements: Elements) {
     recompute(state: UIState, showImpact = false): void {
       const before = lastOutcome;
       const budget = toBudget(state);
-      start = todayISO();
+      // Anchor the projection to the plan's saved start date (opening
+      // balances as of that day), NOT today — so reopening a plan a month
+      // later doesn't silently shift the whole projection.
+      start = budget.startDate;
       // editing a birthday moves the far end of the timeline, so this is
       // worked out fresh each run rather than fixed at startup
       const previousMax = absMax;
