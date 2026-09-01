@@ -55,9 +55,6 @@ plans/archive/, and update the two lists below.
 CURRENT PLANS
 =============
 
-- mobile-account-readability-plan.md -- mobile account rows make the kind
-  description legible (name top-left, balance top-right, kind description
-  full-width underneath) and let account names wrap instead of eliding.
 - opening-balance-start-date-plan.md -- plan-level start_date in the YAML:
   the simulation, CLI, library, and UI start from the plan's saved start
   date instead of today, so a reopened or re-shared plan gives the same
@@ -72,6 +69,10 @@ CURRENT PLANS
 
 ARCHIVED PLANS
 ==============
+- archive/mobile-account-readability-plan.md -- mobile account rows make the
+  kind description legible (name top-left, balance top-right, kind description
+  full-width underneath) and let account names wrap instead of eliding.
+  Shipped, merged as PR #8.
 - archive/agent-harness-round-2-plan.md -- feedforward, not just feedback:
   said what a good plan looks like, gave every finding a next move, and added
   `check`, `sweep_above` and `compareOutcomes`. Shipped, merged as PR #4. A
