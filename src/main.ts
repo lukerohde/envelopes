@@ -19,6 +19,7 @@ function main(state: UIState): void {
   const simulation = createSimulationView({
     acctSelect: document.querySelector<HTMLSelectElement>("#acctSelect")!,
     inflationInput: document.querySelector<HTMLInputElement>("#inflationInput")!,
+    startDateInput: document.querySelector<HTMLInputElement>("#startDateInput")!,
     autoBadge: document.querySelector<HTMLElement>("#autoBadge")!,
     simHeading: document.querySelector<HTMLElement>("#simHeading")!,
     chartSvg: document.querySelector<SVGSVGElement>("#chartSvg")!,
@@ -69,6 +70,10 @@ function main(state: UIState): void {
     renderTransfers(transferRows, state, scheduleUpdate, renderAll);
     renderGoals(goalRows, state, scheduleUpdate);
     document.querySelector<HTMLInputElement>("#inflationInput")!.value = `${(state.inflation * 100).toFixed(1)}%`;
+    const startDateVal = state.startDate ?? "";
+    document.querySelector<HTMLInputElement>("#startDateInput")!.value = startDateVal;
+    const readonlyEl = document.querySelector<HTMLInputElement>("#startDateReadonly");
+    if (readonlyEl) readonlyEl.value = startDateVal;
   }
   renderAll();
 

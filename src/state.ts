@@ -75,6 +75,9 @@ export interface UIPerson {
 
 export interface UIState {
   inflation: number;
+  /** Plan start date (opening-balance / scenario anchor). Optional; absence
+   * means "today at load" (legacy behaviour). */
+  startDate?: string;
   birthdays: UIPerson[];
   accounts: UIAccount[];
   transfers: UITransfer[];
@@ -212,6 +215,7 @@ export function parseYamlIntoState(yamlText: string): UIState {
 
   return {
     inflation: (raw.inflation as number) ?? 0,
+    startDate: raw.start_date !== undefined ? (stringifyDay(raw.start_date) as string) : undefined,
     birthdays,
     accounts,
     transfers,
@@ -262,6 +266,9 @@ export function stateToYamlText(state: UIState): string {
     transfers: state.transfers.map(transferToRaw),
     goals: state.goals.map(goalToRaw),
   };
+  // Persist the plan start date so a saved/re-shared plan keeps its opening
+  // balance anchor (see Budget.startDate in model.ts).
+  if (state.startDate) raw.start_date = state.startDate;
   return AGENT_HEADER + yaml.dump(raw);
 }
 

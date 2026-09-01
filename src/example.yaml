@@ -1,4 +1,5 @@
 inflation: 0.03
+start_date: 2026-08-01
 birthdays:
   - name: Alex
     born: '1980-05-20'

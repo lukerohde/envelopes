@@ -29,6 +29,7 @@ const PLOT_H = H - MARGIN.top - MARGIN.bottom;
 interface Elements {
   acctSelect: HTMLSelectElement;
   inflationInput: HTMLInputElement;
+  startDateInput: HTMLInputElement;
   autoBadge: HTMLElement;
   simHeading: HTMLElement;
   chartSvg: SVGSVGElement;
@@ -430,7 +431,10 @@ export function createSimulationView(elements: Elements) {
     recompute(state: UIState, showImpact = false): void {
       const before = lastOutcome;
       const budget = toBudget(state);
-      start = todayISO();
+      // Anchor the projection to the plan's saved start date (opening
+      // balances as of that day), NOT today — so reopening a plan a month
+      // later doesn't silently shift the whole projection.
+      start = budget.startDate;
       // editing a birthday moves the far end of the timeline, so this is
       // worked out fresh each run rather than fixed at startup
       const previousMax = absMax;
@@ -542,6 +546,12 @@ export function createSimulationView(elements: Elements) {
       });
       elements.inflationInput.addEventListener("input", () => {
         state.inflation = inflationRate();
+        onChange();
+      });
+      elements.startDateInput.addEventListener("change", () => {
+        const value = elements.startDateInput.value;
+        // type=date emits YYYY-MM-DD; empty clears back to "today" default.
+        state.startDate = value || undefined;
         onChange();
       });
 

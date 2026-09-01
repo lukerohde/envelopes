@@ -55,6 +55,10 @@ plans/archive/, and update the two lists below.
 CURRENT PLANS
 =============
 
+- opening-balance-start-date-plan.md -- plan-level start_date in the YAML:
+  the simulation, CLI, library, and UI start from the plan's saved start
+  date instead of today, so a reopened or re-shared plan gives the same
+  answer next month. Balances stay as-of the day they were captured.
 - agent-harness-round-3-plan.md -- the friction a *passing* agent still hit:
   put the intent interview where it can't be walked past, stop the page
   silently loading the sample when a share link is broken, give the CLI `link`

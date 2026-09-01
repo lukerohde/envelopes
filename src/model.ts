@@ -19,7 +19,7 @@
  */
 
 import yaml from "js-yaml";
-import { year as yearOf, month as monthOf, dayOfMonth, type ISODate } from "./dates";
+import { todayISO, year as yearOf, month as monthOf, dayOfMonth, type ISODate } from "./dates";
 
 /** What an account is *for*. Each one carries an invariant you can check a
  * plan against, which is the whole reason there are six rather than three:
@@ -144,6 +144,10 @@ export class Budget {
     public goals: Goal[],
     public inflation: number,
     public birthdays: Birthday[],
+    /** The date opening balances are as of and the simulation starts from.
+     * Defaults to the day the plan was created, so reopening a saved plan
+     * later doesn't silently re-anchor the projection to today. */
+    public startDate: ISODate,
   ) {}
 
   account(name: string): Account {
@@ -161,6 +165,12 @@ export class Budget {
 export function load(yamlText: string): Budget {
   const raw = (yaml.load(yamlText) ?? {}) as Record<string, unknown>;
   const inflation = (raw.inflation as number) ?? 0;
+  // Plan start date: explicit `start_date` wins; otherwise the day the plan
+  // was created (today at load). Kept as a string so it round-trips.
+  const startDate: ISODate =
+    raw.start_date !== undefined
+      ? (normalizeDay(raw.start_date) as ISODate)
+      : todayISOString();
 
   const accounts: Account[] = [];
   for (const item of (raw.accounts as Record<string, unknown>[]) ?? []) {
@@ -238,7 +248,7 @@ export function load(yamlText: string): Budget {
     });
   }
 
-  const budget = new Budget(accounts, transfers, goals, inflation, birthdays);
+  const budget = new Budget(accounts, transfers, goals, inflation, birthdays, startDate);
   check(budget);
   return budget;
 }
@@ -312,4 +322,9 @@ function normalizeDay(value: unknown): string | number | null {
     return `${y}-${m}-${d}`;
   }
   return value as string | number;
+}
+
+/** The default plan start date: today's local ISO date. */
+function todayISOString(): ISODate {
+  return todayISO();
 }
