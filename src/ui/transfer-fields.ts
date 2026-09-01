@@ -216,10 +216,9 @@ export function transferFieldsHTML(fields: RowFields, options: RowOptions = {}):
   const amountAria = fields.mode === "sweep" ? "Balance to keep when the sweep runs" : "Transfer amount";
   return (
     `<div class="mobile-row-summary">` +
-    `<span class="mobile-row-name">${name}</span>` +
-    `<span class="mobile-row-meta"><span data-mobile-amount="${escapeHTML(formatAmount(fields.amount))}">${escapeHTML(fields.mode === "sweep" ? `above ${formatAmount(fields.amount)}` : formatAmount(fields.amount))}</span> · <span data-mobile-every="${escapeHTML(fields.every)}">${escapeHTML(fields.every)}</span></span>` +
-    `<button type="button" class="mobile-toggle" data-mobile-toggle aria-expanded="false" aria-label="Edit ${name}">Edit</button>` +
-    `</div>` +
+        `<span class="mobile-row-name">${name}<button type="button" class="mobile-toggle row-edit" data-mobile-toggle aria-expanded="false" aria-label="Edit ${name}" title="Edit ${name}">✎</button></span>` +
+        `<span class="mobile-row-meta"><span data-mobile-amount="${escapeHTML(formatAmount(fields.amount))}">${escapeHTML(fields.mode === "sweep" ? `above ${formatAmount(fields.amount)}` : formatAmount(fields.amount))}</span> · <span data-mobile-every="${escapeHTML(fields.every)}">${escapeHTML(fields.every)}</span></span>` +
+        `</div>` +
     `<div class="transfer-fields-grid">` +
     `<div class="mobile-field" data-label="Name"><div class="t-name-cell">` +
     `<input type="text" class="field-input t-name" data-field="name" value="${name}"${nameEditable ? "" : " readonly"}>` +
@@ -267,7 +266,6 @@ export function wireTransferFieldRow(
     toggle.addEventListener("click", () => {
       const expanded = row.classList.toggle("mobile-expanded");
       toggle.setAttribute("aria-expanded", String(expanded));
-      toggle.textContent = expanded ? "Done" : "Edit";
     });
   }
   row.querySelectorAll<HTMLElement>("[data-field]").forEach((field) => {

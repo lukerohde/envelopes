@@ -67,10 +67,9 @@ export function renderAccounts(container: HTMLElement, state: UIState, onChange:
     row.dataset.accountName = account.name;
     row.innerHTML =
       `<div class="account-summary">` +
-      `<span class="account-summary-name">${escapeHTML(account.name)}</span>` +
+      `<span class="account-summary-name">${escapeHTML(account.name)}<button type="button" class="mobile-toggle account-edit" data-mobile-toggle aria-expanded="false" aria-label="Edit ${escapeHTML(account.name)}" title="Edit ${escapeHTML(account.name)}">✎</button></span>` +
       `<span class="account-summary-kind" data-account-kind>${kindLabel(account.kind)}</span>` +
       `<span class="account-summary-balance fig" data-account-balance>${formatBalance(account.balance)}</span>` +
-      `<button type="button" class="mobile-toggle" data-mobile-toggle aria-expanded="false" aria-label="Edit ${escapeHTML(account.name)}">Edit</button>` +
       `</div>` +
       `<div class="account-fields">` +
       `<div class="mobile-field" data-label="Name"><input class="field-input a-name" data-field="name" value="${escapeHTML(account.name)}"></div>` +
@@ -86,7 +85,6 @@ export function renderAccounts(container: HTMLElement, state: UIState, onChange:
       row.classList.add("mobile-expanded");
       const restoredToggle = row.querySelector<HTMLButtonElement>("[data-mobile-toggle]")!;
       restoredToggle.setAttribute("aria-expanded", "true");
-      restoredToggle.textContent = "Done";
     }
 
     const nameInput = row.querySelector<HTMLInputElement>('[data-field="name"]')!;
@@ -101,7 +99,6 @@ export function renderAccounts(container: HTMLElement, state: UIState, onChange:
     mobileToggle.addEventListener("click", () => {
       const expanded = row.classList.toggle("mobile-expanded");
       mobileToggle.setAttribute("aria-expanded", String(expanded));
-      mobileToggle.textContent = expanded ? "Done" : "Edit";
     });
     if (activeAccountName === account.name && activeField) {
       const focusTarget = activeField === "kind"

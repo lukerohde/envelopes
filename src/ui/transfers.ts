@@ -89,7 +89,6 @@ export function renderTransfers(container: HTMLElement, state: UIState, onChange
       const toggle = transferRow.querySelector<HTMLButtonElement>("[data-mobile-toggle]")!;
       transferRow.classList.add("mobile-expanded");
       toggle.setAttribute("aria-expanded", "true");
-      toggle.textContent = "Done";
     }
     if (activeTransferName === transfer.name && activeField) {
       wrap.querySelector<HTMLElement>(`[data-field="${activeField}"]`)?.focus();
