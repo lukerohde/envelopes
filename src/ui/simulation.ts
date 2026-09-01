@@ -29,6 +29,7 @@ const PLOT_H = H - MARGIN.top - MARGIN.bottom;
 interface Elements {
   acctSelect: HTMLSelectElement;
   inflationInput: HTMLInputElement;
+  startDateInput: HTMLInputElement;
   autoBadge: HTMLElement;
   simHeading: HTMLElement;
   chartSvg: SVGSVGElement;
@@ -545,6 +546,12 @@ export function createSimulationView(elements: Elements) {
       });
       elements.inflationInput.addEventListener("input", () => {
         state.inflation = inflationRate();
+        onChange();
+      });
+      elements.startDateInput.addEventListener("change", () => {
+        const value = elements.startDateInput.value;
+        // type=date emits YYYY-MM-DD; empty clears back to "today" default.
+        state.startDate = value || undefined;
         onChange();
       });
 

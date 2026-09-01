@@ -482,6 +482,8 @@ Top level, all required unless noted:
 
 ```yaml
 inflation: 0.03        # annual rate, applied to anything that "escalates" (below)
+start_date: 2026-08-01 # optional: date the plan's opening balances are as of and
+                       # the projection starts from (defaults to today)
 
 birthdays:
   - {name: alex, born: 1980-05-20}   # name + ISO date, one entry per person
@@ -711,6 +713,7 @@ can read the number off instead of doing the arithmetic.
 
 ```yaml
 inflation: 0.03
+start_date: 2026-08-01
 birthdays:
   - name: Alex
     born: '1980-05-20'
