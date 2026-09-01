@@ -249,8 +249,7 @@ function collapsedHTML(state: UIState, goal: UIGoal, goalIndex: number): string 
 
   return (
     `<div class="g-head">` +
-    `<div class="m-info"><div class="m-name">${goal.name}</div><div class="m-trigger">${triggerText(goal)}</div></div>` +
-    `<button type="button" class="m-edit-btn" data-edit>Edit</button>` +
+    `<div class="m-info"><div class="m-name">${goal.name}<button type="button" class="m-edit-btn" data-edit aria-label="Edit ${goal.name}" title="Edit ${goal.name}">✎</button></div><div class="m-trigger">${triggerText(goal)}</div></div>` +
     removeButtonHTML(goal.name) +
     `</div>` +
     onCompletion + acctSection
@@ -348,7 +347,6 @@ export function renderGoals(container: HTMLElement, state: UIState, onChange: ()
       const toggle = transferRow.querySelector<HTMLButtonElement>("[data-mobile-toggle]")!;
       transferRow.classList.add("mobile-expanded");
       toggle.setAttribute("aria-expanded", "true");
-      toggle.textContent = "Done";
     });
     if (activeGoalIndex === String(i) && activeTransferName && activeField) {
       row.querySelector<HTMLElement>(`.transfer-row[data-transfer-name="${activeTransferName}"] [data-field="${activeField}"]`)?.focus();

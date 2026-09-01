@@ -55,6 +55,9 @@ plans/archive/, and update the two lists below.
 CURRENT PLANS
 =============
 
+- mobile-account-readability-plan.md -- mobile account rows make the kind
+  description legible (name top-left, balance top-right, kind description
+  full-width underneath) and let account names wrap instead of eliding.
 - opening-balance-start-date-plan.md -- plan-level start_date in the YAML:
   the simulation, CLI, library, and UI start from the plan's saved start
   date instead of today, so a reopened or re-shared plan gives the same
